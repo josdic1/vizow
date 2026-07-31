@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="DEYVID">
+  <rect
+    x="0"
+    y="0"
+    width="512"
+    height="512"
+    rx="86"
+    fill="#E8DFC7"
+  />
+
+  <path
+    d="M96 198 L256 130 L416 198 L416 314 L256 382 L96 314 Z"
+    fill="none"
+    stroke="#E66723"
+    stroke-width="22"
+    stroke-linejoin="miter"
+  />
+
+  <text
+    x="256"
+    y="292"
+    text-anchor="middle"
+    fill="#2A1B14"
+    font-family="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif"
+    font-size="86"
+    font-weight="900"
+    letter-spacing="5"
+  >DEYVID</text>
+</svg>
