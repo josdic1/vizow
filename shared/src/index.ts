@@ -103,6 +103,16 @@ export const jobSchema = z.object({
   currentCycle: jobCycleSchema,
 });
 
+export const clientsResponseSchema = z.object({
+  ok: z.literal(true),
+  clients: z.array(clientSchema),
+});
+
+export const jobsResponseSchema = z.object({
+  ok: z.literal(true),
+  jobs: z.array(jobSchema),
+});
+
 export type JobStage = z.infer<typeof jobStageSchema>;
 export type CycleReason = z.infer<typeof cycleReasonSchema>;
 export type DisputeStatus = z.infer<typeof disputeStatusSchema>;
@@ -113,3 +123,5 @@ export type Client = z.infer<typeof clientSchema>;
 export type CreateJobInput = z.infer<typeof createJobSchema>;
 export type JobCycle = z.infer<typeof jobCycleSchema>;
 export type Job = z.infer<typeof jobSchema>;
+export type ClientsResponse = z.infer<typeof clientsResponseSchema>;
+export type JobsResponse = z.infer<typeof jobsResponseSchema>;
