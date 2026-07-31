@@ -10,11 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tanstack/react-router": "1.170.18",
     "@vizow/shared": "*",
     "lucide-react": "^1.28.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-router-dom": "7.18.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
