@@ -3,12 +3,16 @@
   "version": "0.1.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npm run build --workspace @vizow/shared && npm run build --workspace @vizow/backend && npm run build --workspace @vizow/frontend",
+    "build:shared": "npm run build --workspace @vizow/shared",
+    "dev:backend": "npm run build:shared && npm run dev --workspace @vizow/backend",
+    "dev:frontend": "npm run build:shared && npm run dev --workspace @vizow/frontend",
+    "test": "npm run test --workspace @vizow/backend"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "Vizow — Visual of Work",
+  "description": "Vizow \u2014 Visual of Work",
   "private": true,
   "workspaces": [
     "backend",
