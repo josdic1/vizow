@@ -3,6 +3,8 @@ import express from "express";
 
 import { pool } from "./db/pool.js";
 import { env } from "./env.js";
+import { clientsRouter } from "./routes/clients.js";
+import { jobsRouter } from "./routes/jobs.js";
 import { organizationRouter } from "./routes/organization.js";
 
 export const app = express();
@@ -46,3 +48,5 @@ app.get("/health/database", async (_request, response) => {
 });
 
 app.use("/api/organization", organizationRouter);
+app.use("/api/clients", clientsRouter);
+app.use("/api/jobs", jobsRouter);
