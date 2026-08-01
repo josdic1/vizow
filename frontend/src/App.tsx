@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useParams } from "react-router-dom";
 import type { Job } from "@vizow/shared";
-import { fetchJobs } from "./api/jobs";
+import { fetchJob, fetchJobs } from "./api/jobs";
 
 type JobsState =
   | { status: "loading" }
   | { status: "ready"; jobs: Job[] }
+  | { status: "error"; message: string };
+
+type JobDetailState =
+  | { status: "loading" }
+  | { status: "ready"; job: Job }
   | { status: "error"; message: string };
 
 function formatLabel(value: string): string {
@@ -116,10 +121,104 @@ function JobsPage() {
                 </dl>
 
                 {job.description && <p>{job.description}</p>}
+
+                <Link to={`/jobs/${job.id}`}>View job</Link>
               </article>
             );
           })}
       </section>
+    </main>
+  );
+}
+
+
+function JobDetailPage() {
+  const { jobId } = useParams<{ jobId: string }>();
+  const [state, setState] = useState<JobDetailState>({ status: "loading" });
+
+  useEffect(() => {
+    if (!jobId) {
+      setState({
+        status: "error",
+        message: "The job ID is missing from the URL.",
+      });
+      return;
+    }
+
+    const controller = new AbortController();
+
+    setState({ status: "loading" });
+
+    fetchJob(jobId, controller.signal)
+      .then((job) => {
+        setState({ status: "ready", job });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        setState({
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "An unknown error occurred while loading the job.",
+        });
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [jobId]);
+
+  return (
+    <main>
+      <header>
+        <Link to="/jobs">← Jobs</Link>
+        <p>Visual of Work</p>
+        <h1>VIZOW</h1>
+      </header>
+
+      {state.status === "loading" && <p>Loading job…</p>}
+
+      {state.status === "error" && (
+        <div role="alert">
+          <strong>Job could not be loaded.</strong>
+          <p>{state.message}</p>
+        </div>
+      )}
+
+      {state.status === "ready" && (
+        <section aria-labelledby="job-heading">
+          <p>{state.job.clientName}</p>
+          <h2 id="job-heading">{state.job.title}</h2>
+
+          <dl>
+            <div>
+              <dt>Stage</dt>
+              <dd>{formatLabel(state.job.currentCycle.stage)}</dd>
+            </div>
+
+            <div>
+              <dt>Cycle</dt>
+              <dd>
+                {state.job.currentCycle.cycleNumber} ·{" "}
+                {formatLabel(state.job.currentCycle.reason)}
+              </dd>
+            </div>
+
+            {formatAddress(state.job) && (
+              <div>
+                <dt>Service address</dt>
+                <dd>{formatAddress(state.job)}</dd>
+              </div>
+            )}
+          </dl>
+
+          {state.job.description && <p>{state.job.description}</p>}
+        </section>
+      )}
     </main>
   );
 }
@@ -139,6 +238,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/jobs" replace />} />
       <Route path="/jobs" element={<JobsPage />} />
+      <Route path="/jobs/:jobId" element={<JobDetailPage />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
