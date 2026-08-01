@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, Navigate, Route, Routes } from "react-router-dom";
 import type { Job } from "@vizow/shared";
 import { fetchJobs } from "./api/jobs";
 
@@ -29,7 +30,7 @@ function formatAddress(job: Job): string | null {
   return [street, locality].filter(Boolean).join(", ") || null;
 }
 
-function App() {
+function JobsPage() {
   const [state, setState] = useState<JobsState>({ status: "loading" });
 
   useEffect(() => {
@@ -120,6 +121,26 @@ function App() {
           })}
       </section>
     </main>
+  );
+}
+
+
+function NotFoundPage() {
+  return (
+    <main>
+      <h1>Page not found</h1>
+      <Link to="/jobs">Return to jobs</Link>
+    </main>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/jobs" replace />} />
+      <Route path="/jobs" element={<JobsPage />} />
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   );
 }
 
