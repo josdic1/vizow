@@ -1,0 +1,37 @@
+/*
+ * Verified Nailedit detail-grid rules.
+ * Unsupported legacy selectors and unavailable feature sections are omitted.
+ */
+
+.mosaic-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.mosaic-detail-grid div {
+  border: var(--border-normal);
+  background: var(--color-paper);
+  padding: var(--space-3);
+}
+
+.mosaic-detail-grid span {
+  display: block;
+  color: var(--color-orange);
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.mosaic-detail-grid strong {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .mosaic-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

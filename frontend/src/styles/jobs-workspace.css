@@ -1,0 +1,408 @@
+/*
+ * Exact Nailedit Jobs workspace styles.
+ * Screen-specific rules remain separate from the reusable design-system core.
+ */
+
+.admin-page {
+  display: grid;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding-bottom: var(--space-6);
+}
+
+.admin-page-header {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  overflow: hidden;
+  border: var(--border-heavy);
+  background: var(--color-paper-soft);
+  padding: clamp(1.1rem, 3vw, 2rem);
+  box-shadow: 8px 8px 0 var(--color-ink);
+}
+
+.admin-page-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0.45rem;
+  background: var(--color-orange);
+}
+
+.admin-page-heading {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.admin-page-heading h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 6vw, 4.75rem);
+  line-height: 0.82;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.admin-page-heading > p:not(.eyebrow) {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--color-ink-soft);
+  line-height: 1.45;
+}
+
+.admin-page-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-page-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.admin-page-actions .btn {
+  min-height: 2.8rem;
+  padding: 0.72rem 0.95rem;
+}
+
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: var(--border-normal);
+  background: var(--color-paper-soft);
+  padding: 0.75rem;
+}
+
+.admin-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.admin-filter-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: var(--border-normal);
+  background: var(--color-paper);
+  padding: 0.48rem 0.65rem;
+  color: var(--color-ink);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-filter-tabs button strong {
+  display: grid;
+  place-items: center;
+  min-width: 1.45rem;
+  min-height: 1.45rem;
+  border: 1px solid currentColor;
+  padding: 0.1rem;
+}
+
+.admin-filter-tabs button.is-active {
+  background: var(--color-orange);
+}
+
+.admin-search-field {
+  display: block;
+  min-width: min(19rem, 100%);
+}
+
+.admin-search-field input,
+.admin-table select {
+  border: var(--border-normal);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  padding: 0.58rem 0.7rem;
+  font: inherit;
+}
+
+.admin-search-field input {
+  width: 100%;
+}
+
+.admin-toolbar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.admin-view-switch {
+  display: flex;
+  border: var(--border-normal);
+}
+
+.admin-view-switch a {
+  padding: 0.55rem 0.7rem;
+  color: var(--color-ink);
+  font-size: 0.7rem;
+  font-weight: 950;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.admin-view-switch a + a {
+  border-left: var(--border-thin);
+}
+
+.admin-view-switch a.is-active {
+  background: var(--color-ink);
+  color: var(--color-paper-soft);
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border: var(--border-heavy);
+  background: var(--color-paper-soft);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.admin-table th {
+  background: var(--color-ink);
+  color: var(--color-paper-soft);
+  padding: 0.68rem 0.75rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.07em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-table th button {
+  all: unset;
+  cursor: pointer;
+}
+
+.admin-table td {
+  border-bottom: var(--border-thin);
+  padding: 0.72rem 0.75rem;
+  vertical-align: middle;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-table tbody tr:hover {
+  background: rgba(230, 103, 35, 0.08);
+}
+
+.admin-table td > strong,
+.admin-table td > small {
+  display: block;
+}
+
+.admin-table td > small {
+  margin-top: 0.15rem;
+  color: var(--color-muted);
+}
+
+.admin-table a {
+  color: var(--color-ink);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.admin-table a:hover {
+  color: var(--color-orange);
+}
+
+.admin-table-action {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.admin-table-action a {
+  color: var(--color-orange);
+  font-size: 0.75rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.admin-status-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid var(--color-ink);
+  background: var(--color-paper);
+  padding: 0.2rem 0.45rem;
+  font-size: 0.66rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-status-chip.is-active,
+.project-status-in_progress {
+  border-color: var(--color-orange);
+  background: var(--color-orange);
+  color: var(--color-paper-soft);
+}
+
+.admin-status-chip.is-scheduled,
+.project-status-scheduled {
+  background: var(--color-ink);
+  color: var(--color-paper-soft);
+}
+
+.project-status-completed {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.project-status-cancelled {
+  border-color: var(--color-muted);
+  color: var(--color-muted);
+}
+
+.admin-empty-state {
+  display: grid;
+  gap: 0.35rem;
+  border: 2px dashed var(--color-muted);
+  padding: 1rem;
+  color: var(--color-muted);
+}
+
+.admin-empty-state strong {
+  color: var(--color-ink);
+}
+
+.admin-empty-state a,
+.admin-empty-state button {
+  width: fit-content;
+  border: 0;
+  background: transparent;
+  color: var(--color-orange);
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 950;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.admin-empty-state-large {
+  min-height: 12rem;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+}
+
+@media (max-width: 780px) {
+  .admin-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-page-actions {
+    justify-content: stretch;
+  }
+
+  .admin-page-actions .btn {
+    flex: 1 1 11rem;
+  }
+
+  .admin-toolbar,
+  .admin-toolbar-end {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-search-field {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-view-switch a {
+    flex: 1;
+    text-align: center;
+  }
+
+  .admin-table-wrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .admin-table,
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table tr {
+    margin-bottom: var(--space-3);
+    border: var(--border-heavy);
+    background: var(--color-paper-soft);
+  }
+
+  .admin-table td {
+    display: grid;
+    grid-template-columns: minmax(7rem, 0.45fr) minmax(0, 1fr);
+    gap: var(--space-2);
+    border-bottom: var(--border-thin);
+    text-align: left;
+  }
+
+  .admin-table td::before {
+    content: attr(data-label);
+    color: var(--color-muted);
+    font-size: 0.68rem;
+    font-weight: 950;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .admin-table .admin-table-action {
+    display: block;
+    padding: 0;
+  }
+
+  .admin-table .admin-table-action::before {
+    content: none;
+  }
+
+  .admin-table .admin-table-action a {
+    display: block;
+    padding: 0.75rem;
+    text-align: center;
+  }
+}

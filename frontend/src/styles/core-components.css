@@ -295,7 +295,7 @@ button.btn:disabled {
   justify-content: flex-end;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 720px) {
   .site-header {
     grid-template-columns: 1fr;
     align-items: stretch;
@@ -316,5 +316,24 @@ button.btn:disabled {
   .header-actions {
     justify-content: center;
     flex-wrap: wrap;
+  }
+}
+
+.app-header {
+  position: relative;
+  z-index: 110;
+  border-bottom: var(--border-heavy);
+  background: var(--color-paper);
+  padding: 0 var(--space-5);
+}
+
+.app-header .site-header {
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .app-header {
+    padding: 0 var(--space-3);
   }
 }

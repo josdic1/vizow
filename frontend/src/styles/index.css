@@ -2,4 +2,6 @@
 @import "./base.css";
 @import "./utilities.css";
 @import "./core-components.css";
+@import "./jobs-workspace.css";
+@import "./job-detail.css";
 @import "./forms.css";

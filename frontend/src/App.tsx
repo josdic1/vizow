@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Route, Routes, useParams } from "react-router-dom";
 import type { Job } from "@vizow/shared";
 import { fetchJob, fetchJobs } from "./api/jobs";
-import { ContextRail } from "./components/ContextRail";
+import { AdminPageHeader } from "./components/AdminPageHeader";
+import { AppLayout } from "./layouts/AppLayout";
 
 type JobsState =
   | { status: "loading" }
@@ -38,6 +39,12 @@ function formatAddress(job: Job): string | null {
 
 function JobsPage() {
   const [state, setState] = useState<JobsState>({ status: "loading" });
+  const [stageFilter, setStageFilter] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortKey, setSortKey] = useState<
+    "client" | "job" | "address" | "stage" | "cycle"
+  >("client");
+  const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -65,133 +72,399 @@ function JobsPage() {
     };
   }, []);
 
+  const jobs = state.status === "ready" ? state.jobs : [];
+
+  const stages = useMemo(
+    () =>
+      Array.from(new Set(jobs.map((job) => job.currentCycle.stage))).sort(
+        (first, second) => first.localeCompare(second),
+      ),
+    [jobs],
+  );
+
+  const visibleJobs = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    const nextJobs = jobs.filter((job) => {
+      if (
+        stageFilter !== "ALL" &&
+        job.currentCycle.stage !== stageFilter
+      ) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const address = formatAddress(job) ?? "";
+
+      return [
+        job.clientName,
+        job.title,
+        job.description,
+        address,
+        job.currentCycle.stage,
+        job.currentCycle.reason,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearch);
+    });
+
+    nextJobs.sort((first, second) => {
+      let firstValue: string | number;
+      let secondValue: string | number;
+
+      if (sortKey === "client") {
+        firstValue = first.clientName;
+        secondValue = second.clientName;
+      } else if (sortKey === "job") {
+        firstValue = first.title;
+        secondValue = second.title;
+      } else if (sortKey === "address") {
+        firstValue = formatAddress(first) ?? "";
+        secondValue = formatAddress(second) ?? "";
+      } else if (sortKey === "stage") {
+        firstValue = first.currentCycle.stage;
+        secondValue = second.currentCycle.stage;
+      } else {
+        firstValue = first.currentCycle.cycleNumber;
+        secondValue = second.currentCycle.cycleNumber;
+      }
+
+      const result =
+        typeof firstValue === "number" && typeof secondValue === "number"
+          ? firstValue - secondValue
+          : String(firstValue).localeCompare(String(secondValue));
+
+      return sortDirection === "ASC" ? result : result * -1;
+    });
+
+    return nextJobs;
+  }, [jobs, searchTerm, sortDirection, sortKey, stageFilter]);
+
+  function handleSort(nextSortKey: typeof sortKey) {
+    if (sortKey === nextSortKey) {
+      setSortDirection((current) =>
+        current === "ASC" ? "DESC" : "ASC",
+      );
+      return;
+    }
+
+    setSortKey(nextSortKey);
+    setSortDirection("ASC");
+  }
+
+  function getSortLabel(column: typeof sortKey) {
+    if (sortKey !== column) {
+      return "";
+    }
+
+    return sortDirection === "ASC" ? " ↑" : " ↓";
+  }
+
   return (
-    <main>
-      <ContextRail
-        object="All Jobs"
-        tool="Jobs"
-        action="Review jobs"
-        result={
-          state.status === "loading"
-            ? "Loading"
-            : state.status === "error"
-              ? "Not loaded"
-              : `${state.jobs.length} job${state.jobs.length === 1 ? "" : "s"} loaded`
+    <AppLayout
+      object="All Jobs"
+      tool="Jobs"
+      action="Review jobs"
+      result={
+        state.status === "loading"
+          ? "Loading"
+          : state.status === "error"
+            ? "Not loaded"
+            : `${state.jobs.length} job${state.jobs.length === 1 ? "" : "s"} loaded`
+      }
+      message={
+        state.status === "loading"
+          ? "Loading jobs from VIZOW."
+          : state.status === "error"
+            ? "Jobs could not be loaded. Nothing was changed."
+            : `${state.jobs.length} job${state.jobs.length === 1 ? "" : "s"} are available to review.`
+      }
+      activeStep={state.status === "loading" ? "result" : "action"}
+      resultTone={
+        state.status === "loading"
+          ? "working"
+          : state.status === "error"
+            ? "error"
+            : "success"
+      }
+    >
+      <div className="page">
+        <div className="admin-page jobs-page">
+          <AdminPageHeader
+            eyebrow="Visual of Work"
+            title="Jobs"
+            description="Review each job’s current stage, service address, and active work cycle."
+            meta={
+              state.status === "ready" ? (
+                <span>
+                  {state.jobs.length} total job
+                  {state.jobs.length === 1 ? "" : "s"}
+                </span>
+              ) : undefined
+            }
+          />
+
+          {state.status === "ready" && (
+            <div className="admin-toolbar jobs-toolbar">
+              <div
+                className="admin-filter-tabs"
+                aria-label="Job stage filter"
+              >
+                <button
+                  aria-pressed={stageFilter === "ALL"}
+                  className={stageFilter === "ALL" ? "is-active" : undefined}
+                  type="button"
+                  onClick={() => setStageFilter("ALL")}
+                >
+                  <span>All</span>
+                  <strong>{jobs.length}</strong>
+                </button>
+
+                {stages.map((stage) => {
+                  const count = jobs.filter(
+                    (job) => job.currentCycle.stage === stage,
+                  ).length;
+
+                  return (
+                    <button
+                      aria-pressed={stageFilter === stage}
+                      className={
+                        stageFilter === stage ? "is-active" : undefined
+                      }
+                      key={stage}
+                      type="button"
+                      onClick={() => setStageFilter(stage)}
+                    >
+                      <span>{formatLabel(stage)}</span>
+                      <strong>{count}</strong>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="admin-toolbar-end">
+                <label className="admin-search-field">
+                  <span className="sr-only">Search jobs</span>
+                  <input
+                    placeholder="Client, job, address…"
+                    type="search"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {state.status === "loading" && (
+            <div className="notice">Loading jobs…</div>
+          )}
+
+          {state.status === "error" && (
+            <div className="notice notice-error" role="alert">
+              <strong>Jobs could not be loaded.</strong>
+              <p>{state.message}</p>
+            </div>
+          )}
+
+          {state.status === "ready" && visibleJobs.length > 0 && (
+            <div className="admin-table-wrap">
+              <table className="admin-table jobs-table">
+                <thead>
+                  <tr>
+                    <th>
+                      <button
+                        type="button"
+                        onClick={() => handleSort("client")}
+                      >
+                        Client{getSortLabel("client")}
+                      </button>
+                    </th>
+
+                    <th>
+                      <button
+                        type="button"
+                        onClick={() => handleSort("job")}
+                      >
+                        Job{getSortLabel("job")}
+                      </button>
+                    </th>
+
+                    <th>
+                      <button
+                        type="button"
+                        onClick={() => handleSort("address")}
+                      >
+                        Service address{getSortLabel("address")}
+                      </button>
+                    </th>
+
+                    <th>
+                      <button
+                        type="button"
+                        onClick={() => handleSort("stage")}
+                      >
+                        Stage{getSortLabel("stage")}
+                      </button>
+                    </th>
+
+                    <th>
+                      <button
+                        type="button"
+                        onClick={() => handleSort("cycle")}
+                      >
+                        Cycle{getSortLabel("cycle")}
+                      </button>
+                    </th>
+
+                    <th aria-label="Open job" />
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {visibleJobs.map((job) => {
+                    const address = formatAddress(job);
+                    const stageClass =
+                      `admin-status-chip project-status-${job.currentCycle.stage.toLowerCase()}`;
+
+                    return (
+                      <tr key={job.id}>
+                        <td data-label="Client">
+                          <strong>{job.clientName}</strong>
+                        </td>
+
+                        <td data-label="Job">
+                          <Link to={`/jobs/${job.id}`}>{job.title}</Link>
+                          <small>
+                            {formatLabel(job.currentCycle.reason)}
+                          </small>
+                        </td>
+
+                        <td data-label="Service address">
+                          {address ?? "—"}
+                        </td>
+
+                        <td data-label="Stage">
+                          <span className={stageClass}>
+                            {formatLabel(job.currentCycle.stage)}
+                          </span>
+                        </td>
+
+                        <td data-label="Cycle">
+                          {job.currentCycle.cycleNumber}
+                        </td>
+
+                        <td className="admin-table-action">
+                          <Link to={`/jobs/${job.id}`}>Open →</Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {state.status === "ready" && visibleJobs.length === 0 && (
+            <div className="admin-empty-state admin-empty-state-large">
+              <strong>No jobs match this view.</strong>
+              <span>Choose another stage or clear the search.</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setStageFilter("ALL");
+                  setSearchTerm("");
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </AppLayout>
+  );
+}
+
+function JobDetailContent({ job }: { job: Job }) {
+  const address = formatAddress(job);
+  const stageClass =
+    `admin-status-chip project-status-${job.currentCycle.stage.toLowerCase()}`;
+
+  return (
+    <>
+      <AdminPageHeader
+        eyebrow={job.clientName}
+        title={job.title}
+        description={
+          job.description ??
+          "Review this job’s current work cycle and service information."
         }
-        message={
-          state.status === "loading"
-            ? "Loading jobs from VIZOW."
-            : state.status === "error"
-              ? "Jobs could not be loaded. Nothing was changed."
-              : `${state.jobs.length} job${state.jobs.length === 1 ? "" : "s"} are available to review.`
+        actions={
+          <Link className="btn" to="/jobs">
+            ← Jobs
+          </Link>
         }
-        activeStep={state.status === "loading" ? "result" : "action"}
-        resultTone={
-          state.status === "loading"
-            ? "working"
-            : state.status === "error"
-              ? "error"
-              : "success"
+        meta={
+          <>
+            <span>Stage: {formatLabel(job.currentCycle.stage)}</span>
+            <span>Cycle {job.currentCycle.cycleNumber}</span>
+          </>
         }
       />
 
-      <div className="page">
-        <div className="shell stack-lg">
-          <header className="stack">
-            <p className="eyebrow">Visual of Work</p>
-            <h1 className="title">VIZOW</h1>
-          </header>
+      <section className="helper-card stack-lg">
+        <div className="card-topline">
+          <div className="stack">
+            <p className="eyebrow">Current Work Cycle</p>
+            <h2>Job Record</h2>
+          </div>
 
-          <section className="stack" aria-labelledby="jobs-heading">
-            <div className="card-topline">
-              <div className="stack">
-                <p className="eyebrow">Workspace</p>
-                <h2 id="jobs-heading">Jobs</h2>
-              </div>
-
-              {state.status === "ready" && (
-                <span className="badge">
-                  {state.jobs.length}{" "}
-                  {state.jobs.length === 1 ? "Job" : "Jobs"}
-                </span>
-              )}
-            </div>
-
-            {state.status === "loading" && (
-              <div className="panel">
-                <p>Loading jobs…</p>
-              </div>
-            )}
-
-            {state.status === "error" && (
-              <div className="panel stack" role="alert">
-                <strong>Jobs could not be loaded.</strong>
-                <p>{state.message}</p>
-              </div>
-            )}
-
-            {state.status === "ready" && state.jobs.length === 0 && (
-              <div className="panel">
-                <p>No jobs have been created yet.</p>
-              </div>
-            )}
-
-            {state.status === "ready" &&
-              state.jobs.map((job) => {
-                const address = formatAddress(job);
-
-                return (
-                  <article className="panel stack" key={job.id}>
-                    <div className="card-topline">
-                      <div className="stack">
-                        <p className="eyebrow">{job.clientName}</p>
-                        <h3>{job.title}</h3>
-                      </div>
-
-                      <div className="card-markers">
-                        <span className="card-marker card-marker-strong">
-                          {formatLabel(job.currentCycle.stage)}
-                        </span>
-
-                        <span className="card-marker">
-                          Cycle {job.currentCycle.cycleNumber}
-                        </span>
-                      </div>
-                    </div>
-
-                    <dl className="grid-2">
-                      <div>
-                        <dt className="label">Cycle reason</dt>
-                        <dd>{formatLabel(job.currentCycle.reason)}</dd>
-                      </div>
-
-                      {address && (
-                        <div>
-                          <dt className="label">Service address</dt>
-                          <dd>{address}</dd>
-                        </div>
-                      )}
-                    </dl>
-
-                    {job.description && (
-                      <p className="subtitle">{job.description}</p>
-                    )}
-
-                    <div className="cluster">
-                      <Link
-                        className="btn btn-primary"
-                        to={`/jobs/${job.id}`}
-                      >
-                        View job
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })}
-          </section>
+          <span className={stageClass}>
+            {formatLabel(job.currentCycle.stage)}
+          </span>
         </div>
-      </div>
-    </main>
+
+        <div className="mosaic-detail-grid">
+          <div>
+            <span>Object</span>
+            <strong>Job</strong>
+          </div>
+
+          <div>
+            <span>Client</span>
+            <strong>{job.clientName}</strong>
+          </div>
+
+          <div>
+            <span>Cycle</span>
+            <strong>{job.currentCycle.cycleNumber}</strong>
+          </div>
+
+          <div>
+            <span>Reason</span>
+            <strong>{formatLabel(job.currentCycle.reason)}</strong>
+          </div>
+        </div>
+
+        <div className="grid-2">
+          <div className="card-drawer">
+            <p className="eyebrow">Service Address</p>
+            <p>{address ?? "No service address recorded."}</p>
+          </div>
+
+          <div className="card-drawer">
+            <p className="eyebrow">Scope</p>
+            <p>{job.description ?? "No scope description recorded."}</p>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -238,111 +511,66 @@ function JobDetailPage() {
   }, [jobId]);
 
   return (
-    <main>
-      <ContextRail
-        object={
-          state.status === "ready"
-            ? state.job.title
-            : jobId
-              ? "Selected job"
-              : undefined
-        }
-        tool="Jobs"
-        action="Review job"
-        result={
-          state.status === "loading"
-            ? "Loading"
-            : state.status === "error"
-              ? "Not loaded"
-              : "Loaded"
-        }
-        message={
-          state.status === "loading"
-            ? "Loading this job from VIZOW."
-            : state.status === "error"
-              ? "This job could not be loaded. Nothing was changed."
-              : `${state.job.title} is loaded from Cycle ${state.job.currentCycle.cycleNumber}.`
-        }
-        activeStep={state.status === "loading" ? "result" : "action"}
-        resultTone={
-          state.status === "loading"
-            ? "working"
-            : state.status === "error"
-              ? "error"
-              : "success"
-        }
-      />
-
+    <AppLayout
+      object={
+        state.status === "ready"
+          ? state.job.title
+          : jobId
+            ? "Selected job"
+            : undefined
+      }
+      tool="Jobs"
+      action="Review job"
+      result={
+        state.status === "loading"
+          ? "Loading"
+          : state.status === "error"
+            ? "Not loaded"
+            : "Loaded"
+      }
+      message={
+        state.status === "loading"
+          ? "Loading this job from VIZOW."
+          : state.status === "error"
+            ? "This job could not be loaded. Nothing was changed."
+            : `${state.job.title} is loaded from Cycle ${state.job.currentCycle.cycleNumber}.`
+      }
+      activeStep={state.status === "loading" ? "result" : "action"}
+      resultTone={
+        state.status === "loading"
+          ? "working"
+          : state.status === "error"
+            ? "error"
+            : "success"
+      }
+    >
       <div className="page">
-        <div className="shell stack-lg">
-          <header className="stack">
-            <div className="cluster">
-              <Link className="btn" to="/jobs">
-                ← Jobs
-              </Link>
-            </div>
-
-            <p className="eyebrow">Visual of Work</p>
-            <h1 className="title">VIZOW</h1>
-          </header>
-
+        <div className="admin-page job-detail-page">
           {state.status === "loading" && (
-            <div className="panel">
-              <p>Loading job…</p>
-            </div>
+            <div className="notice">Loading job…</div>
           )}
 
           {state.status === "error" && (
-            <div className="panel stack" role="alert">
-              <strong>Job could not be loaded.</strong>
-              <p>{state.message}</p>
-            </div>
+            <>
+              <div className="cluster">
+                <Link className="btn" to="/jobs">
+                  ← Jobs
+                </Link>
+              </div>
+
+              <div className="notice notice-error" role="alert">
+                <strong>Job could not be loaded.</strong>
+                <p>{state.message}</p>
+              </div>
+            </>
           )}
 
           {state.status === "ready" && (
-            <section
-              className="panel stack-lg"
-              aria-labelledby="job-heading"
-            >
-              <div className="card-topline">
-                <div className="stack">
-                  <p className="eyebrow">{state.job.clientName}</p>
-                  <h2 id="job-heading">{state.job.title}</h2>
-                </div>
-
-                <div className="card-markers">
-                  <span className="card-marker card-marker-strong">
-                    {formatLabel(state.job.currentCycle.stage)}
-                  </span>
-
-                  <span className="card-marker">
-                    Cycle {state.job.currentCycle.cycleNumber}
-                  </span>
-                </div>
-              </div>
-
-              <dl className="grid-2">
-                <div>
-                  <dt className="label">Cycle reason</dt>
-                  <dd>{formatLabel(state.job.currentCycle.reason)}</dd>
-                </div>
-
-                {formatAddress(state.job) && (
-                  <div>
-                    <dt className="label">Service address</dt>
-                    <dd>{formatAddress(state.job)}</dd>
-                  </div>
-                )}
-              </dl>
-
-              {state.job.description && (
-                <p className="subtitle">{state.job.description}</p>
-              )}
-            </section>
+            <JobDetailContent job={state.job} />
           )}
         </div>
       </div>
-    </main>
+    </AppLayout>
   );
 }
 
