@@ -16,8 +16,8 @@ export function AppLayout({
         <header className="site-header shell">
           <Link
             className="brand-lockup"
-            to="/jobs"
-            aria-label="VIZOW jobs"
+            to="/requests"
+            aria-label="VIZOW Requests"
           >
             <img
               className="brand-mark"
@@ -31,6 +31,15 @@ export function AppLayout({
           </Link>
 
           <nav className="site-nav" aria-label="Primary navigation">
+            <NavLink
+              className={({ isActive }) =>
+                `site-nav-link${isActive ? " site-nav-link-active" : ""}`
+              }
+              to="/requests"
+            >
+              Requests
+            </NavLink>
+
             <NavLink
               className={({ isActive }) =>
                 `site-nav-link${isActive ? " site-nav-link-active" : ""}`

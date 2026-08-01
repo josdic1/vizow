@@ -4,6 +4,7 @@ import type { Job } from "@vizow/shared";
 import { fetchJob, fetchJobs } from "./api/jobs";
 import { AdminPageHeader } from "./components/AdminPageHeader";
 import { AppLayout } from "./layouts/AppLayout";
+import { RequestsPage } from "./pages/RequestsPage";
 
 type JobsState =
   | { status: "loading" }
@@ -582,8 +583,8 @@ function NotFoundPage() {
           <p className="eyebrow">Navigation</p>
           <h1>Page not found</h1>
           <div className="cluster">
-            <Link className="btn btn-primary" to="/jobs">
-              Return to jobs
+            <Link className="btn btn-primary" to="/requests">
+              Return to Requests
             </Link>
           </div>
         </section>
@@ -595,7 +596,8 @@ function NotFoundPage() {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/jobs" replace />} />
+      <Route path="/" element={<Navigate to="/requests" replace />} />
+      <Route path="/requests" element={<RequestsPage />} />
       <Route path="/jobs" element={<JobsPage />} />
       <Route path="/jobs/:jobId" element={<JobDetailPage />} />
       <Route path="*" element={<NotFoundPage />} />

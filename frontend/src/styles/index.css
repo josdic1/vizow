@@ -3,5 +3,6 @@
 @import "./utilities.css";
 @import "./core-components.css";
 @import "./jobs-workspace.css";
+@import "./requests-workspace.css";
 @import "./job-detail.css";
 @import "./forms.css";
