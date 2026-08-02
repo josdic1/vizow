@@ -51,6 +51,15 @@ export function AppLayout({
             >
               Jobs
             </NavLink>
+
+            <NavLink
+              className={({ isActive }) =>
+                `site-nav-link${isActive ? " site-nav-link-active" : ""}`
+              }
+              to="/clients"
+            >
+              Clients
+            </NavLink>
           </nav>
 
           <div className="header-actions">

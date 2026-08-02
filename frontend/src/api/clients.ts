@@ -57,6 +57,41 @@ export async function fetchClients(
   return result.data.clients;
 }
 
+export async function fetchClient(
+  clientId: string,
+  signal?: AbortSignal,
+): Promise<Client> {
+  const response = await fetch(
+    `/api/clients/${encodeURIComponent(clientId)}`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+      signal,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(
+        response,
+        `Failed to load Client. HTTP ${response.status}.`,
+      ),
+    );
+  }
+
+  const payload: unknown = await response.json();
+  const result = clientResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error("Invalid Client response:", result.error);
+    throw new Error("The Client API returned an invalid response.");
+  }
+
+  return result.data.client;
+}
+
 export async function createClient(
   input: CreateClientInput,
 ): Promise<Client> {

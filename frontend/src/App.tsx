@@ -1,3 +1,5 @@
+import { ClientDetailPage } from "./pages/ClientDetailPage";
+import { ClientsPage } from "./pages/ClientsPage";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Route, Routes, useParams } from "react-router-dom";
 import type { Job } from "@vizow/shared";
@@ -601,6 +603,11 @@ function App() {
       <Route path="/jobs" element={<JobsPage />} />
       <Route path="/jobs/:jobId" element={<JobDetailPage />} />
       <Route path="*" element={<NotFoundPage />} />
+          <Route path="/clients" element={<ClientsPage />} />
+      <Route
+        path="/clients/:clientId"
+        element={<ClientDetailPage />}
+      />
     </Routes>
   );
 }

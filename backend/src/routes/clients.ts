@@ -87,6 +87,84 @@ clientsRouter.get("/", async (_request, response) => {
   }
 });
 
+clientsRouter.get("/:clientId", async (request, response) => {
+  const parsedClientId = clientSchema.shape.id.safeParse(
+    request.params.clientId,
+  );
+
+  if (!parsedClientId.success) {
+    response.status(400).json({
+      ok: false,
+      error: "Invalid Client identifier.",
+    });
+    return;
+  }
+
+  try {
+    const result = await pool.query<ClientDatabaseRow>(
+      `
+        SELECT
+          clients.id,
+          clients.name,
+          clients.email,
+          clients.phone,
+          clients.notes,
+          default_address.value AS "defaultAddress",
+          clients.created_at AS "createdAt",
+          clients.updated_at AS "updatedAt"
+        FROM clients
+        INNER JOIN organizations
+          ON organizations.id = clients.organization_id
+        LEFT JOIN LATERAL (
+          SELECT jsonb_build_object(
+            'id', client_address.id,
+            'label', client_address.label,
+            'isDefault', client_address.is_default,
+            'addressLine1', client_address.address_line_1,
+            'addressLine2', client_address.address_line_2,
+            'city', client_address.city,
+            'state', client_address.state,
+            'postalCode', client_address.postal_code
+          ) AS value
+          FROM client_addresses client_address
+          WHERE client_address.organization_id = clients.organization_id
+            AND client_address.client_id = clients.id
+            AND client_address.is_default
+          LIMIT 1
+        ) default_address ON true
+        WHERE organizations.slug = $1
+          AND clients.id = $2
+      `,
+      [
+        env.ORGANIZATION_SLUG,
+        parsedClientId.data,
+      ],
+    );
+
+    const client = result.rows[0];
+
+    if (!client) {
+      response.status(404).json({
+        ok: false,
+        error: "Client not found.",
+      });
+      return;
+    }
+
+    response.json({
+      ok: true,
+      client: prepareClient(client),
+    });
+  } catch (error) {
+    console.error(error);
+
+    response.status(500).json({
+      ok: false,
+      error: "Unable to load Client.",
+    });
+  }
+});
+
 clientsRouter.post("/", async (request, response) => {
   const operationId = operationIdFromRequest(request);
 
