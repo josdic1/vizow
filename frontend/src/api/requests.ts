@@ -7,6 +7,8 @@ import {
   type Request,
 } from "@vizow/shared";
 
+import { trackedFetch } from "../operations/operationStore";
+
 type ApprovedRequestResult = {
   request: Request;
   job: Job;
@@ -63,14 +65,18 @@ export async function fetchRequests(
 export async function createRequest(
   input: CreateRequestInput,
 ): Promise<Request> {
-  const response = await fetch("/api/requests", {
-    method: "POST",
+  const response = await trackedFetch(
+    "create_request",
+    "/api/requests",
+    {
+      method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(input),
-  });
+      body: JSON.stringify(input),
+    },
+  );
 
   if (!response.ok) {
     throw new Error(
@@ -95,7 +101,8 @@ export async function createRequest(
 export async function approveRequest(
   requestId: string,
 ): Promise<ApprovedRequestResult> {
-  const response = await fetch(
+  const response = await trackedFetch(
+    "approve_request",
     `/api/requests/${encodeURIComponent(requestId)}/approve`,
     {
       method: "POST",

@@ -5,6 +5,7 @@ import { pool } from "./db/pool.js";
 import { env } from "./env.js";
 import { clientsRouter } from "./routes/clients.js";
 import { jobsRouter } from "./routes/jobs.js";
+import { operationsRouter } from "./routes/operations.js";
 import { organizationRouter } from "./routes/organization.js";
 import { requestsRouter } from "./routes/requests.js";
 
@@ -48,6 +49,7 @@ app.get("/health/database", async (_request, response) => {
   }
 });
 
+app.use("/api/operations", operationsRouter);
 app.use("/api/organization", organizationRouter);
 app.use("/api/clients", clientsRouter);
 app.use("/api/jobs", jobsRouter);

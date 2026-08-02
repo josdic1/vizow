@@ -7,11 +7,12 @@ import {
 import { Link } from "react-router-dom";
 import type {
   Client,
+  CreateClientInput,
   CreateRequestInput,
   Request as WorkRequest,
 } from "@vizow/shared";
 
-import { fetchClients } from "../api/clients";
+import { createClient, fetchClients } from "../api/clients";
 import {
   approveRequest,
   createRequest,
@@ -33,22 +34,76 @@ type RequestMutationState =
   | { status: "idle" }
   | {
       status: "working";
-      action: "Create request" | "Approve request";
+      action: "Create client" | "Create request" | "Approve request";
       object: string;
     }
   | {
       status: "success";
-      action: "Create request" | "Approve request";
+      action: "Create client" | "Create request" | "Approve request";
       object: string;
       message: string;
       jobId?: string;
     }
   | {
       status: "error";
-      action: "Create request" | "Approve request";
+      action: "Create client" | "Create request" | "Approve request";
       object: string;
       message: string;
     };
+
+type NewClientDraft = {
+  name: string;
+  email: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+};
+
+type RequestAddressDraft = {
+  serviceAddressLine1: string;
+  serviceAddressLine2: string;
+  serviceCity: string;
+  serviceState: string;
+  servicePostalCode: string;
+};
+
+const emptyNewClientDraft: NewClientDraft = {
+  name: "",
+  email: "",
+  phone: "",
+  addressLine1: "",
+  addressLine2: "",
+  city: "",
+  state: "",
+  postalCode: "",
+};
+
+const emptyRequestAddress: RequestAddressDraft = {
+  serviceAddressLine1: "",
+  serviceAddressLine2: "",
+  serviceCity: "",
+  serviceState: "",
+  servicePostalCode: "",
+};
+
+function requestAddressFromClient(client: Client | undefined): RequestAddressDraft {
+  const address = client?.defaultAddress;
+
+  if (!address) {
+    return { ...emptyRequestAddress };
+  }
+
+  return {
+    serviceAddressLine1: address.addressLine1,
+    serviceAddressLine2: address.addressLine2 ?? "",
+    serviceCity: address.city,
+    serviceState: address.state,
+    servicePostalCode: address.postalCode,
+  };
+}
 
 const requestStatuses = ["open", "approved", "declined"] as const;
 
@@ -106,6 +161,14 @@ export function RequestsPage() {
   });
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [addressDraft, setAddressDraft] = useState<RequestAddressDraft>(
+    () => ({ ...emptyRequestAddress }),
+  );
+  const [newClientOpen, setNewClientOpen] = useState(false);
+  const [newClientDraft, setNewClientDraft] = useState<NewClientDraft>(
+    () => ({ ...emptyNewClientDraft }),
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -145,6 +208,11 @@ export function RequestsPage() {
 
   const requests =
     state.status === "ready" ? state.requests : [];
+
+  const selectedClient =
+    state.status === "ready"
+      ? state.clients.find((client) => client.id === selectedClientId)
+      : undefined;
 
   const openRequestCount = requests.filter(
     (request) => request.status === "open",
@@ -197,6 +265,147 @@ export function RequestsPage() {
 
     return nextRequests;
   }, [requests, searchTerm, statusFilter]);
+
+  function handleClientSelection(clientId: string) {
+    setSelectedClientId(clientId);
+
+    const client =
+      state.status === "ready"
+        ? state.clients.find((candidate) => candidate.id === clientId)
+        : undefined;
+
+    setAddressDraft(requestAddressFromClient(client));
+  }
+
+  function updateAddressField(
+    field: keyof RequestAddressDraft,
+    value: string,
+  ) {
+    setAddressDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function updateNewClientField(
+    field: keyof NewClientDraft,
+    value: string,
+  ) {
+    setNewClientDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function handleCreateClient() {
+    if (state.status !== "ready") {
+      return;
+    }
+
+    const name = newClientDraft.name.trim();
+
+    if (!name) {
+      setMutation({
+        status: "error",
+        action: "Create client",
+        object: "New Client",
+        message: "Client name is required.",
+      });
+      return;
+    }
+
+    const addressValues = [
+      newClientDraft.addressLine1,
+      newClientDraft.addressLine2,
+      newClientDraft.city,
+      newClientDraft.state,
+      newClientDraft.postalCode,
+    ];
+
+    const hasAddress = addressValues.some((value) => value.trim());
+
+    if (
+      hasAddress &&
+      (
+        !newClientDraft.addressLine1.trim() ||
+        !newClientDraft.city.trim() ||
+        !newClientDraft.state.trim() ||
+        !newClientDraft.postalCode.trim()
+      )
+    ) {
+      setMutation({
+        status: "error",
+        action: "Create client",
+        object: name,
+        message:
+          "Address line 1, city, state, and postal code are required when saving a property.",
+      });
+      return;
+    }
+
+    const input: CreateClientInput = {
+      name,
+      email: newClientDraft.email.trim() || null,
+      phone: newClientDraft.phone.trim() || null,
+      notes: null,
+      defaultAddress: hasAddress
+        ? {
+            label: "Primary",
+            addressLine1: newClientDraft.addressLine1.trim(),
+            addressLine2:
+              newClientDraft.addressLine2.trim() || null,
+            city: newClientDraft.city.trim(),
+            state: newClientDraft.state.trim(),
+            postalCode: newClientDraft.postalCode.trim(),
+          }
+        : null,
+    };
+
+    setMutation({
+      status: "working",
+      action: "Create client",
+      object: name,
+    });
+
+    try {
+      const createdClient = await createClient(input);
+
+      setState((current) =>
+        current.status === "ready"
+          ? {
+              ...current,
+              clients: [...current.clients, createdClient].sort(
+                (first, second) =>
+                  first.name.localeCompare(second.name),
+              ),
+            }
+          : current,
+      );
+
+      setSelectedClientId(createdClient.id);
+      setAddressDraft(requestAddressFromClient(createdClient));
+      setNewClientOpen(false);
+      setNewClientDraft({ ...emptyNewClientDraft });
+
+      setMutation({
+        status: "success",
+        action: "Create client",
+        object: createdClient.name,
+        message:
+          `${createdClient.name} was saved and selected for this Request.`,
+      });
+    } catch (error: unknown) {
+      setMutation({
+        status: "error",
+        action: "Create client",
+        object: name,
+        message:
+          error instanceof Error
+            ? error.message
+            : "An unknown error occurred while creating the Client.",
+      });
+    }
+  }
 
   async function handleCreateRequest(
     event: FormEvent<HTMLFormElement>,
@@ -261,6 +470,8 @@ export function RequestsPage() {
       );
 
       form.reset();
+      setSelectedClientId("");
+      setAddressDraft({ ...emptyRequestAddress });
 
       setMutation({
         status: "success",
@@ -344,9 +555,11 @@ export function RequestsPage() {
           : mutation.status === "error"
             ? "Failed"
             : mutation.status === "success"
-              ? mutation.jobId
-                ? "Job created"
-                : "Request created"
+              ? mutation.action === "Create client"
+                ? "Client created"
+                : mutation.jobId
+                  ? "Job created"
+                  : "Request created"
               : `${openRequestCount} open`;
 
   const railMessage =
@@ -438,25 +651,240 @@ export function RequestsPage() {
                   onSubmit={handleCreateRequest}
                 >
                   <div className="form-grid">
-                    <label className="field">
-                      Client
-                      <select
-                        className="select"
-                        name="clientId"
-                        required
-                        defaultValue=""
-                      >
-                        <option value="" disabled>
-                          Select a client
-                        </option>
-
-                        {state.clients.map((client) => (
-                          <option key={client.id} value={client.id}>
-                            {client.name}
+                    <div className="request-client-control">
+                      <label className="field">
+                        Client
+                        <select
+                          className="select"
+                          name="clientId"
+                          required
+                          value={selectedClientId}
+                          onChange={(event) =>
+                            handleClientSelection(event.target.value)
+                          }
+                        >
+                          <option value="" disabled>
+                            Select a client
                           </option>
-                        ))}
-                      </select>
-                    </label>
+
+                          {state.clients.map((client) => (
+                            <option key={client.id} value={client.id}>
+                              {client.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        {selectedClientId && (
+                          <span className="request-field-note">
+                            {selectedClient?.defaultAddress
+                              ? `${selectedClient.defaultAddress.label} property loaded. Changes below apply only to this Request.`
+                              : "This Client has no saved default property."}
+                          </span>
+                        )}
+                      </label>
+
+                      <button
+                        aria-controls="new-client-panel"
+                        aria-expanded={newClientOpen}
+                        className="btn request-new-client-toggle"
+                        type="button"
+                        disabled={mutation.status === "working"}
+                        onClick={() => {
+                          setNewClientOpen((current) => !current);
+                          setMutation({ status: "idle" });
+                        }}
+                      >
+                        {newClientOpen ? "Close" : "+ New Client"}
+                      </button>
+                    </div>
+
+                    {newClientOpen && (
+                      <section
+                        className="request-new-client-panel request-field-wide"
+                        id="new-client-panel"
+                        aria-labelledby="new-client-panel-heading"
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            void handleCreateClient();
+                          }
+                        }}
+                      >
+                        <div className="request-new-client-heading">
+                          <div>
+                            <p className="eyebrow">Client Record</p>
+                            <h3 id="new-client-panel-heading">
+                              Add New Client
+                            </h3>
+                          </div>
+
+                          <span>Request details will stay in place.</span>
+                        </div>
+
+                        <div className="request-new-client-grid">
+                          <label className="field">
+                            Client name
+                            <input
+                              autoComplete="name"
+                              className="input"
+                              type="text"
+                              value={newClientDraft.name}
+                              onChange={(event) =>
+                                updateNewClientField(
+                                  "name",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+
+                          <label className="field">
+                            Phone
+                            <input
+                              autoComplete="tel"
+                              className="input"
+                              type="tel"
+                              value={newClientDraft.phone}
+                              onChange={(event) =>
+                                updateNewClientField(
+                                  "phone",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+
+                          <label className="field">
+                            Email
+                            <input
+                              autoComplete="email"
+                              className="input"
+                              type="email"
+                              value={newClientDraft.email}
+                              onChange={(event) =>
+                                updateNewClientField(
+                                  "email",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+
+                          <div className="request-new-client-property-label">
+                            Default service property
+                            <span>Optional</span>
+                          </div>
+
+                          <label className="field">
+                            Address line 1
+                            <input
+                              autoComplete="address-line1"
+                              className="input"
+                              type="text"
+                              value={newClientDraft.addressLine1}
+                              onChange={(event) =>
+                                updateNewClientField(
+                                  "addressLine1",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+
+                          <label className="field">
+                            Address line 2
+                            <input
+                              autoComplete="address-line2"
+                              className="input"
+                              type="text"
+                              value={newClientDraft.addressLine2}
+                              onChange={(event) =>
+                                updateNewClientField(
+                                  "addressLine2",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+
+                          <label className="field">
+                            City
+                            <input
+                              autoComplete="address-level2"
+                              className="input"
+                              type="text"
+                              value={newClientDraft.city}
+                              onChange={(event) =>
+                                updateNewClientField(
+                                  "city",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+
+                          <label className="field">
+                            State
+                            <input
+                              autoComplete="address-level1"
+                              className="input"
+                              type="text"
+                              value={newClientDraft.state}
+                              onChange={(event) =>
+                                updateNewClientField(
+                                  "state",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+
+                          <label className="field">
+                            Postal code
+                            <input
+                              autoComplete="postal-code"
+                              className="input"
+                              type="text"
+                              value={newClientDraft.postalCode}
+                              onChange={(event) =>
+                                updateNewClientField(
+                                  "postalCode",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+                        </div>
+
+                        <div className="cluster">
+                          <button
+                            className="btn btn-primary"
+                            type="button"
+                            disabled={mutation.status === "working"}
+                            onClick={() => void handleCreateClient()}
+                          >
+                            {mutation.status === "working" &&
+                            mutation.action === "Create client"
+                              ? "Saving Client…"
+                              : "Save Client & Continue"}
+                          </button>
+
+                          <button
+                            className="btn"
+                            type="button"
+                            disabled={mutation.status === "working"}
+                            onClick={() => {
+                              setNewClientOpen(false);
+                              setNewClientDraft({
+                                ...emptyNewClientDraft,
+                              });
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </section>
+                    )}
 
                     <label className="field">
                       Request title
@@ -484,6 +912,13 @@ export function RequestsPage() {
                         className="input"
                         name="serviceAddressLine1"
                         type="text"
+                        value={addressDraft.serviceAddressLine1}
+                        onChange={(event) =>
+                          updateAddressField(
+                            "serviceAddressLine1",
+                            event.target.value,
+                          )
+                        }
                       />
                     </label>
 
@@ -493,6 +928,13 @@ export function RequestsPage() {
                         className="input"
                         name="serviceAddressLine2"
                         type="text"
+                        value={addressDraft.serviceAddressLine2}
+                        onChange={(event) =>
+                          updateAddressField(
+                            "serviceAddressLine2",
+                            event.target.value,
+                          )
+                        }
                       />
                     </label>
 
@@ -502,6 +944,10 @@ export function RequestsPage() {
                         className="input"
                         name="serviceCity"
                         type="text"
+                        value={addressDraft.serviceCity}
+                        onChange={(event) =>
+                          updateAddressField("serviceCity", event.target.value)
+                        }
                       />
                     </label>
 
@@ -512,6 +958,10 @@ export function RequestsPage() {
                         name="serviceState"
                         type="text"
                         maxLength={50}
+                        value={addressDraft.serviceState}
+                        onChange={(event) =>
+                          updateAddressField("serviceState", event.target.value)
+                        }
                       />
                     </label>
 
@@ -521,6 +971,13 @@ export function RequestsPage() {
                         className="input"
                         name="servicePostalCode"
                         type="text"
+                        value={addressDraft.servicePostalCode}
+                        onChange={(event) =>
+                          updateAddressField(
+                            "servicePostalCode",
+                            event.target.value,
+                          )
+                        }
                       />
                     </label>
                   </div>
@@ -530,7 +987,9 @@ export function RequestsPage() {
                       className="btn btn-primary"
                       type="submit"
                       disabled={
-                        mutationWorking || state.clients.length === 0
+                        mutationWorking ||
+                        state.clients.length === 0 ||
+                        newClientOpen
                       }
                     >
                       {mutation.status === "working" &&

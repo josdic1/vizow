@@ -3,9 +3,14 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TYPE job_stage AS ENUM (
-  'request',
   'project',
   'completed'
+);
+
+CREATE TYPE request_status AS ENUM (
+  'open',
+  'approved',
+  'declined'
 );
 
 CREATE TYPE cycle_reason AS ENUM (
@@ -74,6 +79,37 @@ CREATE TABLE clients (
     ON DELETE RESTRICT
 );
 
+CREATE TABLE client_addresses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL,
+  client_id UUID NOT NULL,
+
+  label TEXT NOT NULL DEFAULT 'Primary',
+  is_default BOOLEAN NOT NULL DEFAULT false,
+
+  address_line_1 TEXT NOT NULL,
+  address_line_2 TEXT,
+  city TEXT NOT NULL,
+  state TEXT NOT NULL,
+  postal_code TEXT NOT NULL,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  UNIQUE (organization_id, id),
+  UNIQUE (organization_id, client_id, id),
+
+  CHECK (btrim(label) <> ''),
+  CHECK (btrim(address_line_1) <> ''),
+  CHECK (btrim(city) <> ''),
+  CHECK (btrim(state) <> ''),
+  CHECK (btrim(postal_code) <> ''),
+
+  FOREIGN KEY (organization_id, client_id)
+    REFERENCES clients(organization_id, id)
+    ON DELETE RESTRICT
+);
+
 CREATE TABLE jobs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID NOT NULL,
@@ -98,13 +134,82 @@ CREATE TABLE jobs (
     ON DELETE RESTRICT
 );
 
+CREATE TABLE requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL,
+  client_id UUID NOT NULL,
+
+  title TEXT NOT NULL,
+  description TEXT,
+
+  service_address_line_1 TEXT,
+  service_address_line_2 TEXT,
+  service_city TEXT,
+  service_state TEXT,
+  service_postal_code TEXT,
+
+  status request_status NOT NULL DEFAULT 'open',
+  approved_job_id UUID,
+
+  submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  decided_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  UNIQUE (organization_id, id),
+  UNIQUE (organization_id, approved_job_id),
+
+  CHECK (btrim(title) <> ''),
+
+  CHECK (
+    (
+      status = 'open'
+      AND decided_at IS NULL
+      AND approved_job_id IS NULL
+    )
+    OR
+    (
+      status = 'approved'
+      AND decided_at IS NOT NULL
+      AND approved_job_id IS NOT NULL
+    )
+    OR
+    (
+      status = 'declined'
+      AND decided_at IS NOT NULL
+      AND approved_job_id IS NULL
+    )
+  ),
+
+  FOREIGN KEY (organization_id, client_id)
+    REFERENCES clients(organization_id, id)
+    ON DELETE RESTRICT,
+
+  FOREIGN KEY (organization_id, client_id, approved_job_id)
+    REFERENCES jobs(organization_id, client_id, id)
+    ON DELETE RESTRICT
+);
+
+CREATE TABLE request_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL,
+  request_id UUID NOT NULL,
+  event_type TEXT NOT NULL,
+  details JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  FOREIGN KEY (organization_id, request_id)
+    REFERENCES requests(organization_id, id)
+    ON DELETE RESTRICT
+);
+
 CREATE TABLE job_cycles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID NOT NULL,
   job_id UUID NOT NULL,
   cycle_number INTEGER NOT NULL,
   reason cycle_reason NOT NULL,
-  stage job_stage NOT NULL DEFAULT 'request',
+  stage job_stage NOT NULL DEFAULT 'project',
   opened_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -230,6 +335,47 @@ CREATE TABLE media (
   FOREIGN KEY (organization_id, job_id, job_cycle_id)
     REFERENCES job_cycles(organization_id, job_id, id)
     ON DELETE RESTRICT
+);
+
+CREATE TABLE field_notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  organization_id uuid NOT NULL,
+  job_id uuid NOT NULL,
+  job_cycle_id uuid NOT NULL,
+  media_id uuid,
+
+  content text NOT NULL
+    CHECK (btrim(content) <> ''),
+
+  captured_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+
+  UNIQUE (organization_id, job_cycle_id, id),
+
+  FOREIGN KEY (
+    organization_id,
+    job_id,
+    job_cycle_id
+  )
+  REFERENCES job_cycles (
+    organization_id,
+    job_id,
+    id
+  )
+  ON DELETE RESTRICT,
+
+  FOREIGN KEY (
+    organization_id,
+    job_cycle_id,
+    media_id
+  )
+  REFERENCES media (
+    organization_id,
+    job_cycle_id,
+    id
+  )
+  ON DELETE RESTRICT
 );
 
 CREATE TABLE disputes (
@@ -379,6 +525,34 @@ CREATE INDEX vows_client_created_idx
 
 CREATE INDEX vow_outputs_vow_created_idx
   ON vow_outputs (vow_id, created_at DESC);
+
+CREATE INDEX client_addresses_client_created_idx
+  ON client_addresses (
+    organization_id,
+    client_id,
+    created_at DESC
+  );
+
+CREATE UNIQUE INDEX client_addresses_one_default_per_client_idx
+  ON client_addresses (organization_id, client_id)
+  WHERE is_default;
+
+CREATE INDEX requests_organization_status_created_idx
+  ON requests (organization_id, status, created_at DESC);
+
+CREATE INDEX request_events_request_created_idx
+  ON request_events (request_id, created_at DESC);
+
+CREATE INDEX field_notes_cycle_captured_idx
+  ON field_notes (
+    job_cycle_id,
+    captured_at DESC,
+    created_at DESC
+  );
+
+CREATE INDEX field_notes_media_idx
+  ON field_notes (media_id)
+  WHERE media_id IS NOT NULL;
 
 CREATE VIEW current_job_cycles AS
 SELECT DISTINCT ON (organization_id, job_id)

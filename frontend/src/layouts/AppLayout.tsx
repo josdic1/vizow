@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { ContextRail } from "../components/ContextRail";
+import { ContextThermometer } from "../components/ContextThermometer";
 
 type AppLayoutProps = ComponentProps<typeof ContextRail> & {
   children: ReactNode;
@@ -12,6 +13,8 @@ export function AppLayout({
 }: AppLayoutProps) {
   return (
     <main>
+      <ContextThermometer />
+
       <div className="app-header">
         <header className="site-header shell">
           <Link

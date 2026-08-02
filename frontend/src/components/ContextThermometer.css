@@ -1,0 +1,107 @@
+.context-thermometer {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) minmax(190px, auto);
+  align-items: center;
+  gap: 14px;
+  min-height: 30px;
+  padding: 5px 16px;
+
+  border-bottom: 1px solid var(--color-ink, #2a1b14);
+  background: var(--color-paper, #e8dfc7);
+  color: var(--color-ink, #2a1b14);
+}
+
+.context-thermometer__name {
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.context-thermometer__gauge {
+  position: relative;
+  height: 8px;
+  overflow: visible;
+
+  border: 1px solid var(--color-ink, #2a1b14);
+  background: transparent;
+}
+
+.context-thermometer__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+
+  background: var(--color-orange, #e66723);
+  transition: width 160ms linear;
+}
+
+.context-thermometer--success .context-thermometer__fill {
+  background: var(--color-success, #2f5d3a);
+}
+
+.context-thermometer__tick {
+  position: absolute;
+  top: -4px;
+  width: 1px;
+  height: 14px;
+
+  background: var(--color-ink, #2a1b14);
+  opacity: 0.32;
+  transform: translateX(-1px);
+}
+
+.context-thermometer__tick--completed {
+  opacity: 1;
+}
+
+.context-thermometer__tick--failed {
+  top: -6px;
+  width: 3px;
+  height: 18px;
+
+  background: var(--color-danger, #9f2a1f);
+  opacity: 1;
+}
+
+.context-thermometer__status {
+  overflow: hidden;
+
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-align: right;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.context-thermometer--working .context-thermometer__status {
+  color: var(--color-orange, #e66723);
+}
+
+.context-thermometer--success .context-thermometer__status {
+  color: var(--color-success, #2f5d3a);
+}
+
+.context-thermometer--error .context-thermometer__status {
+  color: var(--color-danger, #9f2a1f);
+}
+
+.context-thermometer--idle {
+  color: var(--color-muted, #7d7a70);
+}
+
+@media (max-width: 720px) {
+  .context-thermometer {
+    grid-template-columns: auto 1fr;
+    gap: 6px 12px;
+    padding: 6px 12px;
+  }
+
+  .context-thermometer__status {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+}

@@ -10,6 +10,13 @@ import { Router } from "express";
 
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
+import {
+  advanceOperation,
+  beginOperation,
+  completeOperation,
+  failOperation,
+  operationIdFromRequest,
+} from "../operations/operationTracker.js";
 
 export const requestsRouter = Router();
 
@@ -152,9 +159,27 @@ requestsRouter.get("/", async (_request, response) => {
 });
 
 requestsRouter.post("/", async (request, response) => {
+  const operationId = operationIdFromRequest(request);
+
+  beginOperation(
+    operationId,
+    "create_request",
+    "Sending this Request through VIZOW.",
+  );
+  advanceOperation(
+    operationId,
+    "received",
+    "The VIZOW server received this Request.",
+  );
+
   const inputResult = createRequestSchema.safeParse(request.body);
 
   if (!inputResult.success) {
+    failOperation(
+      operationId,
+      "validated",
+      "The Request information was rejected. Nothing was changed.",
+    );
     response.status(400).json({
       ok: false,
       error: "Invalid request information.",
@@ -162,6 +187,12 @@ requestsRouter.post("/", async (request, response) => {
     });
     return;
   }
+
+  advanceOperation(
+    operationId,
+    "validated",
+    "The Request information is valid.",
+  );
 
   const input = inputResult.data;
   const databaseClient = await pool.connect();
@@ -190,6 +221,11 @@ requestsRouter.post("/", async (request, response) => {
 
     if (!selectedClient) {
       await databaseClient.query("ROLLBACK");
+      failOperation(
+        operationId,
+        "client_verified",
+        "The Client was not found. Nothing was changed.",
+      );
 
       response.status(404).json({
         ok: false,
@@ -197,6 +233,12 @@ requestsRouter.post("/", async (request, response) => {
       });
       return;
     }
+
+    advanceOperation(
+      operationId,
+      "client_verified",
+      `${selectedClient.clientName} was verified.`,
+    );
 
     const requestResult = await databaseClient.query<
       Omit<RequestDatabaseRow, "clientName">
@@ -250,6 +292,12 @@ requestsRouter.post("/", async (request, response) => {
       throw new Error("PostgreSQL did not return the created request.");
     }
 
+    advanceOperation(
+      operationId,
+      "request_written",
+      "The Request record was written inside the transaction.",
+    );
+
     await databaseClient.query(
       `
         INSERT INTO request_events (
@@ -268,7 +316,28 @@ requestsRouter.post("/", async (request, response) => {
       [selectedClient.organizationId, createdRequest.id],
     );
 
+    advanceOperation(
+      operationId,
+      "history_written",
+      "The Request history entry was written.",
+    );
+
     await databaseClient.query("COMMIT");
+
+    advanceOperation(
+      operationId,
+      "committed",
+      "PostgreSQL committed the Request and its history.",
+    );
+    advanceOperation(
+      operationId,
+      "response_ready",
+      "The confirmed Request is ready to return.",
+    );
+    completeOperation(
+      operationId,
+      "Request committed. The server confirmed the save.",
+    );
 
     response.status(201).json({
       ok: true,
@@ -279,6 +348,11 @@ requestsRouter.post("/", async (request, response) => {
     });
   } catch (error) {
     await databaseClient.query("ROLLBACK");
+    failOperation(
+      operationId,
+      null,
+      "Creating the Request failed. The transaction was rolled back.",
+    );
     console.error(error);
 
     response.status(500).json({
@@ -291,15 +365,39 @@ requestsRouter.post("/", async (request, response) => {
 });
 
 requestsRouter.post("/:requestId/approve", async (request, response) => {
+  const operationId = operationIdFromRequest(request);
+
+  beginOperation(
+    operationId,
+    "approve_request",
+    "Sending this approval through VIZOW.",
+  );
+  advanceOperation(
+    operationId,
+    "received",
+    "The VIZOW server received this approval.",
+  );
+
   const requestIdResult = idSchema.safeParse(request.params.requestId);
 
   if (!requestIdResult.success) {
+    failOperation(
+      operationId,
+      "validated",
+      "The Request ID was rejected. Nothing was changed.",
+    );
     response.status(400).json({
       ok: false,
       error: "Invalid request ID.",
     });
     return;
   }
+
+  advanceOperation(
+    operationId,
+    "validated",
+    "The Request ID is valid.",
+  );
 
   const databaseClient = await pool.connect();
 
@@ -345,6 +443,11 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
 
     if (!selectedRequest) {
       await databaseClient.query("ROLLBACK");
+      failOperation(
+        operationId,
+        "request_locked",
+        "The Request was not found. Nothing was changed.",
+      );
 
       response.status(404).json({
         ok: false,
@@ -353,8 +456,19 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
       return;
     }
 
+    advanceOperation(
+      operationId,
+      "request_locked",
+      `${selectedRequest.title} was found and locked for approval.`,
+    );
+
     if (selectedRequest.status !== "open") {
       await databaseClient.query("ROLLBACK");
+      failOperation(
+        operationId,
+        "eligibility_checked",
+        "This Request cannot be approved. Nothing was changed.",
+      );
 
       response.status(409).json({
         ok: false,
@@ -366,6 +480,12 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
       });
       return;
     }
+
+    advanceOperation(
+      operationId,
+      "eligibility_checked",
+      "The Request is open and eligible for approval.",
+    );
 
     const jobResult = await databaseClient.query<CreatedJobDatabaseRow>(
       `
@@ -413,6 +533,12 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
       throw new Error("PostgreSQL did not return the approved Job.");
     }
 
+    advanceOperation(
+      operationId,
+      "job_written",
+      "The Job record was written inside the transaction.",
+    );
+
     const cycleResult =
       await databaseClient.query<CreatedJobCycleDatabaseRow>(
         `
@@ -442,6 +568,12 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
     if (!createdCycle) {
       throw new Error("PostgreSQL did not return the approved Job cycle.");
     }
+
+    advanceOperation(
+      operationId,
+      "cycle_written",
+      "Cycle 1 was written inside the transaction.",
+    );
 
     const approvedRequestResult = await databaseClient.query<
       Omit<RequestDatabaseRow, "clientName">
@@ -486,6 +618,12 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
       throw new Error("Request approval update did not return a row.");
     }
 
+    advanceOperation(
+      operationId,
+      "request_updated",
+      "The Request was linked to the new Job.",
+    );
+
     await databaseClient.query(
       `
         INSERT INTO request_events (
@@ -506,6 +644,12 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
         selectedRequest.id,
         createdJob.id,
       ],
+    );
+
+    advanceOperation(
+      operationId,
+      "request_history_written",
+      "The Request approval history was written.",
     );
 
     await databaseClient.query(
@@ -533,7 +677,28 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
       ],
     );
 
+    advanceOperation(
+      operationId,
+      "job_history_written",
+      "The Job creation history was written.",
+    );
+
     await databaseClient.query("COMMIT");
+
+    advanceOperation(
+      operationId,
+      "committed",
+      "PostgreSQL committed the Job, cycle, and history.",
+    );
+    advanceOperation(
+      operationId,
+      "response_ready",
+      "The confirmed Job is ready to return.",
+    );
+    completeOperation(
+      operationId,
+      "Approval committed. The server confirmed the new Job.",
+    );
 
     response.status(201).json({
       ok: true,
@@ -549,6 +714,11 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
     });
   } catch (error) {
     await databaseClient.query("ROLLBACK");
+    failOperation(
+      operationId,
+      null,
+      "Approving the Request failed. The transaction was rolled back.",
+    );
     console.error(error);
 
     response.status(500).json({
