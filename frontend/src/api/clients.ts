@@ -6,12 +6,9 @@ import {
   type ClientRecord,
   type CreateClientInput,
   type CreateClientPropertyInput,
-  type OperationKind,
   type UpdateClientInput,
   type UpdateClientPropertyInput,
 } from "@vizow/shared";
-
-import { trackedFetch } from "../operations/operationStore";
 
 async function readApiError(
   response: Response,
@@ -63,8 +60,7 @@ async function readClientRecord(
   return result.data.client;
 }
 
-async function trackedClientRecordRequest(
-  operationKind: OperationKind,
+async function clientRecordRequest(
   url: string,
   options: {
     method: "POST" | "PATCH";
@@ -72,8 +68,7 @@ async function trackedClientRecordRequest(
   },
   fallback: string,
 ): Promise<ClientRecord> {
-  const response = await trackedFetch(
-    operationKind,
+  const response = await fetch(
     url,
     {
       method: options.method,
@@ -162,8 +157,7 @@ export async function fetchClient(
 export async function createClient(
   input: CreateClientInput,
 ): Promise<Client> {
-  const response = await trackedFetch(
-    "create_client",
+  const response = await fetch(
     "/api/clients",
     {
       method: "POST",
@@ -205,8 +199,7 @@ export function updateClient(
   clientId: string,
   input: UpdateClientInput,
 ): Promise<ClientRecord> {
-  return trackedClientRecordRequest(
-    "update_client",
+  return clientRecordRequest(
     `/api/clients/${encodeURIComponent(clientId)}`,
     {
       method: "PATCH",
@@ -219,8 +212,7 @@ export function updateClient(
 export function archiveClient(
   clientId: string,
 ): Promise<ClientRecord> {
-  return trackedClientRecordRequest(
-    "archive_client",
+  return clientRecordRequest(
     `/api/clients/${encodeURIComponent(clientId)}/archive`,
     {
       method: "POST",
@@ -232,8 +224,7 @@ export function archiveClient(
 export function restoreClient(
   clientId: string,
 ): Promise<ClientRecord> {
-  return trackedClientRecordRequest(
-    "restore_client",
+  return clientRecordRequest(
     `/api/clients/${encodeURIComponent(clientId)}/restore`,
     {
       method: "POST",
@@ -246,8 +237,7 @@ export function createClientProperty(
   clientId: string,
   input: CreateClientPropertyInput,
 ): Promise<ClientRecord> {
-  return trackedClientRecordRequest(
-    "create_client_property",
+  return clientRecordRequest(
     `/api/clients/${encodeURIComponent(clientId)}/properties`,
     {
       method: "POST",
@@ -262,8 +252,7 @@ export function updateClientProperty(
   propertyId: string,
   input: UpdateClientPropertyInput,
 ): Promise<ClientRecord> {
-  return trackedClientRecordRequest(
-    "update_client_property",
+  return clientRecordRequest(
     [
       "/api/clients",
       encodeURIComponent(clientId),
@@ -282,8 +271,7 @@ export function archiveClientProperty(
   clientId: string,
   propertyId: string,
 ): Promise<ClientRecord> {
-  return trackedClientRecordRequest(
-    "archive_client_property",
+  return clientRecordRequest(
     [
       "/api/clients",
       encodeURIComponent(clientId),
@@ -302,8 +290,7 @@ export function restoreClientProperty(
   clientId: string,
   propertyId: string,
 ): Promise<ClientRecord> {
-  return trackedClientRecordRequest(
-    "restore_client_property",
+  return clientRecordRequest(
     [
       "/api/clients",
       encodeURIComponent(clientId),
@@ -322,8 +309,7 @@ export function setDefaultClientProperty(
   clientId: string,
   propertyId: string,
 ): Promise<ClientRecord> {
-  return trackedClientRecordRequest(
-    "set_default_client_property",
+  return clientRecordRequest(
     [
       "/api/clients",
       encodeURIComponent(clientId),

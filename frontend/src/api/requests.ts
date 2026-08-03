@@ -7,8 +7,6 @@ import {
   type Request,
 } from "@vizow/shared";
 
-import { trackedFetch } from "../operations/operationStore";
-
 type ApprovedRequestResult = {
   request: Request;
   job: Job;
@@ -65,8 +63,7 @@ export async function fetchRequests(
 export async function createRequest(
   input: CreateRequestInput,
 ): Promise<Request> {
-  const response = await trackedFetch(
-    "create_request",
+  const response = await fetch(
     "/api/requests",
     {
       method: "POST",
@@ -101,8 +98,7 @@ export async function createRequest(
 export async function approveRequest(
   requestId: string,
 ): Promise<ApprovedRequestResult> {
-  const response = await trackedFetch(
-    "approve_request",
+  const response = await fetch(
     `/api/requests/${encodeURIComponent(requestId)}/approve`,
     {
       method: "POST",
