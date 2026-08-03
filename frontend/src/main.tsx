@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App.tsx";
+import { ActiveJobProvider } from "./contexts/ActiveJobContext";
 import { OrganizationProvider } from "./contexts/OrganizationContext";
 
 const rootElement = document.getElementById("root");
@@ -15,7 +16,9 @@ createRoot(rootElement).render(
   <StrictMode>
     <BrowserRouter>
       <OrganizationProvider>
-        <App />
+        <ActiveJobProvider>
+          <App />
+        </ActiveJobProvider>
       </OrganizationProvider>
     </BrowserRouter>
   </StrictMode>,
