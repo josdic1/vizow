@@ -245,3 +245,53 @@
     min-height: 9.5rem;
   }
 }
+
+.field-note-panel {
+  padding: var(--space-4);
+  border: var(--border-heavy);
+  border-left: 8px solid var(--color-orange);
+  background: var(--color-paper-soft);
+  box-shadow: var(--shadow-md);
+}
+
+.field-note-form,
+.field-note-field {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.field-note-field > span {
+  font-size: 0.75rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.field-note-field .textarea {
+  min-height: 10rem;
+  font-weight: 650;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.field-note-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+@media (max-width: 760px) {
+  .field-note-panel {
+    padding: var(--space-3);
+  }
+
+  .field-note-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .field-note-actions .btn {
+    width: 100%;
+    min-height: 3.25rem;
+  }
+}

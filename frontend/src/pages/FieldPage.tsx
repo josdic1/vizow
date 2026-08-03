@@ -1,6 +1,7 @@
 import type { Job } from "@vizow/shared";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
+import { createFieldNote } from "../api/jobs";
 import { useActiveJob } from "../contexts/ActiveJobContext";
 import { AppLayout } from "../layouts/AppLayout";
 
@@ -44,6 +45,13 @@ export function FieldPage() {
   } = useActiveJob();
 
   const [isChangingJob, setIsChangingJob] = useState(false);
+  const [isWritingNote, setIsWritingNote] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [noteStatus, setNoteStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const [noteMessage, setNoteMessage] =
+    useState<string | null>(null);
 
   const showJobPicker =
     status === "ready" &&
@@ -52,6 +60,45 @@ export function FieldPage() {
   function handleSelectJob(jobId: string): void {
     selectActiveJob(jobId);
     setIsChangingJob(false);
+    setIsWritingNote(false);
+    setNoteText("");
+    setNoteStatus("idle");
+    setNoteMessage(null);
+  }
+
+  async function handleSubmitNote(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault();
+
+    if (
+      !activeJob ||
+      noteStatus === "saving" ||
+      noteText.trim().length === 0
+    ) {
+      return;
+    }
+
+    setNoteStatus("saving");
+    setNoteMessage(null);
+
+    try {
+      await createFieldNote(activeJob.id, {
+        content: noteText,
+      });
+
+      setNoteText("");
+      setIsWritingNote(false);
+      setNoteStatus("saved");
+      setNoteMessage("Field note saved.");
+    } catch (caughtError: unknown) {
+      setNoteStatus("error");
+      setNoteMessage(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to save the field note.",
+      );
+    }
   }
 
   return (
@@ -286,16 +333,94 @@ export function FieldPage() {
                   </button>
 
                   <button
+                    aria-expanded={isWritingNote}
                     className="field-action"
-                    disabled
                     type="button"
+                    onClick={() => {
+                      setIsWritingNote(true);
+                      setNoteStatus("idle");
+                      setNoteMessage(null);
+                    }}
                   >
                     <strong>Field Note</strong>
-                    <span>
-                      Note capture connects next
-                    </span>
+                    <span>Record work immediately</span>
                   </button>
                 </section>
+
+                {isWritingNote && (
+                  <section className="field-note-panel">
+                    <form
+                      className="field-note-form"
+                      onSubmit={handleSubmitNote}
+                    >
+                      <label
+                        className="field-note-field"
+                        htmlFor="field-note-content"
+                      >
+                        <span>Field Note</span>
+
+                        <textarea
+                          autoFocus
+                          className="textarea"
+                          disabled={noteStatus === "saving"}
+                          id="field-note-content"
+                          placeholder="What happened on this job?"
+                          required
+                          value={noteText}
+                          onChange={(event) =>
+                            setNoteText(event.target.value)
+                          }
+                        />
+                      </label>
+
+                      <div className="field-note-actions">
+                        <button
+                          className="btn"
+                          disabled={noteStatus === "saving"}
+                          type="button"
+                          onClick={() => {
+                            setIsWritingNote(false);
+                            setNoteText("");
+                            setNoteStatus("idle");
+                            setNoteMessage(null);
+                          }}
+                        >
+                          Cancel
+                        </button>
+
+                        <button
+                          className="btn btn-primary"
+                          disabled={
+                            noteStatus === "saving" ||
+                            noteText.trim().length === 0
+                          }
+                          type="submit"
+                        >
+                          {noteStatus === "saving"
+                            ? "Saving…"
+                            : "Save Field Note"}
+                        </button>
+                      </div>
+                    </form>
+                  </section>
+                )}
+
+                {noteMessage && (
+                  <div
+                    className={
+                      noteStatus === "error"
+                        ? "notice notice-error"
+                        : "notice notice-success"
+                    }
+                    role={
+                      noteStatus === "error"
+                        ? "alert"
+                        : "status"
+                    }
+                  >
+                    <strong>{noteMessage}</strong>
+                  </div>
+                )}
               </>
             )}
         </section>

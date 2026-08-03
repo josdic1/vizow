@@ -154,6 +154,23 @@ export const jobSchema = z.object({
   currentCycle: jobCycleSchema,
 });
 
+export const createFieldNoteSchema = z.object({
+  content: z
+    .string()
+    .trim()
+    .min(1, "Field note is required."),
+});
+
+export const fieldNoteSchema = z.object({
+  id: idSchema,
+  jobId: idSchema,
+  jobCycleId: idSchema,
+  mediaId: idSchema.nullable(),
+  content: z.string().min(1),
+  capturedAt: z.string().datetime(),
+  createdAt: z.string().datetime(),
+});
+
 export const requestSchema = z.object({
   id: idSchema,
   clientId: idSchema,
@@ -204,6 +221,11 @@ export const jobResponseSchema = z.object({
   job: jobSchema,
 });
 
+export const fieldNoteResponseSchema = z.object({
+  ok: z.literal(true),
+  fieldNote: fieldNoteSchema,
+});
+
 export const requestsResponseSchema = z.object({
   ok: z.literal(true),
   requests: z.array(requestSchema),
@@ -246,12 +268,19 @@ export type ClientRecordResponse = z.infer<
   typeof clientRecordResponseSchema
 >;
 export type CreateRequestInput = z.infer<typeof createRequestSchema>;
+export type CreateFieldNoteInput = z.infer<
+  typeof createFieldNoteSchema
+>;
 export type JobCycle = z.infer<typeof jobCycleSchema>;
+export type FieldNote = z.infer<typeof fieldNoteSchema>;
 export type Job = z.infer<typeof jobSchema>;
 export type Request = z.infer<typeof requestSchema>;
 export type ClientsResponse = z.infer<typeof clientsResponseSchema>;
 export type JobsResponse = z.infer<typeof jobsResponseSchema>;
 export type JobResponse = z.infer<typeof jobResponseSchema>;
+export type FieldNoteResponse = z.infer<
+  typeof fieldNoteResponseSchema
+>;
 export type RequestsResponse = z.infer<typeof requestsResponseSchema>;
 export type RequestResponse = z.infer<typeof requestResponseSchema>;
 export type ApproveRequestResponse = z.infer<
