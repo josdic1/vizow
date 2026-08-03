@@ -16,6 +16,7 @@ import { fetchClient } from "./api/clients";
 import { fetchJob, fetchJobs } from "./api/jobs";
 import { AdminPageHeader } from "./components/AdminPageHeader";
 import { AppLayout } from "./layouts/AppLayout";
+import { FieldPage } from "./pages/FieldPage";
 import { RequestsPage } from "./pages/RequestsPage";
 
 type JobsState =
@@ -719,6 +720,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/requests" replace />} />
       <Route path="/requests" element={<RequestsPage />} />
+      <Route path="/field" element={<FieldPage />} />
       <Route path="/jobs" element={<JobsPage />} />
       <Route path="/jobs/:jobId" element={<JobDetailPage />} />
       <Route path="*" element={<NotFoundPage />} />

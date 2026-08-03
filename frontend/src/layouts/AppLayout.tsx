@@ -44,6 +44,15 @@ export function AppLayout({
               className={({ isActive }) =>
                 `site-nav-link${isActive ? " site-nav-link-active" : ""}`
               }
+              to="/field"
+            >
+              Field
+            </NavLink>
+
+            <NavLink
+              className={({ isActive }) =>
+                `site-nav-link${isActive ? " site-nav-link-active" : ""}`
+              }
               to="/jobs"
             >
               Jobs
