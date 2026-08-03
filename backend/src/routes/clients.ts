@@ -26,13 +26,6 @@ import type {
 
 import { pool } from "../db/pool.js";
 import { env } from "../env.js";
-import {
-  advanceOperation,
-  beginOperation,
-  completeOperation,
-  failOperation,
-  operationIdFromRequest,
-} from "../operations/operationTracker.js";
 
 type DatabaseExecutor = Pool | PoolClient;
 type DateValue = Date | string;
@@ -644,40 +637,16 @@ clientsRouter.get("/:clientId", async (request, response) => {
 });
 
 clientsRouter.post("/", async (request, response) => {
-  const operationId = operationIdFromRequest(request);
-
-  beginOperation(
-    operationId,
-    "create_client",
-    "Sending this Client through VIZOW.",
-  );
-
-  advanceOperation(
-    operationId,
-    "received",
-    "The VIZOW server received this Client.",
-  );
 
   const parsedInput = createClientSchema.safeParse(
     request.body,
   );
 
   if (!parsedInput.success) {
-    failOperation(
-      operationId,
-      "validated",
-      "The Client information was rejected. Nothing was changed.",
-    );
 
     sendValidationError(response, parsedInput.error);
     return;
   }
-
-  advanceOperation(
-    operationId,
-    "validated",
-    "The Client information is valid.",
-  );
 
   const {
     name,
@@ -689,7 +658,6 @@ clientsRouter.post("/", async (request, response) => {
 
   const database = await pool.connect();
   let transactionOpen = false;
-  let failureCheckpoint = "organization_verified";
 
   try {
     await database.query("BEGIN");
@@ -712,26 +680,12 @@ clientsRouter.post("/", async (request, response) => {
       await database.query("ROLLBACK");
       transactionOpen = false;
 
-      failOperation(
-        operationId,
-        "organization_verified",
-        "The configured organization was not found. Nothing was changed.",
-      );
-
       response.status(500).json({
         ok: false,
         error: "Configured organization was not found.",
       });
       return;
     }
-
-    advanceOperation(
-      operationId,
-      "organization_verified",
-      "The VIZOW organization was verified.",
-    );
-
-    failureCheckpoint = "client_written";
 
     const clientResult =
       await database.query<ClientDatabaseRow>(
@@ -771,14 +725,6 @@ clientsRouter.post("/", async (request, response) => {
         "PostgreSQL did not return the created Client.",
       );
     }
-
-    advanceOperation(
-      operationId,
-      "client_written",
-      "The Client record was written inside the transaction.",
-    );
-
-    failureCheckpoint = "address_written";
 
     let createdProperty:
       | ClientPropertyDatabaseRow
@@ -843,20 +789,8 @@ clientsRouter.post("/", async (request, response) => {
         );
       }
 
-      advanceOperation(
-        operationId,
-        "address_written",
-        "The default service Property was written.",
-      );
     } else {
-      advanceOperation(
-        operationId,
-        "address_written",
-        "No default service Property was provided.",
-      );
     }
-
-    failureCheckpoint = "history_written";
 
     await writeClientEvent(database, {
       organizationId: organization.id,
@@ -882,33 +816,8 @@ clientsRouter.post("/", async (request, response) => {
       });
     }
 
-    advanceOperation(
-      operationId,
-      "history_written",
-      "The Client creation was appended to history.",
-    );
-
-    failureCheckpoint = "committed";
-
     await database.query("COMMIT");
     transactionOpen = false;
-
-    advanceOperation(
-      operationId,
-      "committed",
-      "PostgreSQL committed the Client and Property.",
-    );
-
-    advanceOperation(
-      operationId,
-      "response_ready",
-      "The confirmed Client is ready to return.",
-    );
-
-    completeOperation(
-      operationId,
-      "Client committed. The server confirmed the save.",
-    );
 
     response.status(201).json({
       ok: true,
@@ -924,12 +833,6 @@ clientsRouter.post("/", async (request, response) => {
       await database.query("ROLLBACK");
     }
 
-    failOperation(
-      operationId,
-      failureCheckpoint,
-      "Creating the Client failed. The transaction was rolled back.",
-    );
-
     console.error(error);
 
     response.status(500).json({
@@ -942,19 +845,6 @@ clientsRouter.post("/", async (request, response) => {
 });
 
 clientsRouter.patch("/:clientId", async (request, response) => {
-  const operationId = operationIdFromRequest(request);
-
-  beginOperation(
-    operationId,
-    "update_client",
-    "Sending the Client changes through VIZOW.",
-  );
-
-  advanceOperation(
-    operationId,
-    "received",
-    "The VIZOW server received the Client changes.",
-  );
 
   const clientIdResult = idSchema.safeParse(
     request.params.clientId,
@@ -964,11 +854,6 @@ clientsRouter.patch("/:clientId", async (request, response) => {
   );
 
   if (!clientIdResult.success || !inputResult.success) {
-    failOperation(
-      operationId,
-      "validated",
-      "The Client changes were rejected. Nothing was changed.",
-    );
 
     if (!inputResult.success) {
       sendValidationError(response, inputResult.error);
@@ -982,15 +867,8 @@ clientsRouter.patch("/:clientId", async (request, response) => {
     return;
   }
 
-  advanceOperation(
-    operationId,
-    "validated",
-    "The Client changes are valid.",
-  );
-
   const database = await pool.connect();
   let transactionOpen = false;
-  let failureCheckpoint = "client_locked";
 
   try {
     await database.query("BEGIN");
@@ -1005,12 +883,6 @@ clientsRouter.patch("/:clientId", async (request, response) => {
       await database.query("ROLLBACK");
       transactionOpen = false;
 
-      failOperation(
-        operationId,
-        "client_locked",
-        "The Client was not found. Nothing was changed.",
-      );
-
       response.status(404).json({
         ok: false,
         error: "Client not found.",
@@ -1018,21 +890,9 @@ clientsRouter.patch("/:clientId", async (request, response) => {
       return;
     }
 
-    advanceOperation(
-      operationId,
-      "client_locked",
-      "The Client was locked for a safe update.",
-    );
-
     if (client.archivedAt) {
       await database.query("ROLLBACK");
       transactionOpen = false;
-
-      failOperation(
-        operationId,
-        "client_updated",
-        "Archived Clients must be restored before editing.",
-      );
 
       response.status(409).json({
         ok: false,
@@ -1041,8 +901,6 @@ clientsRouter.patch("/:clientId", async (request, response) => {
       });
       return;
     }
-
-    failureCheckpoint = "client_updated";
 
     const {
       name,
@@ -1058,44 +916,14 @@ clientsRouter.patch("/:clientId", async (request, response) => {
       notes !== client.notes;
 
     if (!clientChanged) {
-      advanceOperation(
-        operationId,
-        "client_updated",
-        "The Client already matches the submitted record.",
-      );
-
-      advanceOperation(
-        operationId,
-        "history_written",
-        "No Client history entry was needed.",
-      );
 
       const record = await requireClientRecord(
         database,
         client.id,
       );
 
-      failureCheckpoint = "committed";
-
       await database.query("COMMIT");
       transactionOpen = false;
-
-      advanceOperation(
-        operationId,
-        "committed",
-        "PostgreSQL confirmed that no Client update was needed.",
-      );
-
-      advanceOperation(
-        operationId,
-        "response_ready",
-        "The current Client record is ready to return.",
-      );
-
-      completeOperation(
-        operationId,
-        "No Client changes were needed.",
-      );
 
       response.json({
         ok: true,
@@ -1126,14 +954,6 @@ clientsRouter.patch("/:clientId", async (request, response) => {
       ],
     );
 
-    advanceOperation(
-      operationId,
-      "client_updated",
-      "The Client contact record was updated.",
-    );
-
-    failureCheckpoint = "history_written";
-
     await writeClientEvent(database, {
       organizationId: client.organizationId,
       clientId: client.id,
@@ -1154,38 +974,13 @@ clientsRouter.patch("/:clientId", async (request, response) => {
       },
     });
 
-    advanceOperation(
-      operationId,
-      "history_written",
-      "The Client update was appended to history.",
-    );
-
     const record = await requireClientRecord(
       database,
       client.id,
     );
 
-    failureCheckpoint = "committed";
-
     await database.query("COMMIT");
     transactionOpen = false;
-
-    advanceOperation(
-      operationId,
-      "committed",
-      "PostgreSQL committed the Client update.",
-    );
-
-    advanceOperation(
-      operationId,
-      "response_ready",
-      "The updated Client is ready to return.",
-    );
-
-    completeOperation(
-      operationId,
-      "Client updated. The server confirmed the save.",
-    );
 
     response.json({
       ok: true,
@@ -1195,12 +990,6 @@ clientsRouter.patch("/:clientId", async (request, response) => {
     if (transactionOpen) {
       await database.query("ROLLBACK");
     }
-
-    failOperation(
-      operationId,
-      failureCheckpoint,
-      "Updating the Client failed. The transaction was rolled back.",
-    );
 
     console.error(error);
 
@@ -1216,30 +1005,12 @@ clientsRouter.patch("/:clientId", async (request, response) => {
 clientsRouter.post(
   "/:clientId/archive",
   async (request, response) => {
-    const operationId = operationIdFromRequest(request);
-
-    beginOperation(
-      operationId,
-      "archive_client",
-      "Sending this Client to the archive.",
-    );
-
-    advanceOperation(
-      operationId,
-      "received",
-      "The VIZOW server received the archive request.",
-    );
 
     const clientIdResult = idSchema.safeParse(
       request.params.clientId,
     );
 
     if (!clientIdResult.success) {
-      failOperation(
-        operationId,
-        "client_locked",
-        "The Client identifier was rejected.",
-      );
 
       response.status(400).json({
         ok: false,
@@ -1250,7 +1021,6 @@ clientsRouter.post(
 
     const database = await pool.connect();
     let transactionOpen = false;
-    let failureCheckpoint = "client_locked";
 
     try {
       await database.query("BEGIN");
@@ -1265,12 +1035,6 @@ clientsRouter.post(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "client_locked",
-          "The Client was not found. Nothing was changed.",
-        );
-
         response.status(404).json({
           ok: false,
           error: "Client not found.",
@@ -1278,23 +1042,9 @@ clientsRouter.post(
         return;
       }
 
-      advanceOperation(
-        operationId,
-        "client_locked",
-        "The Client was locked for a safe archive.",
-      );
-
-      failureCheckpoint = "archive_checked";
-
       if (client.archivedAt) {
         await database.query("ROLLBACK");
         transactionOpen = false;
-
-        failOperation(
-          operationId,
-          "archive_checked",
-          "The Client is already archived.",
-        );
 
         response.status(409).json({
           ok: false,
@@ -1302,14 +1052,6 @@ clientsRouter.post(
         });
         return;
       }
-
-      advanceOperation(
-        operationId,
-        "archive_checked",
-        "The Client is eligible to be archived.",
-      );
-
-      failureCheckpoint = "client_archived";
 
       await database.query(
         `
@@ -1326,14 +1068,6 @@ clientsRouter.post(
         ],
       );
 
-      advanceOperation(
-        operationId,
-        "client_archived",
-        "The Client was moved out of active work.",
-      );
-
-      failureCheckpoint = "history_written";
-
       await writeClientEvent(database, {
         organizationId: client.organizationId,
         clientId: client.id,
@@ -1343,38 +1077,13 @@ clientsRouter.post(
         },
       });
 
-      advanceOperation(
-        operationId,
-        "history_written",
-        "The Client archive was appended to history.",
-      );
-
       const record = await requireClientRecord(
         database,
         client.id,
       );
 
-      failureCheckpoint = "committed";
-
       await database.query("COMMIT");
       transactionOpen = false;
-
-      advanceOperation(
-        operationId,
-        "committed",
-        "PostgreSQL committed the Client archive.",
-      );
-
-      advanceOperation(
-        operationId,
-        "response_ready",
-        "The archived Client is ready to return.",
-      );
-
-      completeOperation(
-        operationId,
-        "Client archived. No records were deleted.",
-      );
 
       response.json({
         ok: true,
@@ -1384,12 +1093,6 @@ clientsRouter.post(
       if (transactionOpen) {
         await database.query("ROLLBACK");
       }
-
-      failOperation(
-        operationId,
-        failureCheckpoint,
-        "Archiving the Client failed. Nothing was deleted.",
-      );
 
       console.error(error);
 
@@ -1406,30 +1109,12 @@ clientsRouter.post(
 clientsRouter.post(
   "/:clientId/restore",
   async (request, response) => {
-    const operationId = operationIdFromRequest(request);
-
-    beginOperation(
-      operationId,
-      "restore_client",
-      "Sending this Client back to active work.",
-    );
-
-    advanceOperation(
-      operationId,
-      "received",
-      "The VIZOW server received the restore request.",
-    );
 
     const clientIdResult = idSchema.safeParse(
       request.params.clientId,
     );
 
     if (!clientIdResult.success) {
-      failOperation(
-        operationId,
-        "client_locked",
-        "The Client identifier was rejected.",
-      );
 
       response.status(400).json({
         ok: false,
@@ -1440,7 +1125,6 @@ clientsRouter.post(
 
     const database = await pool.connect();
     let transactionOpen = false;
-    let failureCheckpoint = "client_locked";
 
     try {
       await database.query("BEGIN");
@@ -1455,12 +1139,6 @@ clientsRouter.post(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "client_locked",
-          "The Client was not found. Nothing was changed.",
-        );
-
         response.status(404).json({
           ok: false,
           error: "Client not found.",
@@ -1468,23 +1146,9 @@ clientsRouter.post(
         return;
       }
 
-      advanceOperation(
-        operationId,
-        "client_locked",
-        "The Client was locked for a safe restore.",
-      );
-
-      failureCheckpoint = "restore_checked";
-
       if (!client.archivedAt) {
         await database.query("ROLLBACK");
         transactionOpen = false;
-
-        failOperation(
-          operationId,
-          "restore_checked",
-          "The Client is already active.",
-        );
 
         response.status(409).json({
           ok: false,
@@ -1492,14 +1156,6 @@ clientsRouter.post(
         });
         return;
       }
-
-      advanceOperation(
-        operationId,
-        "restore_checked",
-        "The Client is eligible to be restored.",
-      );
-
-      failureCheckpoint = "client_restored";
 
       await database.query(
         `
@@ -1516,14 +1172,6 @@ clientsRouter.post(
         ],
       );
 
-      advanceOperation(
-        operationId,
-        "client_restored",
-        "The Client was returned to active work.",
-      );
-
-      failureCheckpoint = "history_written";
-
       await writeClientEvent(database, {
         organizationId: client.organizationId,
         clientId: client.id,
@@ -1533,38 +1181,13 @@ clientsRouter.post(
         },
       });
 
-      advanceOperation(
-        operationId,
-        "history_written",
-        "The Client restore was appended to history.",
-      );
-
       const record = await requireClientRecord(
         database,
         client.id,
       );
 
-      failureCheckpoint = "committed";
-
       await database.query("COMMIT");
       transactionOpen = false;
-
-      advanceOperation(
-        operationId,
-        "committed",
-        "PostgreSQL committed the Client restore.",
-      );
-
-      advanceOperation(
-        operationId,
-        "response_ready",
-        "The restored Client is ready to return.",
-      );
-
-      completeOperation(
-        operationId,
-        "Client restored to active work.",
-      );
 
       response.json({
         ok: true,
@@ -1574,12 +1197,6 @@ clientsRouter.post(
       if (transactionOpen) {
         await database.query("ROLLBACK");
       }
-
-      failOperation(
-        operationId,
-        failureCheckpoint,
-        "Restoring the Client failed. Nothing was changed.",
-      );
 
       console.error(error);
 
@@ -1596,19 +1213,6 @@ clientsRouter.post(
 clientsRouter.post(
   "/:clientId/properties",
   async (request, response) => {
-    const operationId = operationIdFromRequest(request);
-
-    beginOperation(
-      operationId,
-      "create_client_property",
-      "Sending this Property through VIZOW.",
-    );
-
-    advanceOperation(
-      operationId,
-      "received",
-      "The VIZOW server received this Property.",
-    );
 
     const clientIdResult = idSchema.safeParse(
       request.params.clientId,
@@ -1617,11 +1221,6 @@ clientsRouter.post(
       createClientPropertySchema.safeParse(request.body);
 
     if (!clientIdResult.success || !inputResult.success) {
-      failOperation(
-        operationId,
-        "validated",
-        "The Property information was rejected.",
-      );
 
       if (!inputResult.success) {
         sendValidationError(response, inputResult.error);
@@ -1635,15 +1234,8 @@ clientsRouter.post(
       return;
     }
 
-    advanceOperation(
-      operationId,
-      "validated",
-      "The Property information is valid.",
-    );
-
     const database = await pool.connect();
     let transactionOpen = false;
-    let failureCheckpoint = "client_locked";
 
     try {
       await database.query("BEGIN");
@@ -1658,12 +1250,6 @@ clientsRouter.post(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "client_locked",
-          "The Client was not found. Nothing was changed.",
-        );
-
         response.status(404).json({
           ok: false,
           error: "Client not found.",
@@ -1675,12 +1261,6 @@ clientsRouter.post(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "client_locked",
-          "Restore the Client before adding Properties.",
-        );
-
         response.status(409).json({
           ok: false,
           error:
@@ -1688,12 +1268,6 @@ clientsRouter.post(
         });
         return;
       }
-
-      advanceOperation(
-        operationId,
-        "client_locked",
-        "The Client was locked for a safe Property save.",
-      );
 
       const currentDefaultResult =
         await database.query<{ id: string }>(
@@ -1736,8 +1310,6 @@ clientsRouter.post(
           ],
         );
       }
-
-      failureCheckpoint = "property_written";
 
       const propertyResult =
         await database.query<ClientPropertyDatabaseRow>(
@@ -1798,24 +1370,6 @@ clientsRouter.post(
         );
       }
 
-      advanceOperation(
-        operationId,
-        "property_written",
-        "The Property was written inside the transaction.",
-      );
-
-      failureCheckpoint = "default_updated";
-
-      advanceOperation(
-        operationId,
-        "default_updated",
-        shouldSetDefault
-          ? "The Property is now the active default."
-          : "The existing default Property was unchanged.",
-      );
-
-      failureCheckpoint = "history_written";
-
       await writeClientEvent(database, {
         organizationId: client.organizationId,
         clientId: client.id,
@@ -1841,38 +1395,13 @@ clientsRouter.post(
         });
       }
 
-      advanceOperation(
-        operationId,
-        "history_written",
-        "The Property addition was appended to history.",
-      );
-
       const record = await requireClientRecord(
         database,
         client.id,
       );
 
-      failureCheckpoint = "committed";
-
       await database.query("COMMIT");
       transactionOpen = false;
-
-      advanceOperation(
-        operationId,
-        "committed",
-        "PostgreSQL committed the Property.",
-      );
-
-      advanceOperation(
-        operationId,
-        "response_ready",
-        "The confirmed Property is ready to return.",
-      );
-
-      completeOperation(
-        operationId,
-        "Property added. The server confirmed the save.",
-      );
 
       response.status(201).json({
         ok: true,
@@ -1882,12 +1411,6 @@ clientsRouter.post(
       if (transactionOpen) {
         await database.query("ROLLBACK");
       }
-
-      failOperation(
-        operationId,
-        failureCheckpoint,
-        "Adding the Property failed. The transaction was rolled back.",
-      );
 
       console.error(error);
 
@@ -1904,19 +1427,6 @@ clientsRouter.post(
 clientsRouter.patch(
   "/:clientId/properties/:propertyId",
   async (request, response) => {
-    const operationId = operationIdFromRequest(request);
-
-    beginOperation(
-      operationId,
-      "update_client_property",
-      "Sending the Property changes through VIZOW.",
-    );
-
-    advanceOperation(
-      operationId,
-      "received",
-      "The VIZOW server received the Property changes.",
-    );
 
     const clientIdResult = idSchema.safeParse(
       request.params.clientId,
@@ -1932,11 +1442,6 @@ clientsRouter.patch(
       !propertyIdResult.success ||
       !inputResult.success
     ) {
-      failOperation(
-        operationId,
-        "validated",
-        "The Property changes were rejected.",
-      );
 
       if (!inputResult.success) {
         sendValidationError(response, inputResult.error);
@@ -1950,15 +1455,8 @@ clientsRouter.patch(
       return;
     }
 
-    advanceOperation(
-      operationId,
-      "validated",
-      "The Property changes are valid.",
-    );
-
     const database = await pool.connect();
     let transactionOpen = false;
-    let failureCheckpoint = "property_locked";
 
     try {
       await database.query("BEGIN");
@@ -1974,12 +1472,6 @@ clientsRouter.patch(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "property_locked",
-          "The Property was not found.",
-        );
-
         response.status(404).json({
           ok: false,
           error: "Property not found.",
@@ -1990,12 +1482,6 @@ clientsRouter.patch(
       if (property.clientArchivedAt) {
         await database.query("ROLLBACK");
         transactionOpen = false;
-
-        failOperation(
-          operationId,
-          "property_locked",
-          "Restore the Client before editing Properties.",
-        );
 
         response.status(409).json({
           ok: false,
@@ -2009,12 +1495,6 @@ clientsRouter.patch(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "property_locked",
-          "Restore the Property before editing it.",
-        );
-
         response.status(409).json({
           ok: false,
           error:
@@ -2022,12 +1502,6 @@ clientsRouter.patch(
         });
         return;
       }
-
-      advanceOperation(
-        operationId,
-        "property_locked",
-        "The Property was locked for a safe update.",
-      );
 
       const propertyChanged =
         inputResult.data.label !== property.label ||
@@ -2038,44 +1512,14 @@ clientsRouter.patch(
         inputResult.data.postalCode !== property.postalCode;
 
       if (!propertyChanged) {
-        advanceOperation(
-          operationId,
-          "property_updated",
-          "The Property already matches the submitted address.",
-        );
-
-        advanceOperation(
-          operationId,
-          "history_written",
-          "No Property history entry was needed.",
-        );
 
         const record = await requireClientRecord(
           database,
           property.clientId,
         );
 
-        failureCheckpoint = "committed";
-
         await database.query("COMMIT");
         transactionOpen = false;
-
-        advanceOperation(
-          operationId,
-          "committed",
-          "PostgreSQL confirmed that no Property update was needed.",
-        );
-
-        advanceOperation(
-          operationId,
-          "response_ready",
-          "The current Property record is ready to return.",
-        );
-
-        completeOperation(
-          operationId,
-          "No Property changes were needed.",
-        );
 
         response.json({
           ok: true,
@@ -2083,8 +1527,6 @@ clientsRouter.patch(
         });
         return;
       }
-
-      failureCheckpoint = "property_updated";
 
       await database.query(
         `
@@ -2114,14 +1556,6 @@ clientsRouter.patch(
         ],
       );
 
-      advanceOperation(
-        operationId,
-        "property_updated",
-        "The Property address was updated.",
-      );
-
-      failureCheckpoint = "history_written";
-
       await writeClientEvent(database, {
         organizationId: property.organizationId,
         clientId: property.clientId,
@@ -2140,38 +1574,13 @@ clientsRouter.patch(
         },
       });
 
-      advanceOperation(
-        operationId,
-        "history_written",
-        "The Property update was appended to history.",
-      );
-
       const record = await requireClientRecord(
         database,
         property.clientId,
       );
 
-      failureCheckpoint = "committed";
-
       await database.query("COMMIT");
       transactionOpen = false;
-
-      advanceOperation(
-        operationId,
-        "committed",
-        "PostgreSQL committed the Property update.",
-      );
-
-      advanceOperation(
-        operationId,
-        "response_ready",
-        "The updated Property is ready to return.",
-      );
-
-      completeOperation(
-        operationId,
-        "Property updated. The server confirmed the save.",
-      );
 
       response.json({
         ok: true,
@@ -2181,12 +1590,6 @@ clientsRouter.patch(
       if (transactionOpen) {
         await database.query("ROLLBACK");
       }
-
-      failOperation(
-        operationId,
-        failureCheckpoint,
-        "Updating the Property failed. The transaction was rolled back.",
-      );
 
       console.error(error);
 
@@ -2203,19 +1606,6 @@ clientsRouter.patch(
 clientsRouter.post(
   "/:clientId/properties/:propertyId/archive",
   async (request, response) => {
-    const operationId = operationIdFromRequest(request);
-
-    beginOperation(
-      operationId,
-      "archive_client_property",
-      "Sending this Property to the archive.",
-    );
-
-    advanceOperation(
-      operationId,
-      "received",
-      "The VIZOW server received the Property archive request.",
-    );
 
     const clientIdResult = idSchema.safeParse(
       request.params.clientId,
@@ -2225,11 +1615,6 @@ clientsRouter.post(
     );
 
     if (!clientIdResult.success || !propertyIdResult.success) {
-      failOperation(
-        operationId,
-        "property_locked",
-        "The Client or Property identifier was rejected.",
-      );
 
       response.status(400).json({
         ok: false,
@@ -2240,7 +1625,6 @@ clientsRouter.post(
 
     const database = await pool.connect();
     let transactionOpen = false;
-    let failureCheckpoint = "property_locked";
 
     try {
       await database.query("BEGIN");
@@ -2256,12 +1640,6 @@ clientsRouter.post(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "property_locked",
-          "The Property was not found.",
-        );
-
         response.status(404).json({
           ok: false,
           error: "Property not found.",
@@ -2273,12 +1651,6 @@ clientsRouter.post(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "property_locked",
-          "Restore the Client before archiving Properties.",
-        );
-
         response.status(409).json({
           ok: false,
           error:
@@ -2287,23 +1659,9 @@ clientsRouter.post(
         return;
       }
 
-      advanceOperation(
-        operationId,
-        "property_locked",
-        "The Property was locked for a safe archive.",
-      );
-
-      failureCheckpoint = "archive_checked";
-
       if (property.archivedAt) {
         await database.query("ROLLBACK");
         transactionOpen = false;
-
-        failOperation(
-          operationId,
-          "archive_checked",
-          "The Property is already archived.",
-        );
 
         response.status(409).json({
           ok: false,
@@ -2312,15 +1670,7 @@ clientsRouter.post(
         return;
       }
 
-      advanceOperation(
-        operationId,
-        "archive_checked",
-        "The Property is eligible to be archived.",
-      );
-
       const replacementDefaultId: string | null = null;
-
-      failureCheckpoint = "default_updated";
 
       if (property.isDefault) {
         await database.query(
@@ -2341,16 +1691,6 @@ clientsRouter.post(
         );
       }
 
-      advanceOperation(
-        operationId,
-        "default_updated",
-        property.isDefault
-          ? "The archived Property was cleared as default. No replacement was selected."
-          : "The default Property was unchanged.",
-      );
-
-      failureCheckpoint = "property_archived";
-
       await database.query(
         `
           UPDATE client_addresses
@@ -2368,14 +1708,6 @@ clientsRouter.post(
           property.id,
         ],
       );
-
-      advanceOperation(
-        operationId,
-        "property_archived",
-        "The Property was moved out of active use.",
-      );
-
-      failureCheckpoint = "history_written";
 
       await writeClientEvent(database, {
         organizationId: property.organizationId,
@@ -2401,38 +1733,13 @@ clientsRouter.post(
         });
       }
 
-      advanceOperation(
-        operationId,
-        "history_written",
-        "The Property archive was appended to history.",
-      );
-
       const record = await requireClientRecord(
         database,
         property.clientId,
       );
 
-      failureCheckpoint = "committed";
-
       await database.query("COMMIT");
       transactionOpen = false;
-
-      advanceOperation(
-        operationId,
-        "committed",
-        "PostgreSQL committed the Property archive.",
-      );
-
-      advanceOperation(
-        operationId,
-        "response_ready",
-        "The archived Property is ready to return.",
-      );
-
-      completeOperation(
-        operationId,
-        "Property archived. Nothing was deleted.",
-      );
 
       response.json({
         ok: true,
@@ -2442,12 +1749,6 @@ clientsRouter.post(
       if (transactionOpen) {
         await database.query("ROLLBACK");
       }
-
-      failOperation(
-        operationId,
-        failureCheckpoint,
-        "Archiving the Property failed. Nothing was deleted.",
-      );
 
       console.error(error);
 
@@ -2464,19 +1765,6 @@ clientsRouter.post(
 clientsRouter.post(
   "/:clientId/properties/:propertyId/restore",
   async (request, response) => {
-    const operationId = operationIdFromRequest(request);
-
-    beginOperation(
-      operationId,
-      "restore_client_property",
-      "Sending this Property back to active use.",
-    );
-
-    advanceOperation(
-      operationId,
-      "received",
-      "The VIZOW server received the Property restore request.",
-    );
 
     const clientIdResult = idSchema.safeParse(
       request.params.clientId,
@@ -2486,11 +1774,6 @@ clientsRouter.post(
     );
 
     if (!clientIdResult.success || !propertyIdResult.success) {
-      failOperation(
-        operationId,
-        "property_locked",
-        "The Client or Property identifier was rejected.",
-      );
 
       response.status(400).json({
         ok: false,
@@ -2501,7 +1784,6 @@ clientsRouter.post(
 
     const database = await pool.connect();
     let transactionOpen = false;
-    let failureCheckpoint = "property_locked";
 
     try {
       await database.query("BEGIN");
@@ -2517,12 +1799,6 @@ clientsRouter.post(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "property_locked",
-          "The Property was not found.",
-        );
-
         response.status(404).json({
           ok: false,
           error: "Property not found.",
@@ -2534,12 +1810,6 @@ clientsRouter.post(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "property_locked",
-          "Restore the Client before restoring Properties.",
-        );
-
         response.status(409).json({
           ok: false,
           error:
@@ -2548,23 +1818,9 @@ clientsRouter.post(
         return;
       }
 
-      advanceOperation(
-        operationId,
-        "property_locked",
-        "The Property was locked for a safe restore.",
-      );
-
-      failureCheckpoint = "restore_checked";
-
       if (!property.archivedAt) {
         await database.query("ROLLBACK");
         transactionOpen = false;
-
-        failOperation(
-          operationId,
-          "restore_checked",
-          "The Property is already active.",
-        );
 
         response.status(409).json({
           ok: false,
@@ -2572,14 +1828,6 @@ clientsRouter.post(
         });
         return;
       }
-
-      advanceOperation(
-        operationId,
-        "restore_checked",
-        "The Property is eligible to be restored.",
-      );
-
-      failureCheckpoint = "property_restored";
 
       await database.query(
         `
@@ -2599,14 +1847,6 @@ clientsRouter.post(
         ],
       );
 
-      advanceOperation(
-        operationId,
-        "property_restored",
-        "The Property was returned to active use.",
-      );
-
-      failureCheckpoint = "history_written";
-
       await writeClientEvent(database, {
         organizationId: property.organizationId,
         clientId: property.clientId,
@@ -2617,38 +1857,13 @@ clientsRouter.post(
         },
       });
 
-      advanceOperation(
-        operationId,
-        "history_written",
-        "The Property restore was appended to history.",
-      );
-
       const record = await requireClientRecord(
         database,
         property.clientId,
       );
 
-      failureCheckpoint = "committed";
-
       await database.query("COMMIT");
       transactionOpen = false;
-
-      advanceOperation(
-        operationId,
-        "committed",
-        "PostgreSQL committed the Property restore.",
-      );
-
-      advanceOperation(
-        operationId,
-        "response_ready",
-        "The restored Property is ready to return.",
-      );
-
-      completeOperation(
-        operationId,
-        "Property restored to active use.",
-      );
 
       response.json({
         ok: true,
@@ -2658,12 +1873,6 @@ clientsRouter.post(
       if (transactionOpen) {
         await database.query("ROLLBACK");
       }
-
-      failOperation(
-        operationId,
-        failureCheckpoint,
-        "Restoring the Property failed. Nothing was changed.",
-      );
 
       console.error(error);
 
@@ -2680,19 +1889,6 @@ clientsRouter.post(
 clientsRouter.post(
   "/:clientId/properties/:propertyId/default",
   async (request, response) => {
-    const operationId = operationIdFromRequest(request);
-
-    beginOperation(
-      operationId,
-      "set_default_client_property",
-      "Sending the default Property change through VIZOW.",
-    );
-
-    advanceOperation(
-      operationId,
-      "received",
-      "The VIZOW server received the default Property change.",
-    );
 
     const clientIdResult = idSchema.safeParse(
       request.params.clientId,
@@ -2702,11 +1898,6 @@ clientsRouter.post(
     );
 
     if (!clientIdResult.success || !propertyIdResult.success) {
-      failOperation(
-        operationId,
-        "property_locked",
-        "The Client or Property identifier was rejected.",
-      );
 
       response.status(400).json({
         ok: false,
@@ -2717,7 +1908,6 @@ clientsRouter.post(
 
     const database = await pool.connect();
     let transactionOpen = false;
-    let failureCheckpoint = "property_locked";
 
     try {
       await database.query("BEGIN");
@@ -2733,12 +1923,6 @@ clientsRouter.post(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "property_locked",
-          "The Property was not found.",
-        );
-
         response.status(404).json({
           ok: false,
           error: "Property not found.",
@@ -2746,23 +1930,9 @@ clientsRouter.post(
         return;
       }
 
-      advanceOperation(
-        operationId,
-        "property_locked",
-        "The Property was locked for a safe default change.",
-      );
-
-      failureCheckpoint = "eligibility_checked";
-
       if (property.clientArchivedAt) {
         await database.query("ROLLBACK");
         transactionOpen = false;
-
-        failOperation(
-          operationId,
-          "eligibility_checked",
-          "Restore the Client before changing its default Property.",
-        );
 
         response.status(409).json({
           ok: false,
@@ -2776,12 +1946,6 @@ clientsRouter.post(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "eligibility_checked",
-          "Archived Properties cannot be set as default.",
-        );
-
         response.status(409).json({
           ok: false,
           error:
@@ -2794,24 +1958,12 @@ clientsRouter.post(
         await database.query("ROLLBACK");
         transactionOpen = false;
 
-        failOperation(
-          operationId,
-          "eligibility_checked",
-          "This Property is already the default.",
-        );
-
         response.status(409).json({
           ok: false,
           error: "Property is already the default.",
         });
         return;
       }
-
-      advanceOperation(
-        operationId,
-        "eligibility_checked",
-        "The Property can become the default.",
-      );
 
       const currentDefaultResult =
         await database.query<{ id: string }>(
@@ -2833,8 +1985,6 @@ clientsRouter.post(
       const previousDefaultId =
         currentDefaultResult.rows[0]?.id ?? null;
 
-      failureCheckpoint = "previous_default_cleared";
-
       await database.query(
         `
           UPDATE client_addresses
@@ -2850,16 +2000,6 @@ clientsRouter.post(
           property.clientId,
         ],
       );
-
-      advanceOperation(
-        operationId,
-        "previous_default_cleared",
-        previousDefaultId
-          ? "The previous default Property was cleared."
-          : "No previous default Property existed.",
-      );
-
-      failureCheckpoint = "property_set_default";
 
       await database.query(
         `
@@ -2878,14 +2018,6 @@ clientsRouter.post(
         ],
       );
 
-      advanceOperation(
-        operationId,
-        "property_set_default",
-        "The selected Property is now the default.",
-      );
-
-      failureCheckpoint = "history_written";
-
       await writeClientEvent(database, {
         organizationId: property.organizationId,
         clientId: property.clientId,
@@ -2897,38 +2029,13 @@ clientsRouter.post(
         },
       });
 
-      advanceOperation(
-        operationId,
-        "history_written",
-        "The default Property change was appended to history.",
-      );
-
       const record = await requireClientRecord(
         database,
         property.clientId,
       );
 
-      failureCheckpoint = "committed";
-
       await database.query("COMMIT");
       transactionOpen = false;
-
-      advanceOperation(
-        operationId,
-        "committed",
-        "PostgreSQL committed the default Property change.",
-      );
-
-      advanceOperation(
-        operationId,
-        "response_ready",
-        "The updated Client record is ready to return.",
-      );
-
-      completeOperation(
-        operationId,
-        "Default Property changed successfully.",
-      );
 
       response.json({
         ok: true,
@@ -2938,12 +2045,6 @@ clientsRouter.post(
       if (transactionOpen) {
         await database.query("ROLLBACK");
       }
-
-      failOperation(
-        operationId,
-        failureCheckpoint,
-        "Changing the default Property failed. Nothing was changed.",
-      );
 
       console.error(error);
 
