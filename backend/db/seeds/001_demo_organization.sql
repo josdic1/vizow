@@ -38,6 +38,7 @@ ON CONFLICT (id) DO UPDATE SET
   email = EXCLUDED.email,
   phone = EXCLUDED.phone,
   notes = EXCLUDED.notes,
+  archived_at = NULL,
   updated_at = now();
 
 INSERT INTO client_addresses (
@@ -68,6 +69,7 @@ WHERE organization.slug = 'vizow-demo'
   AND client.id = '932e5e38-ccde-4d74-b5af-70b8c39386bb'
 ON CONFLICT (organization_id, client_id)
   WHERE is_default
+    AND archived_at IS NULL
 DO UPDATE SET
   label = EXCLUDED.label,
   address_line_1 = EXCLUDED.address_line_1,

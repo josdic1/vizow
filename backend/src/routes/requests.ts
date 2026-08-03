@@ -203,16 +203,19 @@ requestsRouter.post("/", async (request, response) => {
     const clientResult = await databaseClient.query<{
       organizationId: string;
       clientName: string;
+      archivedAt: Date | null;
     }>(
       `
         SELECT
           client.organization_id AS "organizationId",
-          client.name AS "clientName"
+          client.name AS "clientName",
+          client.archived_at AS "archivedAt"
         FROM clients client
         JOIN organizations organization
           ON organization.id = client.organization_id
         WHERE client.id = $1
           AND organization.slug = $2
+        FOR SHARE OF client
       `,
       [input.clientId, env.ORGANIZATION_SLUG],
     );
@@ -234,10 +237,27 @@ requestsRouter.post("/", async (request, response) => {
       return;
     }
 
+    if (selectedClient.archivedAt) {
+      await databaseClient.query("ROLLBACK");
+
+      failOperation(
+        operationId,
+        "client_verified",
+        "The Client is archived. Nothing was changed.",
+      );
+
+      response.status(409).json({
+        ok: false,
+        error:
+          "Restore this Client before creating a new Request.",
+      });
+      return;
+    }
+
     advanceOperation(
       operationId,
       "client_verified",
-      `${selectedClient.clientName} was verified.`,
+      `${selectedClient.clientName} is active and was verified.`,
     );
 
     const requestResult = await databaseClient.query<

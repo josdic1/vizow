@@ -14,6 +14,7 @@ import {
   createClient,
   fetchClients,
 } from "../api/clients";
+import { AddressAutocomplete } from "../components/AddressAutocomplete";
 import { AdminPageHeader } from "../components/AdminPageHeader";
 import { AppLayout } from "../layouts/AppLayout";
 import "../styles/clients-workspace.css";
@@ -27,12 +28,19 @@ type MutationState =
   | { status: "idle" }
   | { status: "working"; name: string }
   | { status: "success"; name: string }
-  | { status: "error"; name: string; message: string };
+  | {
+      status: "error";
+      name: string;
+      message: string;
+    };
+
+type ClientFilter = "active" | "archived";
 
 type ClientDraft = {
   name: string;
   email: string;
   phone: string;
+  notes: string;
   addressLine1: string;
   addressLine2: string;
   city: string;
@@ -44,6 +52,7 @@ const emptyDraft: ClientDraft = {
   name: "",
   email: "",
   phone: "",
+  notes: "",
   addressLine1: "",
   addressLine2: "",
   city: "",
@@ -55,7 +64,7 @@ function formatAddress(client: Client): string {
   const address = client.defaultAddress;
 
   if (!address) {
-    return "No default property";
+    return "No default Property";
   }
 
   return [
@@ -78,6 +87,12 @@ function formatDate(value: string): string {
   });
 }
 
+function sortClients(clients: Client[]): Client[] {
+  return [...clients].sort((first, second) =>
+    first.name.localeCompare(second.name),
+  );
+}
+
 export function ClientsPage() {
   const [state, setState] = useState<ClientsState>({
     status: "loading",
@@ -85,8 +100,11 @@ export function ClientsPage() {
   const [mutation, setMutation] = useState<MutationState>({
     status: "idle",
   });
+  const [filter, setFilter] =
+    useState<ClientFilter>("active");
   const [searchTerm, setSearchTerm] = useState("");
-  const [newClientOpen, setNewClientOpen] = useState(false);
+  const [newClientOpen, setNewClientOpen] =
+    useState(false);
   const [draft, setDraft] = useState<ClientDraft>(() => ({
     ...emptyDraft,
   }));
@@ -94,11 +112,11 @@ export function ClientsPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetchClients(controller.signal)
+    fetchClients(controller.signal, true)
       .then((clients) => {
         setState({
           status: "ready",
-          clients,
+          clients: sortClients(clients),
         });
       })
       .catch((error: unknown) => {
@@ -126,15 +144,32 @@ export function ClientsPage() {
   const clients =
     state.status === "ready" ? state.clients : [];
 
+  const activeCount = clients.filter(
+    (client) => client.archivedAt === null,
+  ).length;
+
+  const archivedCount = clients.filter(
+    (client) => client.archivedAt !== null,
+  ).length;
+
   const visibleClients = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
 
-    if (!search) {
-      return clients;
-    }
+    return clients.filter((client) => {
+      const matchesFilter =
+        filter === "active"
+          ? client.archivedAt === null
+          : client.archivedAt !== null;
 
-    return clients.filter((client) =>
-      [
+      if (!matchesFilter) {
+        return false;
+      }
+
+      if (!search) {
+        return true;
+      }
+
+      return [
         client.name,
         client.email,
         client.phone,
@@ -144,9 +179,9 @@ export function ClientsPage() {
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
-        .includes(search),
-    );
-  }, [clients, searchTerm]);
+        .includes(search);
+    });
+  }, [clients, filter, searchTerm]);
 
   function updateDraft(
     field: keyof ClientDraft,
@@ -199,7 +234,7 @@ export function ClientsPage() {
         status: "error",
         name,
         message:
-          "Address line 1, city, state, and postal code are required when saving a property.",
+          "Address line 1, city, state, and postal code are required when saving a Property.",
       });
       return;
     }
@@ -208,12 +243,13 @@ export function ClientsPage() {
       name,
       email: draft.email.trim() || null,
       phone: draft.phone.trim() || null,
-      notes: null,
+      notes: draft.notes.trim() || null,
       defaultAddress: hasAddress
         ? {
             label: "Primary",
             addressLine1: draft.addressLine1.trim(),
-            addressLine2: draft.addressLine2.trim() || null,
+            addressLine2:
+              draft.addressLine2.trim() || null,
             city: draft.city.trim(),
             state: draft.state.trim(),
             postalCode: draft.postalCode.trim(),
@@ -233,16 +269,17 @@ export function ClientsPage() {
         current.status === "ready"
           ? {
               ...current,
-              clients: [...current.clients, client].sort(
-                (first, second) =>
-                  first.name.localeCompare(second.name),
-              ),
+              clients: sortClients([
+                ...current.clients,
+                client,
+              ]),
             }
           : current,
       );
 
       setDraft({ ...emptyDraft });
       setNewClientOpen(false);
+      setFilter("active");
       setMutation({
         status: "success",
         name: client.name,
@@ -260,11 +297,11 @@ export function ClientsPage() {
   }
 
   const railAction =
-    mutation.status === "working" ||
-    mutation.status === "success" ||
-    mutation.status === "error"
-      ? "Create client"
-      : "Review clients";
+    mutation.status === "idle"
+      ? filter === "active"
+        ? "Review active Clients"
+        : "Review archived Clients"
+      : "Create Client";
 
   const railResult =
     mutation.status === "working"
@@ -277,26 +314,36 @@ export function ClientsPage() {
             ? "Loading"
             : state.status === "error"
               ? "Not loaded"
-              : `${clients.length} loaded`;
+              : filter === "active"
+                ? `${activeCount} active`
+                : `${archivedCount} archived`;
 
   const railMessage =
     mutation.status === "working"
       ? `${mutation.name} is being saved.`
       : mutation.status === "success"
-        ? `${mutation.name} was saved as a Client.`
+        ? `${mutation.name} was saved as an active Client.`
         : mutation.status === "error"
           ? `${mutation.message} Nothing was changed.`
           : state.status === "loading"
             ? "Loading Clients from VIZOW."
             : state.status === "error"
               ? "Clients could not be loaded. Nothing was changed."
-              : `${clients.length} Client${clients.length === 1 ? "" : "s"} available to review.`;
+              : filter === "active"
+                ? `${activeCount} active Client${
+                    activeCount === 1 ? "" : "s"
+                  } available to review.`
+                : `${archivedCount} archived Client${
+                    archivedCount === 1 ? "" : "s"
+                  } retained with complete history.`;
 
   return (
     <AppLayout
       object={
         mutation.status === "idle"
-          ? "All Clients"
+          ? filter === "active"
+            ? "Active Clients"
+            : "Archived Clients"
           : mutation.name
       }
       tool="Clients"
@@ -304,7 +351,9 @@ export function ClientsPage() {
       result={railResult}
       message={railMessage}
       activeStep={
-        mutation.status === "working" ? "result" : "action"
+        mutation.status === "working"
+          ? "result"
+          : "action"
       }
       resultTone={
         mutation.status === "working" ||
@@ -321,40 +370,88 @@ export function ClientsPage() {
           <AdminPageHeader
             eyebrow="Visual of Work"
             title="Clients"
-            description="Review Client contact information and saved service properties."
+            description="Manage Client records, service Properties, Requests, Jobs, and retained history."
             meta={
               state.status === "ready" ? (
-                <span>
-                  {clients.length} total Client
-                  {clients.length === 1 ? "" : "s"}
-                </span>
+                <>
+                  <span>{activeCount} active</span>
+                  <span>{archivedCount} archived</span>
+                </>
               ) : undefined
             }
           />
 
           <div className="clients-toolbar">
-            <button
-              className="btn btn-primary"
-              type="button"
-              onClick={() => {
-                setNewClientOpen((current) => !current);
-                setMutation({ status: "idle" });
-              }}
+            <div
+              className="admin-filter-tabs"
+              aria-label="Client status filter"
             >
-              {newClientOpen ? "Close" : "+ New Client"}
-            </button>
-
-            <label className="clients-search">
-              <span className="sr-only">Search Clients</span>
-              <input
-                placeholder="Name, phone, email, property…"
-                type="search"
-                value={searchTerm}
-                onChange={(event) =>
-                  setSearchTerm(event.target.value)
+              <button
+                aria-pressed={filter === "active"}
+                className={
+                  filter === "active"
+                    ? "is-active"
+                    : undefined
                 }
-              />
-            </label>
+                type="button"
+                onClick={() => {
+                  setFilter("active");
+                  setMutation({ status: "idle" });
+                }}
+              >
+                <span>Active</span>
+                <strong>{activeCount}</strong>
+              </button>
+
+              <button
+                aria-pressed={filter === "archived"}
+                className={
+                  filter === "archived"
+                    ? "is-active"
+                    : undefined
+                }
+                type="button"
+                onClick={() => {
+                  setFilter("archived");
+                  setMutation({ status: "idle" });
+                }}
+              >
+                <span>Archived</span>
+                <strong>{archivedCount}</strong>
+              </button>
+            </div>
+
+            <div className="clients-toolbar-actions">
+              <button
+                className="btn btn-primary"
+                type="button"
+                disabled={mutation.status === "working"}
+                onClick={() => {
+                  setNewClientOpen(
+                    (current) => !current,
+                  );
+                  setMutation({ status: "idle" });
+                }}
+              >
+                {newClientOpen
+                  ? "Close"
+                  : "+ New Client"}
+              </button>
+
+              <label className="clients-search">
+                <span className="sr-only">
+                  Search Clients
+                </span>
+                <input
+                  placeholder="Name, phone, email, Property…"
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) =>
+                    setSearchTerm(event.target.value)
+                  }
+                />
+              </label>
+            </div>
           </div>
 
           {newClientOpen && (
@@ -364,64 +461,29 @@ export function ClientsPage() {
             >
               <div className="clients-panel-heading">
                 <div>
-                  <p className="eyebrow">Client Record</p>
+                  <p className="eyebrow">
+                    Client Record
+                  </p>
                   <h2>Add New Client</h2>
                 </div>
 
-                <span>Default property is optional.</span>
+                <span>
+                  Default Property is optional.
+                </span>
               </div>
 
               <div className="clients-form-grid">
                 <label className="field">
                   Client name
                   <input
+                    autoComplete="name"
                     className="input"
                     type="text"
                     required
                     value={draft.name}
                     onChange={(event) =>
-                      updateDraft("name", event.target.value)
-                    }
-                  />
-                </label>
-
-                <label className="field">
-                  Phone
-                  <input
-                    className="input"
-                    type="tel"
-                    value={draft.phone}
-                    onChange={(event) =>
-                      updateDraft("phone", event.target.value)
-                    }
-                  />
-                </label>
-
-                <label className="field">
-                  Email
-                  <input
-                    className="input"
-                    type="email"
-                    value={draft.email}
-                    onChange={(event) =>
-                      updateDraft("email", event.target.value)
-                    }
-                  />
-                </label>
-
-                <div className="clients-property-heading">
-                  Default service property
-                </div>
-
-                <label className="field">
-                  Address line 1
-                  <input
-                    className="input"
-                    type="text"
-                    value={draft.addressLine1}
-                    onChange={(event) =>
                       updateDraft(
-                        "addressLine1",
+                        "name",
                         event.target.value,
                       )
                     }
@@ -429,8 +491,101 @@ export function ClientsPage() {
                 </label>
 
                 <label className="field">
+                  Phone
+                  <input
+                    autoComplete="tel"
+                    className="input"
+                    type="tel"
+                    value={draft.phone}
+                    onChange={(event) =>
+                      updateDraft(
+                        "phone",
+                        event.target.value,
+                      )
+                    }
+                  />
+                </label>
+
+                <label className="field">
+                  Email
+                  <input
+                    autoComplete="email"
+                    className="input"
+                    type="email"
+                    value={draft.email}
+                    onChange={(event) =>
+                      updateDraft(
+                        "email",
+                        event.target.value,
+                      )
+                    }
+                  />
+                </label>
+
+                <label className="field clients-field-wide">
+                  Notes
+                  <textarea
+                    className="textarea"
+                    value={draft.notes}
+                    onChange={(event) =>
+                      updateDraft(
+                        "notes",
+                        event.target.value,
+                      )
+                    }
+                  />
+                </label>
+
+                <div className="clients-property-heading">
+                  Default service Property
+                </div>
+
+                <div className="field">
+                  <label htmlFor="new-client-address-line1">
+                    Address line 1
+                  </label>
+
+                  <AddressAutocomplete
+                    id="new-client-address-line1"
+                    placeholder="Start typing, or enter manually"
+                    value={draft.addressLine1}
+                    onValueChange={(value) => {
+                      updateDraft(
+                        "addressLine1",
+                        value,
+                      );
+
+                      if (!value) {
+                        updateDraft("city", "");
+                        updateDraft("state", "");
+                        updateDraft("postalCode", "");
+                      }
+                    }}
+                    onSelect={(suggestion) => {
+                      updateDraft(
+                        "addressLine1",
+                        suggestion.addressLine1,
+                      );
+                      updateDraft(
+                        "city",
+                        suggestion.city,
+                      );
+                      updateDraft(
+                        "state",
+                        suggestion.state,
+                      );
+                      updateDraft(
+                        "postalCode",
+                        suggestion.postalCode,
+                      );
+                    }}
+                  />
+                </div>
+
+                <label className="field">
                   Address line 2
                   <input
+                    autoComplete="address-line2"
                     className="input"
                     type="text"
                     value={draft.addressLine2}
@@ -446,11 +601,15 @@ export function ClientsPage() {
                 <label className="field">
                   City
                   <input
+                    autoComplete="address-level2"
                     className="input"
                     type="text"
                     value={draft.city}
                     onChange={(event) =>
-                      updateDraft("city", event.target.value)
+                      updateDraft(
+                        "city",
+                        event.target.value,
+                      )
                     }
                   />
                 </label>
@@ -458,11 +617,15 @@ export function ClientsPage() {
                 <label className="field">
                   State
                   <input
+                    autoComplete="address-level1"
                     className="input"
                     type="text"
                     value={draft.state}
                     onChange={(event) =>
-                      updateDraft("state", event.target.value)
+                      updateDraft(
+                        "state",
+                        event.target.value,
+                      )
                     }
                   />
                 </label>
@@ -470,6 +633,7 @@ export function ClientsPage() {
                 <label className="field">
                   Postal code
                   <input
+                    autoComplete="postal-code"
                     className="input"
                     type="text"
                     value={draft.postalCode}
@@ -501,12 +665,31 @@ export function ClientsPage() {
                   onClick={() => {
                     setNewClientOpen(false);
                     setDraft({ ...emptyDraft });
+                    setMutation({ status: "idle" });
                   }}
                 >
                   Cancel
                 </button>
               </div>
             </form>
+          )}
+
+          {mutation.status === "success" && (
+            <section
+              className="clients-message clients-message-success"
+              role="status"
+            >
+              {mutation.name} was saved.
+            </section>
+          )}
+
+          {mutation.status === "error" && (
+            <section
+              className="clients-message clients-message-error"
+              role="alert"
+            >
+              {mutation.message}
+            </section>
           )}
 
           {state.status === "loading" && (
@@ -525,7 +708,7 @@ export function ClientsPage() {
             <section className="clients-list">
               {visibleClients.length === 0 ? (
                 <div className="clients-empty">
-                  No Clients match this search.
+                  No {filter} Clients match this search.
                 </div>
               ) : (
                 <table>
@@ -533,8 +716,12 @@ export function ClientsPage() {
                     <tr>
                       <th>Client</th>
                       <th>Contact</th>
-                      <th>Default property</th>
-                      <th>Updated</th>
+                      <th>Default Property</th>
+                      <th>
+                        {filter === "active"
+                          ? "Updated"
+                          : "Archived"}
+                      </th>
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -544,19 +731,37 @@ export function ClientsPage() {
                       <tr key={client.id}>
                         <td data-label="Client">
                           <strong>{client.name}</strong>
+                          {client.archivedAt && (
+                            <small className="clients-status-line">
+                              Archived
+                            </small>
+                          )}
                         </td>
 
                         <td data-label="Contact">
-                          <span>{client.phone ?? "No phone"}</span>
-                          <small>{client.email ?? "No email"}</small>
+                          <span>
+                            {client.phone ?? "No phone"}
+                          </span>
+                          <small>
+                            {client.email ?? "No email"}
+                          </small>
                         </td>
 
-                        <td data-label="Default property">
+                        <td data-label="Default Property">
                           {formatAddress(client)}
                         </td>
 
-                        <td data-label="Updated">
-                          {formatDate(client.updatedAt)}
+                        <td
+                          data-label={
+                            filter === "active"
+                              ? "Updated"
+                              : "Archived"
+                          }
+                        >
+                          {formatDate(
+                            client.archivedAt ??
+                              client.updatedAt,
+                          )}
                         </td>
 
                         <td data-label="Action">

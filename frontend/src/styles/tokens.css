@@ -27,5 +27,21 @@
   --border-normal: 2px solid var(--color-line);
   --border-thin: 1px solid var(--color-line);
 
+  --control-height: 2.75rem;
+  --icon-button-size: 1.75rem;
+
+  --shadow-sm: 4px 4px 0 var(--color-ink);
+  --shadow-md: 6px 6px 0 var(--color-ink);
+  --shadow-lg: 8px 8px 0 var(--color-ink);
+
+  --focus-ring:
+    0 0 0 3px rgba(230, 103, 35, 0.22);
+
+  --color-overlay:
+    rgba(42, 27, 20, 0.46);
+
+  --layer-dropdown: 500;
+  --layer-modal: 1000;
+
   --max-page: 1180px;
 }

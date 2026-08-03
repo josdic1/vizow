@@ -69,6 +69,7 @@ CREATE TABLE clients (
   email TEXT,
   phone TEXT,
   notes TEXT,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -93,6 +94,7 @@ CREATE TABLE client_addresses (
   state TEXT NOT NULL,
   postal_code TEXT NOT NULL,
 
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -105,8 +107,43 @@ CREATE TABLE client_addresses (
   CHECK (btrim(state) <> ''),
   CHECK (btrim(postal_code) <> ''),
 
+  CHECK (
+    NOT (
+      is_default
+      AND archived_at IS NOT NULL
+    )
+  ),
+
   FOREIGN KEY (organization_id, client_id)
     REFERENCES clients(organization_id, id)
+    ON DELETE RESTRICT
+);
+
+CREATE TABLE client_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL,
+  client_id UUID NOT NULL,
+  client_address_id UUID,
+  event_type TEXT NOT NULL,
+  details JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  CHECK (btrim(event_type) <> ''),
+
+  FOREIGN KEY (organization_id, client_id)
+    REFERENCES clients(organization_id, id)
+    ON DELETE RESTRICT,
+
+  FOREIGN KEY (
+    organization_id,
+    client_id,
+    client_address_id
+  )
+    REFERENCES client_addresses(
+      organization_id,
+      client_id,
+      id
+    )
     ON DELETE RESTRICT
 );
 
@@ -493,8 +530,25 @@ CREATE TABLE vow_outputs (
     ON DELETE RESTRICT
 );
 
-CREATE INDEX clients_organization_idx
-  ON clients (organization_id);
+CREATE INDEX clients_organization_archived_name_idx
+  ON clients (
+    organization_id,
+    archived_at,
+    lower(name)
+  );
+
+CREATE INDEX client_events_client_created_idx
+  ON client_events (
+    client_id,
+    created_at DESC
+  );
+
+CREATE INDEX client_events_property_created_idx
+  ON client_events (
+    client_address_id,
+    created_at DESC
+  )
+  WHERE client_address_id IS NOT NULL;
 
 CREATE INDEX jobs_organization_client_idx
   ON jobs (organization_id, client_id);
@@ -530,12 +584,14 @@ CREATE INDEX client_addresses_client_created_idx
   ON client_addresses (
     organization_id,
     client_id,
+    archived_at,
     created_at DESC
   );
 
 CREATE UNIQUE INDEX client_addresses_one_default_per_client_idx
   ON client_addresses (organization_id, client_id)
-  WHERE is_default;
+  WHERE is_default
+    AND archived_at IS NULL;
 
 CREATE INDEX requests_organization_status_created_idx
   ON requests (organization_id, status, created_at DESC);

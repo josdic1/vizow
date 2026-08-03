@@ -4,7 +4,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import type {
   Client,
   CreateClientInput,
@@ -18,6 +18,7 @@ import {
   createRequest,
   fetchRequests,
 } from "../api/requests";
+import { AddressAutocomplete } from "../components/AddressAutocomplete";
 import { AdminPageHeader } from "../components/AdminPageHeader";
 import { AppLayout } from "../layouts/AppLayout";
 
@@ -153,6 +154,9 @@ function optionalFormText(
 }
 
 export function RequestsPage() {
+  const [searchParams] = useSearchParams();
+  const scopedClientId = searchParams.get("clientId") ?? "";
+
   const [state, setState] = useState<RequestsState>({
     status: "loading",
   });
@@ -175,14 +179,40 @@ export function RequestsPage() {
 
     Promise.all([
       fetchRequests(controller.signal),
-      fetchClients(controller.signal),
+      fetchClients(controller.signal, true),
     ])
       .then(([requests, clients]) => {
+        const initialClient = scopedClientId
+          ? clients.find(
+              (client) => client.id === scopedClientId,
+            )
+          : undefined;
+
         setState({
           status: "ready",
           requests,
           clients,
         });
+
+        setStatusFilter("ALL");
+        setSearchTerm("");
+        setMutation({ status: "idle" });
+        setNewClientOpen(false);
+        setNewClientDraft({
+          ...emptyNewClientDraft,
+        });
+
+        if (initialClient) {
+          setSelectedClientId(initialClient.id);
+          setAddressDraft(
+            requestAddressFromClient(initialClient),
+          );
+        } else {
+          setSelectedClientId("");
+          setAddressDraft({
+            ...emptyRequestAddress,
+          });
+        }
       })
       .catch((error: unknown) => {
         if (
@@ -204,7 +234,7 @@ export function RequestsPage() {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [scopedClientId]);
 
   const requests =
     state.status === "ready" ? state.requests : [];
@@ -214,14 +244,37 @@ export function RequestsPage() {
       ? state.clients.find((client) => client.id === selectedClientId)
       : undefined;
 
-  const openRequestCount = requests.filter(
+  const selectableClients =
+    state.status === "ready"
+      ? state.clients.filter(
+          (client) =>
+            client.archivedAt === null ||
+            client.id === scopedClientId,
+        )
+      : [];
+
+  const scopedClient =
+    state.status === "ready" && scopedClientId
+      ? state.clients.find(
+          (client) => client.id === scopedClientId,
+        )
+      : undefined;
+
+  const scopedRequests = scopedClient
+    ? requests.filter(
+        (request) =>
+          request.clientId === scopedClient.id,
+      )
+    : requests;
+
+  const openRequestCount = scopedRequests.filter(
     (request) => request.status === "open",
   ).length;
 
   const visibleRequests = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    const nextRequests = requests.filter((request) => {
+    const nextRequests = scopedRequests.filter((request) => {
       if (
         statusFilter !== "ALL" &&
         request.status !== statusFilter
@@ -264,7 +317,7 @@ export function RequestsPage() {
     });
 
     return nextRequests;
-  }, [requests, searchTerm, statusFilter]);
+  }, [scopedRequests, searchTerm, statusFilter]);
 
   function handleClientSelection(clientId: string) {
     setSelectedClientId(clientId);
@@ -299,6 +352,17 @@ export function RequestsPage() {
 
   async function handleCreateClient() {
     if (state.status !== "ready") {
+      return;
+    }
+
+    if (scopedClient) {
+      setMutation({
+        status: "error",
+        action: "Create client",
+        object: scopedClient.name,
+        message:
+          "Return to All Requests before creating a different Client.",
+      });
       return;
     }
 
@@ -416,6 +480,17 @@ export function RequestsPage() {
       return;
     }
 
+    if (scopedClient?.archivedAt) {
+      setMutation({
+        status: "error",
+        action: "Create request",
+        object: scopedClient.name,
+        message:
+          "Restore this Client before creating a new Request.",
+      });
+      return;
+    }
+
     const form = event.currentTarget;
     const formData = new FormData(form);
     const clientId = formText(formData, "clientId");
@@ -470,8 +545,18 @@ export function RequestsPage() {
       );
 
       form.reset();
-      setSelectedClientId("");
-      setAddressDraft({ ...emptyRequestAddress });
+
+      if (scopedClient) {
+        setSelectedClientId(scopedClient.id);
+        setAddressDraft(
+          requestAddressFromClient(scopedClient),
+        );
+      } else {
+        setSelectedClientId("");
+        setAddressDraft({
+          ...emptyRequestAddress,
+        });
+      }
 
       setMutation({
         status: "success",
@@ -538,7 +623,9 @@ export function RequestsPage() {
   const mutationWorking = mutation.status === "working";
 
   const railObject =
-    mutation.status === "idle" ? "All Requests" : mutation.object;
+    mutation.status === "idle"
+      ? scopedClient?.name ?? "All Requests"
+      : mutation.object;
 
   const railAction =
     mutation.status === "idle"
@@ -605,20 +692,65 @@ export function RequestsPage() {
         <div className="admin-page requests-page">
           <AdminPageHeader
             eyebrow="Visual of Work"
-            title="Requests"
-            description="Capture incoming work, review it, and approve it into a Job without losing its original history."
+            title={
+              scopedClient
+                ? `${scopedClient.name} Requests`
+                : "Requests"
+            }
+            description={
+              scopedClient
+                ? scopedClient.archivedAt
+                  ? `${scopedClient.name} is archived. Existing Requests remain available, but the Client must be restored before new intake.`
+                  : `Requests for ${scopedClient.name}. New Request intake is prefilled with this Client and the saved default Property.`
+                : "Capture incoming work, review it, and approve it into a Job without losing its original history."
+            }
             meta={
               state.status === "ready" ? (
                 <>
                   <span>
-                    {state.requests.length} total Request
-                    {state.requests.length === 1 ? "" : "s"}
+                    {scopedRequests.length} total Request
+                    {scopedRequests.length === 1 ? "" : "s"}
                   </span>
                   <span>{openRequestCount} open</span>
                 </>
               ) : undefined
             }
           />
+
+          {scopedClient && (
+            <nav
+              className="workspace-scope-bar"
+              aria-label="Request scope"
+            >
+              <div>
+                <p className="eyebrow">Request Scope</p>
+                <strong>{scopedClient.name}</strong>
+              </div>
+
+              <div className="workspace-scope-actions">
+                <Link
+                  aria-current="page"
+                  className="btn btn-primary"
+                  to={`/requests?clientId=${encodeURIComponent(
+                    scopedClient.id,
+                  )}`}
+                >
+                  This Client
+                </Link>
+
+                <Link className="btn" to="/requests">
+                  All Requests
+                </Link>
+
+                <Link
+                  className="btn"
+                  to={`/clients/${scopedClient.id}`}
+                >
+                  Client Record
+                </Link>
+              </div>
+            </nav>
+          )}
 
           {state.status === "loading" && (
             <div className="notice">Loading Requests…</div>
@@ -656,8 +788,15 @@ export function RequestsPage() {
                         Client
                         <select
                           className="select"
-                          name="clientId"
-                          required
+                          name={
+                            scopedClient
+                              ? undefined
+                              : "clientId"
+                          }
+                          required={!scopedClient}
+                          disabled={Boolean(
+                            scopedClient,
+                          )}
                           value={selectedClientId}
                           onChange={(event) =>
                             handleClientSelection(event.target.value)
@@ -667,12 +806,20 @@ export function RequestsPage() {
                             Select a client
                           </option>
 
-                          {state.clients.map((client) => (
+                          {selectableClients.map((client) => (
                             <option key={client.id} value={client.id}>
                               {client.name}
                             </option>
                           ))}
                         </select>
+
+                        {scopedClient && (
+                          <input
+                            name="clientId"
+                            type="hidden"
+                            value={scopedClient.id}
+                          />
+                        )}
 
                         {selectedClientId && (
                           <span className="request-field-note">
@@ -688,7 +835,10 @@ export function RequestsPage() {
                         aria-expanded={newClientOpen}
                         className="btn request-new-client-toggle"
                         type="button"
-                        disabled={mutation.status === "working"}
+                        disabled={
+                          Boolean(scopedClient) ||
+                          mutation.status === "working"
+                        }
                         onClick={() => {
                           setNewClientOpen((current) => !current);
                           setMutation({ status: "idle" });
@@ -775,21 +925,56 @@ export function RequestsPage() {
                             <span>Optional</span>
                           </div>
 
-                          <label className="field">
-                            Address line 1
-                            <input
-                              autoComplete="address-line1"
-                              className="input"
-                              type="text"
+                          <div className="field">
+                            <label htmlFor="request-new-client-address-line1">
+                              Address line 1
+                            </label>
+
+                            <AddressAutocomplete
+                              id="request-new-client-address-line1"
+                              placeholder="Start typing, or enter manually"
                               value={newClientDraft.addressLine1}
-                              onChange={(event) =>
+                              onValueChange={(value) => {
                                 updateNewClientField(
                                   "addressLine1",
-                                  event.target.value,
-                                )
-                              }
+                                  value,
+                                );
+
+                                if (!value) {
+                                  updateNewClientField(
+                                    "city",
+                                    "",
+                                  );
+                                  updateNewClientField(
+                                    "state",
+                                    "",
+                                  );
+                                  updateNewClientField(
+                                    "postalCode",
+                                    "",
+                                  );
+                                }
+                              }}
+                              onSelect={(suggestion) => {
+                                updateNewClientField(
+                                  "addressLine1",
+                                  suggestion.addressLine1,
+                                );
+                                updateNewClientField(
+                                  "city",
+                                  suggestion.city,
+                                );
+                                updateNewClientField(
+                                  "state",
+                                  suggestion.state,
+                                );
+                                updateNewClientField(
+                                  "postalCode",
+                                  suggestion.postalCode,
+                                );
+                              }}
                             />
-                          </label>
+                          </div>
 
                           <label className="field">
                             Address line 2
@@ -906,21 +1091,57 @@ export function RequestsPage() {
                       />
                     </label>
 
-                    <label className="field">
-                      Address line 1
-                      <input
-                        className="input"
+                    <div className="field">
+                      <label htmlFor="request-service-address-line1">
+                        Address line 1
+                      </label>
+
+                      <AddressAutocomplete
+                        id="request-service-address-line1"
                         name="serviceAddressLine1"
-                        type="text"
+                        placeholder="Start typing, or enter manually"
                         value={addressDraft.serviceAddressLine1}
-                        onChange={(event) =>
+                        onValueChange={(value) => {
                           updateAddressField(
                             "serviceAddressLine1",
-                            event.target.value,
-                          )
-                        }
+                            value,
+                          );
+
+                          if (!value) {
+                            updateAddressField(
+                              "serviceCity",
+                              "",
+                            );
+                            updateAddressField(
+                              "serviceState",
+                              "",
+                            );
+                            updateAddressField(
+                              "servicePostalCode",
+                              "",
+                            );
+                          }
+                        }}
+                        onSelect={(suggestion) => {
+                          updateAddressField(
+                            "serviceAddressLine1",
+                            suggestion.addressLine1,
+                          );
+                          updateAddressField(
+                            "serviceCity",
+                            suggestion.city,
+                          );
+                          updateAddressField(
+                            "serviceState",
+                            suggestion.state,
+                          );
+                          updateAddressField(
+                            "servicePostalCode",
+                            suggestion.postalCode,
+                          );
+                        }}
                       />
-                    </label>
+                    </div>
 
                     <label className="field">
                       Address line 2

@@ -14,6 +14,14 @@ const environmentSchema = z.object({
     .string()
     .min(1, "DATABASE_URL is required."),
 
+  GEOAPIFY_API_KEY: z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim() === ""
+        ? undefined
+        : value,
+    z.string().trim().min(1).optional(),
+  ),
+
   ORGANIZATION_SLUG: z
     .string()
     .regex(

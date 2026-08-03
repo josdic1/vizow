@@ -3,6 +3,7 @@ import express from "express";
 
 import { pool } from "./db/pool.js";
 import { env } from "./env.js";
+import { addressAutocompleteRouter } from "./routes/addressAutocomplete.js";
 import { clientsRouter } from "./routes/clients.js";
 import { jobsRouter } from "./routes/jobs.js";
 import { operationsRouter } from "./routes/operations.js";
@@ -49,6 +50,10 @@ app.get("/health/database", async (_request, response) => {
   }
 });
 
+app.use(
+  "/api/address-autocomplete",
+  addressAutocompleteRouter,
+);
 app.use("/api/operations", operationsRouter);
 app.use("/api/organization", organizationRouter);
 app.use("/api/clients", clientsRouter);

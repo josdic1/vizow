@@ -73,6 +73,21 @@ export const createClientSchema = z.object({
     .transform((value) => value ?? null),
 });
 
+export const updateClientSchema = createClientSchema.pick({
+  name: true,
+  email: true,
+  phone: true,
+  notes: true,
+});
+
+export const createClientPropertySchema =
+  createClientAddressSchema.extend({
+    isDefault: z.boolean().optional().default(false),
+  });
+
+export const updateClientPropertySchema =
+  createClientAddressSchema;
+
 export const clientAddressSchema = z.object({
   id: idSchema,
   label: z.string().min(1),
@@ -82,7 +97,12 @@ export const clientAddressSchema = z.object({
   city: z.string().min(1),
   state: z.string().min(1),
   postalCode: z.string().min(1),
+  archivedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
 });
+
+export const clientPropertySchema = clientAddressSchema;
 
 export const clientSchema = z.object({
   id: idSchema,
@@ -90,7 +110,8 @@ export const clientSchema = z.object({
   email: z.email().nullable(),
   phone: z.string().nullable(),
   notes: z.string().nullable(),
-  defaultAddress: clientAddressSchema.nullable(),
+  archivedAt: z.string().datetime().nullable(),
+  defaultAddress: clientPropertySchema.nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -152,6 +173,12 @@ export const requestSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
+export const clientRecordSchema = clientSchema.extend({
+  properties: z.array(clientPropertySchema),
+  requests: z.array(requestSchema),
+  jobs: z.array(jobSchema),
+});
+
 export const clientsResponseSchema = z.object({
   ok: z.literal(true),
   clients: z.array(clientSchema),
@@ -160,6 +187,11 @@ export const clientsResponseSchema = z.object({
 export const clientResponseSchema = z.object({
   ok: z.literal(true),
   client: clientSchema,
+});
+
+export const clientRecordResponseSchema = z.object({
+  ok: z.literal(true),
+  client: clientRecordSchema,
 });
 
 export const jobsResponseSchema = z.object({
@@ -195,6 +227,82 @@ export const operationPlans = {
     { key: "organization_verified", label: "Organization verified" },
     { key: "client_written", label: "Client written" },
     { key: "address_written", label: "Property written" },
+    { key: "history_written", label: "History written" },
+    { key: "committed", label: "Committed" },
+    { key: "response_ready", label: "Response ready" },
+  ],
+  update_client: [
+    { key: "received", label: "Received" },
+    { key: "validated", label: "Validated" },
+    { key: "client_locked", label: "Client locked" },
+    { key: "client_updated", label: "Change checked" },
+    { key: "history_written", label: "History checked" },
+    { key: "committed", label: "Committed" },
+    { key: "response_ready", label: "Response ready" },
+  ],
+  archive_client: [
+    { key: "received", label: "Received" },
+    { key: "client_locked", label: "Client locked" },
+    { key: "archive_checked", label: "Archive checked" },
+    { key: "client_archived", label: "Client archived" },
+    { key: "history_written", label: "History written" },
+    { key: "committed", label: "Committed" },
+    { key: "response_ready", label: "Response ready" },
+  ],
+  restore_client: [
+    { key: "received", label: "Received" },
+    { key: "client_locked", label: "Client locked" },
+    { key: "restore_checked", label: "Restore checked" },
+    { key: "client_restored", label: "Client restored" },
+    { key: "history_written", label: "History written" },
+    { key: "committed", label: "Committed" },
+    { key: "response_ready", label: "Response ready" },
+  ],
+  create_client_property: [
+    { key: "received", label: "Received" },
+    { key: "validated", label: "Validated" },
+    { key: "client_locked", label: "Client locked" },
+    { key: "property_written", label: "Property written" },
+    { key: "default_updated", label: "Default checked" },
+    { key: "history_written", label: "History written" },
+    { key: "committed", label: "Committed" },
+    { key: "response_ready", label: "Response ready" },
+  ],
+  update_client_property: [
+    { key: "received", label: "Received" },
+    { key: "validated", label: "Validated" },
+    { key: "property_locked", label: "Property locked" },
+    { key: "property_updated", label: "Change checked" },
+    { key: "history_written", label: "History checked" },
+    { key: "committed", label: "Committed" },
+    { key: "response_ready", label: "Response ready" },
+  ],
+  archive_client_property: [
+    { key: "received", label: "Received" },
+    { key: "property_locked", label: "Property locked" },
+    { key: "archive_checked", label: "Archive checked" },
+    { key: "default_updated", label: "Default checked" },
+    { key: "property_archived", label: "Property archived" },
+    { key: "history_written", label: "History written" },
+    { key: "committed", label: "Committed" },
+    { key: "response_ready", label: "Response ready" },
+  ],
+  restore_client_property: [
+    { key: "received", label: "Received" },
+    { key: "property_locked", label: "Property locked" },
+    { key: "restore_checked", label: "Restore checked" },
+    { key: "property_restored", label: "Property restored" },
+    { key: "history_written", label: "History written" },
+    { key: "committed", label: "Committed" },
+    { key: "response_ready", label: "Response ready" },
+  ],
+  set_default_client_property: [
+    { key: "received", label: "Received" },
+    { key: "property_locked", label: "Property locked" },
+    { key: "eligibility_checked", label: "Default checked" },
+    { key: "previous_default_cleared", label: "Previous default cleared" },
+    { key: "property_set_default", label: "Default property set" },
+    { key: "history_written", label: "History written" },
     { key: "committed", label: "Committed" },
     { key: "response_ready", label: "Response ready" },
   ],
@@ -224,6 +332,14 @@ export const operationPlans = {
 
 export const operationKindSchema = z.enum([
   "create_client",
+  "update_client",
+  "archive_client",
+  "restore_client",
+  "create_client_property",
+  "update_client_property",
+  "archive_client_property",
+  "restore_client_property",
+  "set_default_client_property",
   "create_request",
   "approve_request",
 ]);
@@ -278,9 +394,21 @@ export type CreateClientAddressInput = z.infer<
   typeof createClientAddressSchema
 >;
 export type CreateClientInput = z.infer<typeof createClientSchema>;
+export type UpdateClientInput = z.infer<typeof updateClientSchema>;
+export type CreateClientPropertyInput = z.infer<
+  typeof createClientPropertySchema
+>;
+export type UpdateClientPropertyInput = z.infer<
+  typeof updateClientPropertySchema
+>;
 export type ClientAddress = z.infer<typeof clientAddressSchema>;
+export type ClientProperty = z.infer<typeof clientPropertySchema>;
 export type Client = z.infer<typeof clientSchema>;
+export type ClientRecord = z.infer<typeof clientRecordSchema>;
 export type ClientResponse = z.infer<typeof clientResponseSchema>;
+export type ClientRecordResponse = z.infer<
+  typeof clientRecordResponseSchema
+>;
 export type CreateRequestInput = z.infer<typeof createRequestSchema>;
 export type JobCycle = z.infer<typeof jobCycleSchema>;
 export type Job = z.infer<typeof jobSchema>;

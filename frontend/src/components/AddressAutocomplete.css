@@ -1,0 +1,117 @@
+.address-autocomplete {
+  position: relative;
+  width: 100%;
+}
+
+.address-autocomplete-input {
+  position: relative;
+}
+
+.address-autocomplete-input .input {
+  padding-right:
+    calc(
+      var(--icon-button-size) +
+      var(--space-4)
+    );
+}
+
+.address-autocomplete-clear {
+  position: absolute;
+  top: 50%;
+  right: var(--space-2);
+
+  display: grid;
+  place-items: center;
+
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
+  padding: 0;
+
+  transform: translateY(-50%);
+
+  border: var(--border-thin);
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-ink);
+
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.address-autocomplete-clear:hover,
+.address-autocomplete-clear:focus-visible {
+  outline: 0;
+  border-color: var(--color-ink);
+  background: var(--color-paper);
+}
+
+.address-autocomplete-status {
+  display: block;
+  margin-top: var(--space-1);
+
+  color: var(--color-ink-soft);
+
+  font-size: 0.65rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.address-autocomplete-menu {
+  position: absolute;
+  z-index: var(--layer-dropdown);
+  top: calc(100% + var(--space-1));
+  right: 0;
+  left: 0;
+
+  overflow-y: auto;
+  max-height: 16.25rem;
+
+  border: var(--border-normal);
+  background: var(--color-paper-soft);
+  box-shadow: var(--shadow-md);
+}
+
+.address-autocomplete-menu button {
+  display: grid;
+  gap: var(--space-1);
+
+  width: 100%;
+  padding: var(--space-3);
+
+  border: 0;
+  border-bottom: var(--border-thin);
+
+  background: transparent;
+  color: var(--color-ink);
+
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.address-autocomplete-menu button:last-child {
+  border-bottom: 0;
+}
+
+.address-autocomplete-menu button:hover,
+.address-autocomplete-menu button:focus {
+  outline: 0;
+  background: var(--color-paper);
+  box-shadow:
+    inset var(--space-2) 0 0
+    var(--color-orange);
+}
+
+.address-autocomplete-menu strong {
+  font-size: 0.82rem;
+}
+
+.address-autocomplete-menu span {
+  color: var(--color-ink-soft);
+  font-size: 0.72rem;
+}

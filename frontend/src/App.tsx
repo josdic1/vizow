@@ -1,8 +1,18 @@
-import { ClientDetailPage } from "./pages/ClientDetailPage";
+import {
+  ClientDetailPage } from "./pages/ClientDetailPage";
 import { ClientsPage } from "./pages/ClientsPage";
-import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, Route, Routes, useParams } from "react-router-dom";
+import { useEffect,
+  useMemo,
+  useState } from "react";
+import { Link,
+  Navigate,
+  Route,
+  Routes,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import type { Job } from "@vizow/shared";
+import { fetchClient } from "./api/clients";
 import { fetchJob, fetchJobs } from "./api/jobs";
 import { AdminPageHeader } from "./components/AdminPageHeader";
 import { AppLayout } from "./layouts/AppLayout";
@@ -41,6 +51,10 @@ function formatAddress(job: Job): string | null {
 }
 
 function JobsPage() {
+  const [searchParams] = useSearchParams();
+  const scopedClientId =
+    searchParams.get("clientId") ?? "";
+
   const [state, setState] = useState<JobsState>({ status: "loading" });
   const [stageFilter, setStageFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
@@ -77,18 +91,70 @@ function JobsPage() {
 
   const jobs = state.status === "ready" ? state.jobs : [];
 
+  const scopedJobs = scopedClientId
+    ? jobs.filter(
+        (job) => job.clientId === scopedClientId,
+      )
+    : jobs;
+
+  const [scopedClientName, setScopedClientName] =
+    useState<string | null>(null);
+
+  useEffect(() => {
+    setScopedClientName(null);
+
+    if (!scopedClientId) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    fetchClient(scopedClientId, controller.signal)
+      .then((client) => {
+        setScopedClientName(client.name);
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setScopedClientName(null);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [scopedClientId]);
+
+  const scopedClientLabel =
+    scopedClientName ?? "Client";
+
+  useEffect(() => {
+    setStageFilter("ALL");
+    setSearchTerm("");
+  }, [scopedClientId]);
+
   const stages = useMemo(
     () =>
-      Array.from(new Set(jobs.map((job) => job.currentCycle.stage))).sort(
+      Array.from(
+        new Set(
+          scopedJobs.map(
+            (job) => job.currentCycle.stage,
+          ),
+        ),
+      ).sort(
         (first, second) => first.localeCompare(second),
       ),
-    [jobs],
+    [scopedJobs],
   );
 
   const visibleJobs = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    const nextJobs = jobs.filter((job) => {
+    const nextJobs = scopedJobs.filter((job) => {
       if (
         stageFilter !== "ALL" &&
         job.currentCycle.stage !== stageFilter
@@ -146,7 +212,13 @@ function JobsPage() {
     });
 
     return nextJobs;
-  }, [jobs, searchTerm, sortDirection, sortKey, stageFilter]);
+  }, [
+    scopedJobs,
+    searchTerm,
+    sortDirection,
+    sortKey,
+    stageFilter,
+  ]);
 
   function handleSort(nextSortKey: typeof sortKey) {
     if (sortKey === nextSortKey) {
@@ -170,7 +242,11 @@ function JobsPage() {
 
   return (
     <AppLayout
-      object="All Jobs"
+      object={
+        scopedClientId
+          ? scopedClientLabel
+          : "All Jobs"
+      }
       tool="Jobs"
       action="Review jobs"
       result={
@@ -178,14 +254,14 @@ function JobsPage() {
           ? "Loading"
           : state.status === "error"
             ? "Not loaded"
-            : `${state.jobs.length} job${state.jobs.length === 1 ? "" : "s"} loaded`
+            : `${scopedJobs.length} job${scopedJobs.length === 1 ? "" : "s"} loaded`
       }
       message={
         state.status === "loading"
           ? "Loading jobs from VIZOW."
           : state.status === "error"
             ? "Jobs could not be loaded. Nothing was changed."
-            : `${state.jobs.length} job${state.jobs.length === 1 ? "" : "s"} are available to review.`
+            : `${scopedJobs.length} job${scopedJobs.length === 1 ? "" : "s"} are available to review.`
       }
       activeStep={state.status === "loading" ? "result" : "action"}
       resultTone={
@@ -200,17 +276,60 @@ function JobsPage() {
         <div className="admin-page jobs-page">
           <AdminPageHeader
             eyebrow="Visual of Work"
-            title="Jobs"
-            description="Review each job’s current stage, service address, and active work cycle."
+            title={
+              scopedClientId
+                ? `${scopedClientLabel} Jobs`
+                : "Jobs"
+            }
+            description={
+              scopedClientId
+                ? `Jobs belonging to ${scopedClientLabel}.`
+                : "Review each job’s current stage, service address, and active work cycle."
+            }
             meta={
               state.status === "ready" ? (
                 <span>
-                  {state.jobs.length} total job
-                  {state.jobs.length === 1 ? "" : "s"}
+                  {scopedJobs.length} total job
+                  {scopedJobs.length === 1 ? "" : "s"}
                 </span>
               ) : undefined
             }
           />
+
+          {scopedClientId && (
+            <nav
+              className="workspace-scope-bar"
+              aria-label="Job scope"
+            >
+              <div>
+                <p className="eyebrow">Job Scope</p>
+                <strong>{scopedClientLabel}</strong>
+              </div>
+
+              <div className="workspace-scope-actions">
+                <Link
+                  aria-current="page"
+                  className="btn btn-primary"
+                  to={`/jobs?clientId=${encodeURIComponent(
+                    scopedClientId,
+                  )}`}
+                >
+                  This Client
+                </Link>
+
+                <Link className="btn" to="/jobs">
+                  All Jobs
+                </Link>
+
+                <Link
+                  className="btn"
+                  to={`/clients/${scopedClientId}`}
+                >
+                  Client Record
+                </Link>
+              </div>
+            </nav>
+          )}
 
           {state.status === "ready" && (
             <div className="admin-toolbar jobs-toolbar">
@@ -225,11 +344,11 @@ function JobsPage() {
                   onClick={() => setStageFilter("ALL")}
                 >
                   <span>All</span>
-                  <strong>{jobs.length}</strong>
+                  <strong>{scopedJobs.length}</strong>
                 </button>
 
                 {stages.map((stage) => {
-                  const count = jobs.filter(
+                  const count = scopedJobs.filter(
                     (job) => job.currentCycle.stage === stage,
                   ).length;
 

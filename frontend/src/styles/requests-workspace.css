@@ -10,7 +10,7 @@
   border: var(--border-heavy);
   background: var(--color-paper);
   padding: var(--space-5);
-  box-shadow: 8px 8px 0 var(--color-ink);
+  box-shadow: var(--shadow-lg);
 }
 
 .requests-create-panel::before {
@@ -68,22 +68,12 @@
   font-size: 0.72rem;
 }
 
-.request-status-open {
-  border-color: var(--color-orange);
-  background: var(--color-orange);
-  color: var(--color-ink);
-}
-
-.request-status-approved {
-  border-color: var(--color-success);
-  background: var(--color-success);
-  color: var(--color-ink);
-}
-
+.request-status-open,
+.request-status-approved,
 .request-status-declined {
-  border-color: var(--color-danger);
-  background: var(--color-danger);
-  color: var(--color-paper-soft);
+  border-color: var(--color-ink);
+  background: var(--color-paper-soft);
+  color: var(--color-ink);
 }
 
 @media (max-width: 780px) {
@@ -203,4 +193,23 @@
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+/* Request workspace density */
+.requests-page {
+  gap: 18px;
+}
+
+.requests-create-panel {
+  gap: 14px;
+  padding: 14px 16px;
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+
+.requests-create-panel .section-heading {
+  padding-left: 10px;
+}
+
+.requests-create-panel .section-heading h2 {
+  font-size: clamp(1.35rem, 2.5vw, 2rem);
 }
