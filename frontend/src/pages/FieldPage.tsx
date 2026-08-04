@@ -17,6 +17,7 @@ import {
   uploadJobPhoto,
 } from "../api/jobs";
 import { ScopeRevisionControl } from "../components/ScopeRevisionControl";
+import { VisitControl } from "../components/VisitControl";
 import { useActiveJob } from "../contexts/ActiveJobContext";
 import { AppLayout } from "../layouts/AppLayout";
 
@@ -643,6 +644,11 @@ export function FieldPage() {
 
                 <ScopeRevisionControl
                   key={`${activeJob.id}:${activeJob.currentCycle.id}:${activeJob.currentCycle.stage}`}
+                  job={activeJob}
+                />
+
+                <VisitControl
+                  key={`visits:${activeJob.id}:${activeJob.currentCycle.id}:${activeJob.currentCycle.stage}`}
                   job={activeJob}
                 />
 

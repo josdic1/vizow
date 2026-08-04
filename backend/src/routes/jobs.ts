@@ -3,15 +3,19 @@ import {
   closureSchema,
   createFieldNoteSchema,
   createScopeRevisionSchema,
+  createVisitSchema,
   fieldNoteSchema,
   idSchema,
   jobSchema,
   reopenJobCycleSchema,
   scopeRevisionSchema,
+  updateVisitStatusSchema,
+  visitSchema,
   type Closure,
   type FieldNote,
   type Job,
   type ScopeRevision,
+  type Visit,
 } from "@vizow/shared";
 import { Router } from "express";
 
@@ -256,6 +260,513 @@ function prepareScopeRevision(
     createdAt: row.createdAt.toISOString(),
   });
 }
+
+type VisitDatabaseRow = {
+  id: string;
+  jobId: string;
+  jobCycleId: string;
+  status: Visit["status"];
+  scheduledStart: Date;
+  scheduledEnd: Date | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+function prepareVisit(
+  row: VisitDatabaseRow,
+): Visit {
+  return visitSchema.parse({
+    id: row.id,
+    jobId: row.jobId,
+    jobCycleId: row.jobCycleId,
+    status: row.status,
+    scheduledStart: row.scheduledStart.toISOString(),
+    scheduledEnd:
+      row.scheduledEnd?.toISOString() ?? null,
+    notes: row.notes,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  });
+}
+
+jobsRouter.get(
+  "/:jobId/visits",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(
+      request.params.jobId,
+    );
+
+    if (!jobIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid job ID.",
+      });
+      return;
+    }
+
+    try {
+      const jobResult = await pool.query<{ id: string }>(
+        `
+          SELECT job.id
+          FROM jobs job
+          JOIN organizations organization
+            ON organization.id = job.organization_id
+          WHERE job.id = $1
+            AND organization.slug = $2
+        `,
+        [
+          jobIdResult.data,
+          env.ORGANIZATION_SLUG,
+        ],
+      );
+
+      if (!jobResult.rows[0]) {
+        response.status(404).json({
+          ok: false,
+          error: "Job was not found.",
+        });
+        return;
+      }
+
+      const visitResult =
+        await pool.query<VisitDatabaseRow>(
+          `
+            SELECT
+              visit.id,
+              visit.job_id AS "jobId",
+              visit.job_cycle_id AS "jobCycleId",
+              visit.status,
+              visit.scheduled_start AS "scheduledStart",
+              visit.scheduled_end AS "scheduledEnd",
+              visit.notes,
+              visit.created_at AS "createdAt",
+              visit.updated_at AS "updatedAt"
+            FROM visits visit
+            JOIN organizations organization
+              ON organization.id =
+                visit.organization_id
+            WHERE visit.job_id = $1
+              AND organization.slug = $2
+            ORDER BY
+              visit.scheduled_start ASC,
+              visit.created_at ASC
+          `,
+          [
+            jobIdResult.data,
+            env.ORGANIZATION_SLUG,
+          ],
+        );
+
+      response.json({
+        ok: true,
+        visits: visitResult.rows.map(prepareVisit),
+      });
+    } catch (error) {
+      console.error(error);
+
+      response.status(500).json({
+        ok: false,
+        error: "Unable to load visits.",
+      });
+    }
+  },
+);
+
+jobsRouter.post(
+  "/:jobId/visits",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(
+      request.params.jobId,
+    );
+
+    if (!jobIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid job ID.",
+      });
+      return;
+    }
+
+    const inputResult = createVisitSchema.safeParse(
+      request.body,
+    );
+
+    if (!inputResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid visit.",
+        details: inputResult.error.flatten(),
+      });
+      return;
+    }
+
+    const databaseClient = await pool.connect();
+
+    try {
+      await databaseClient.query("BEGIN");
+
+      const cycleResult = await databaseClient.query<{
+        organizationId: string;
+        jobCycleId: string;
+        stage: Job["currentCycle"]["stage"];
+      }>(
+        `
+          SELECT
+            job.organization_id AS "organizationId",
+            cycle.id AS "jobCycleId",
+            cycle.stage
+          FROM jobs job
+          JOIN organizations organization
+            ON organization.id = job.organization_id
+          JOIN job_cycles cycle
+            ON cycle.organization_id =
+              job.organization_id
+           AND cycle.job_id = job.id
+           AND cycle.cycle_number = (
+             SELECT MAX(candidate.cycle_number)
+             FROM job_cycles candidate
+             WHERE candidate.organization_id =
+               job.organization_id
+               AND candidate.job_id = job.id
+           )
+          WHERE job.id = $1
+            AND organization.slug = $2
+          FOR SHARE OF job, cycle
+        `,
+        [
+          jobIdResult.data,
+          env.ORGANIZATION_SLUG,
+        ],
+      );
+
+      const currentCycle = cycleResult.rows[0];
+
+      if (!currentCycle) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(404).json({
+          ok: false,
+          error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (currentCycle.stage !== "project") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Visits can only be scheduled for an active work cycle.",
+        });
+        return;
+      }
+
+      const visitResult =
+        await databaseClient.query<VisitDatabaseRow>(
+          `
+            INSERT INTO visits (
+              organization_id,
+              job_id,
+              job_cycle_id,
+              scheduled_start,
+              scheduled_end,
+              notes
+            )
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING
+              id,
+              job_id AS "jobId",
+              job_cycle_id AS "jobCycleId",
+              status,
+              scheduled_start AS "scheduledStart",
+              scheduled_end AS "scheduledEnd",
+              notes,
+              created_at AS "createdAt",
+              updated_at AS "updatedAt"
+          `,
+          [
+            currentCycle.organizationId,
+            jobIdResult.data,
+            currentCycle.jobCycleId,
+            inputResult.data.scheduledStart,
+            inputResult.data.scheduledEnd,
+            inputResult.data.notes,
+          ],
+        );
+
+      const createdVisit = visitResult.rows[0];
+
+      if (!createdVisit) {
+        throw new Error(
+          "PostgreSQL did not return the created visit.",
+        );
+      }
+
+      await databaseClient.query(
+        `
+          INSERT INTO job_events (
+            organization_id,
+            job_id,
+            job_cycle_id,
+            event_type,
+            details
+          )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            'visit_scheduled',
+            jsonb_strip_nulls(
+              jsonb_build_object(
+                'visitId',
+                $4::uuid,
+                'scheduledStart',
+                $5::timestamptz,
+                'scheduledEnd',
+                $6::timestamptz
+              )
+            )
+          )
+        `,
+        [
+          currentCycle.organizationId,
+          jobIdResult.data,
+          currentCycle.jobCycleId,
+          createdVisit.id,
+          inputResult.data.scheduledStart,
+          inputResult.data.scheduledEnd,
+        ],
+      );
+
+      await databaseClient.query(
+        `
+          UPDATE jobs
+          SET updated_at = now()
+          WHERE organization_id = $1
+            AND id = $2
+        `,
+        [
+          currentCycle.organizationId,
+          jobIdResult.data,
+        ],
+      );
+
+      const visit = prepareVisit(createdVisit);
+
+      await databaseClient.query("COMMIT");
+
+      response.status(201).json({
+        ok: true,
+        visit,
+      });
+    } catch (error) {
+      await databaseClient.query("ROLLBACK");
+      console.error(error);
+
+      response.status(500).json({
+        ok: false,
+        error: "Unable to schedule visit.",
+      });
+    } finally {
+      databaseClient.release();
+    }
+  },
+);
+
+jobsRouter.patch(
+  "/:jobId/visits/:visitId/status",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(
+      request.params.jobId,
+    );
+    const visitIdResult = idSchema.safeParse(
+      request.params.visitId,
+    );
+
+    if (!jobIdResult.success || !visitIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid Job or Visit ID.",
+      });
+      return;
+    }
+
+    const inputResult = updateVisitStatusSchema.safeParse(
+      request.body,
+    );
+
+    if (!inputResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid Visit status.",
+        details: inputResult.error.flatten(),
+      });
+      return;
+    }
+
+    const databaseClient = await pool.connect();
+
+    try {
+      await databaseClient.query("BEGIN");
+
+      const existingResult = await databaseClient.query<{
+        organizationId: string;
+        jobCycleId: string;
+        status: Visit["status"];
+      }>(
+        `
+          SELECT
+            visit.organization_id AS "organizationId",
+            visit.job_cycle_id AS "jobCycleId",
+            visit.status
+          FROM visits visit
+          JOIN organizations organization
+            ON organization.id = visit.organization_id
+          WHERE visit.id = $1
+            AND visit.job_id = $2
+            AND organization.slug = $3
+          FOR UPDATE OF visit
+        `,
+        [
+          visitIdResult.data,
+          jobIdResult.data,
+          env.ORGANIZATION_SLUG,
+        ],
+      );
+
+      const existingVisit = existingResult.rows[0];
+
+      if (!existingVisit) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(404).json({
+          ok: false,
+          error: "Visit was not found.",
+        });
+        return;
+      }
+
+      if (existingVisit.status !== "scheduled") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Only a scheduled Visit can be completed or cancelled.",
+        });
+        return;
+      }
+
+      const updatedResult =
+        await databaseClient.query<VisitDatabaseRow>(
+          `
+            UPDATE visits
+            SET
+              status = $4,
+              updated_at = now()
+            WHERE organization_id = $1
+              AND job_id = $2
+              AND id = $3
+            RETURNING
+              id,
+              job_id AS "jobId",
+              job_cycle_id AS "jobCycleId",
+              status,
+              scheduled_start AS "scheduledStart",
+              scheduled_end AS "scheduledEnd",
+              notes,
+              created_at AS "createdAt",
+              updated_at AS "updatedAt"
+          `,
+          [
+            existingVisit.organizationId,
+            jobIdResult.data,
+            visitIdResult.data,
+            inputResult.data.status,
+          ],
+        );
+
+      const updatedVisit = updatedResult.rows[0];
+
+      if (!updatedVisit) {
+        throw new Error(
+          "PostgreSQL did not return the updated Visit.",
+        );
+      }
+
+      const eventType =
+        inputResult.data.status === "completed"
+          ? "visit_completed"
+          : "visit_cancelled";
+
+      await databaseClient.query(
+        `
+          INSERT INTO job_events (
+            organization_id,
+            job_id,
+            job_cycle_id,
+            event_type,
+            details
+          )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            $4,
+            jsonb_build_object(
+              'visitId',
+              $5::uuid,
+              'status',
+              $6::text
+            )
+          )
+        `,
+        [
+          existingVisit.organizationId,
+          jobIdResult.data,
+          existingVisit.jobCycleId,
+          eventType,
+          visitIdResult.data,
+          inputResult.data.status,
+        ],
+      );
+
+      await databaseClient.query(
+        `
+          UPDATE jobs
+          SET updated_at = now()
+          WHERE organization_id = $1
+            AND id = $2
+        `,
+        [
+          existingVisit.organizationId,
+          jobIdResult.data,
+        ],
+      );
+
+      const visit = prepareVisit(updatedVisit);
+
+      await databaseClient.query("COMMIT");
+
+      response.json({
+        ok: true,
+        visit,
+      });
+    } catch (error) {
+      await databaseClient.query("ROLLBACK");
+      console.error(error);
+
+      response.status(500).json({
+        ok: false,
+        error: "Unable to update Visit status.",
+      });
+    } finally {
+      databaseClient.release();
+    }
+  },
+);
 
 jobsRouter.post(
   "/:jobId/field-notes",

@@ -24,6 +24,12 @@ export const disputeStatusSchema = z.enum([
   "withdrawn",
 ]);
 
+export const visitStatusSchema = z.enum([
+  "scheduled",
+  "completed",
+  "cancelled",
+]);
+
 export const mediaStageSchema = z.enum([
   "before",
   "during",
@@ -186,6 +192,34 @@ export const createScopeRevisionSchema = z.object({
   reason: optionalTextInputSchema,
 });
 
+export const createVisitSchema = z
+  .object({
+    scheduledStart: z.string().datetime(),
+    scheduledEnd: z
+      .string()
+      .datetime()
+      .optional()
+      .nullable()
+      .transform((value) => value ?? null),
+    notes: optionalTextInputSchema,
+  })
+  .refine(
+    (visit) =>
+      visit.scheduledEnd === null ||
+      new Date(visit.scheduledEnd) >
+        new Date(visit.scheduledStart),
+    {
+      message: "Visit end must be after its start.",
+      path: ["scheduledEnd"],
+    },
+  );
+
+export const updateVisitStatusSchema = z
+  .object({
+    status: z.enum(["completed", "cancelled"]),
+  })
+  .strict();
+
 export const createFieldNoteSchema = z.object({
   content: z
     .string()
@@ -235,6 +269,18 @@ export const scopeRevisionSchema = z.object({
   priceChange: z.number().finite(),
   reason: z.string().nullable(),
   createdAt: z.string().datetime(),
+});
+
+export const visitSchema = z.object({
+  id: idSchema,
+  jobId: idSchema,
+  jobCycleId: idSchema,
+  status: visitStatusSchema,
+  scheduledStart: z.string().datetime(),
+  scheduledEnd: z.string().datetime().nullable(),
+  notes: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
 });
 
 export const createBasicVowSchema = z.object({}).strict();
@@ -350,6 +396,16 @@ export const scopeRevisionResponseSchema = z.object({
   scopeRevision: scopeRevisionSchema,
 });
 
+export const visitsResponseSchema = z.object({
+  ok: z.literal(true),
+  visits: z.array(visitSchema),
+});
+
+export const visitResponseSchema = z.object({
+  ok: z.literal(true),
+  visit: visitSchema,
+});
+
 export const basicVowResponseSchema = z.object({
   ok: z.literal(true),
   vow: vowSchema,
@@ -375,6 +431,7 @@ export type JobStage = z.infer<typeof jobStageSchema>;
 export type RequestStatus = z.infer<typeof requestStatusSchema>;
 export type CycleReason = z.infer<typeof cycleReasonSchema>;
 export type DisputeStatus = z.infer<typeof disputeStatusSchema>;
+export type VisitStatus = z.infer<typeof visitStatusSchema>;
 export type MediaStage = z.infer<typeof mediaStageSchema>;
 export type VowStatus = z.infer<typeof vowStatusSchema>;
 export type Organization = z.infer<typeof organizationSchema>;
@@ -410,6 +467,12 @@ export type ReopenJobCycleInput = z.infer<
 export type CreateScopeRevisionInput = z.infer<
   typeof createScopeRevisionSchema
 >;
+export type CreateVisitInput = z.infer<
+  typeof createVisitSchema
+>;
+export type UpdateVisitStatusInput = z.infer<
+  typeof updateVisitStatusSchema
+>;
 export type CreateBasicVowInput = z.infer<
   typeof createBasicVowSchema
 >;
@@ -420,6 +483,7 @@ export type Closure = z.infer<typeof closureSchema>;
 export type ScopeRevision = z.infer<
   typeof scopeRevisionSchema
 >;
+export type Visit = z.infer<typeof visitSchema>;
 export type BasicVowSnapshot = z.infer<
   typeof basicVowSnapshotSchema
 >;
@@ -443,6 +507,12 @@ export type ReopenJobCycleResponse = z.infer<
 >;
 export type ScopeRevisionResponse = z.infer<
   typeof scopeRevisionResponseSchema
+>;
+export type VisitsResponse = z.infer<
+  typeof visitsResponseSchema
+>;
+export type VisitResponse = z.infer<
+  typeof visitResponseSchema
 >;
 export type BasicVowResponse = z.infer<
   typeof basicVowResponseSchema

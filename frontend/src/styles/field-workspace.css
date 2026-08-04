@@ -346,3 +346,144 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Job Visits */
+
+.visit-control {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.visit-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.visit-list-panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-heavy);
+  border-left: 8px solid var(--color-orange);
+  background: var(--color-paper-soft);
+  box-shadow: var(--shadow-md);
+}
+
+.visit-list-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.visit-list-heading h2 {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.visit-list-heading > strong {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: var(--border-heavy);
+  background: var(--color-orange);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+
+.visit-empty {
+  margin: 0;
+  padding: var(--space-4);
+  border: var(--border-thin);
+  background: var(--color-paper);
+  font-weight: 750;
+}
+
+.visit-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.visit-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-heavy);
+  background: var(--color-paper);
+}
+
+.visit-card > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.visit-card > div:first-child strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 4vw, 2rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.visit-card > div:first-child span {
+  font-weight: 750;
+}
+
+.visit-status {
+  align-self: start;
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-thin);
+  background: var(--color-ink);
+  color: var(--color-paper-soft);
+  font-size: 0.7rem;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.visit-card p {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: var(--border-thin);
+  font-weight: 650;
+}
+
+.visit-card-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+@media (max-width: 760px) {
+  .visit-form-grid,
+  .visit-card {
+    grid-template-columns: 1fr;
+  }
+
+  .visit-list-panel {
+    padding: var(--space-3);
+  }
+
+  .visit-status {
+    justify-self: start;
+  }
+
+  .visit-card-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .visit-card-actions .btn {
+    width: 100%;
+    min-height: 3.25rem;
+  }
+}

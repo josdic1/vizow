@@ -7,15 +7,20 @@ import {
   mediaResponseSchema,
   reopenJobCycleResponseSchema,
   scopeRevisionResponseSchema,
+  visitResponseSchema,
+  visitsResponseSchema,
   type CloseJobCycleInput,
   type Closure,
   type CreateFieldNoteInput,
   type CreateScopeRevisionInput,
+  type CreateVisitInput,
   type FieldNote,
   type Job,
   type Media,
   type MediaStage,
   type ScopeRevision,
+  type UpdateVisitStatusInput,
+  type Visit,
   type Vow,
 } from "@vizow/shared";
 
@@ -374,4 +379,146 @@ export async function createScopeRevision(
   }
 
   return result.data.scopeRevision;
+}
+
+export async function fetchVisits(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<Visit[]> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/visits`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to load visits. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result = visitsResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid visits response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The visits API returned an invalid response.",
+    );
+  }
+
+  return result.data.visits;
+}
+
+export async function createVisit(
+  jobId: string,
+  input: CreateVisitInput,
+  signal?: AbortSignal,
+): Promise<Visit> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/visits`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to schedule visit. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result = visitResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid Visit response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The Visit API returned an invalid response.",
+    );
+  }
+
+  return result.data.visit;
+}
+
+export async function updateVisitStatus(
+  jobId: string,
+  visitId: string,
+  input: UpdateVisitStatusInput,
+  signal?: AbortSignal,
+): Promise<Visit> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/visits/${encodeURIComponent(visitId)}/status`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to update Visit. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result = visitResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid Visit status response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The Visit API returned an invalid response.",
+    );
+  }
+
+  return result.data.visit;
 }
