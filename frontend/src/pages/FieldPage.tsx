@@ -16,6 +16,7 @@ import {
   reopenJobCycle,
   uploadJobPhoto,
 } from "../api/jobs";
+import { ScopeRevisionControl } from "../components/ScopeRevisionControl";
 import { useActiveJob } from "../contexts/ActiveJobContext";
 import { AppLayout } from "../layouts/AppLayout";
 
@@ -639,6 +640,11 @@ export function FieldPage() {
                     <span>Record work immediately</span>
                   </button>
                 </section>
+
+                <ScopeRevisionControl
+                  key={`${activeJob.id}:${activeJob.currentCycle.id}:${activeJob.currentCycle.stage}`}
+                  job={activeJob}
+                />
 
                 <div className="field-note-actions">
                   <button

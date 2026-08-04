@@ -2,13 +2,16 @@ import {
   closeJobCycleSchema,
   closureSchema,
   createFieldNoteSchema,
+  createScopeRevisionSchema,
   fieldNoteSchema,
   idSchema,
   jobSchema,
   reopenJobCycleSchema,
+  scopeRevisionSchema,
   type Closure,
   type FieldNote,
   type Job,
+  type ScopeRevision,
 } from "@vizow/shared";
 import { Router } from "express";
 
@@ -228,6 +231,32 @@ function prepareFieldNote(
   });
 }
 
+type ScopeRevisionDatabaseRow = {
+  id: string;
+  jobId: string;
+  jobCycleId: string;
+  revisionNumber: number;
+  scopeText: string;
+  priceChange: string;
+  reason: string | null;
+  createdAt: Date;
+};
+
+function prepareScopeRevision(
+  row: ScopeRevisionDatabaseRow,
+): ScopeRevision {
+  return scopeRevisionSchema.parse({
+    id: row.id,
+    jobId: row.jobId,
+    jobCycleId: row.jobCycleId,
+    revisionNumber: row.revisionNumber,
+    scopeText: row.scopeText,
+    priceChange: Number(row.priceChange),
+    reason: row.reason,
+    createdAt: row.createdAt.toISOString(),
+  });
+}
+
 jobsRouter.post(
   "/:jobId/field-notes",
   async (request, response) => {
@@ -395,6 +424,238 @@ jobsRouter.post(
       response.status(500).json({
         ok: false,
         error: "Unable to create field note.",
+      });
+    } finally {
+      databaseClient.release();
+    }
+  },
+);
+
+jobsRouter.post(
+  "/:jobId/scope-revisions",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(
+      request.params.jobId,
+    );
+
+    if (!jobIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid job ID.",
+      });
+      return;
+    }
+
+    const inputResult = createScopeRevisionSchema.safeParse(
+      request.body,
+    );
+
+    if (!inputResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid scope revision.",
+        details: inputResult.error.flatten(),
+      });
+      return;
+    }
+
+    const databaseClient = await pool.connect();
+
+    try {
+      await databaseClient.query("BEGIN");
+
+      const cycleResult = await databaseClient.query<{
+        organizationId: string;
+        jobCycleId: string;
+        stage: Job["currentCycle"]["stage"];
+      }>(
+        `
+          SELECT
+            job.organization_id AS "organizationId",
+            cycle.id AS "jobCycleId",
+            cycle.stage
+          FROM jobs job
+          JOIN organizations organization
+            ON organization.id = job.organization_id
+          JOIN job_cycles cycle
+            ON cycle.organization_id = job.organization_id
+           AND cycle.job_id = job.id
+           AND cycle.cycle_number = (
+             SELECT MAX(candidate.cycle_number)
+             FROM job_cycles candidate
+             WHERE candidate.organization_id =
+               job.organization_id
+               AND candidate.job_id = job.id
+           )
+          WHERE job.id = $1
+            AND organization.slug = $2
+          FOR UPDATE OF job, cycle
+        `,
+        [
+          jobIdResult.data,
+          env.ORGANIZATION_SLUG,
+        ],
+      );
+
+      const currentCycle = cycleResult.rows[0];
+
+      if (!currentCycle) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(404).json({
+          ok: false,
+          error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (currentCycle.stage !== "project") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Scope revisions can only be added to an active work cycle.",
+        });
+        return;
+      }
+
+      const revisionNumberResult =
+        await databaseClient.query<{
+          revisionNumber: number;
+        }>(
+          `
+            SELECT
+              COALESCE(MAX(revision_number), 0) + 1
+                AS "revisionNumber"
+            FROM scope_revisions
+            WHERE organization_id = $1
+              AND job_id = $2
+              AND job_cycle_id = $3
+          `,
+          [
+            currentCycle.organizationId,
+            jobIdResult.data,
+            currentCycle.jobCycleId,
+          ],
+        );
+
+      const revisionNumber =
+        revisionNumberResult.rows[0]?.revisionNumber;
+
+      if (!revisionNumber) {
+        throw new Error(
+          "Unable to determine the next scope revision number.",
+        );
+      }
+
+      const revisionResult =
+        await databaseClient.query<ScopeRevisionDatabaseRow>(
+          `
+            INSERT INTO scope_revisions (
+              organization_id,
+              job_id,
+              job_cycle_id,
+              revision_number,
+              scope_text,
+              price_change,
+              reason
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING
+              id,
+              job_id AS "jobId",
+              job_cycle_id AS "jobCycleId",
+              revision_number AS "revisionNumber",
+              scope_text AS "scopeText",
+              price_change AS "priceChange",
+              reason,
+              created_at AS "createdAt"
+          `,
+          [
+            currentCycle.organizationId,
+            jobIdResult.data,
+            currentCycle.jobCycleId,
+            revisionNumber,
+            inputResult.data.scopeText,
+            inputResult.data.priceChange,
+            inputResult.data.reason ?? null,
+          ],
+        );
+
+      const createdScopeRevision =
+        revisionResult.rows[0];
+
+      if (!createdScopeRevision) {
+        throw new Error(
+          "PostgreSQL did not return the created scope revision.",
+        );
+      }
+
+      await databaseClient.query(
+        `
+          INSERT INTO job_events (
+            organization_id,
+            job_id,
+            job_cycle_id,
+            event_type,
+            details
+          )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            'scope_revision_created',
+            jsonb_build_object(
+              'scopeRevisionId',
+              $4::uuid,
+              'revisionNumber',
+              $5::integer,
+              'priceChange',
+              $6::numeric
+            )
+          )
+        `,
+        [
+          currentCycle.organizationId,
+          jobIdResult.data,
+          currentCycle.jobCycleId,
+          createdScopeRevision.id,
+          revisionNumber,
+          inputResult.data.priceChange,
+        ],
+      );
+
+      await databaseClient.query(
+        `
+          UPDATE jobs
+          SET updated_at = now()
+          WHERE organization_id = $1
+            AND id = $2
+        `,
+        [
+          currentCycle.organizationId,
+          jobIdResult.data,
+        ],
+      );
+
+      const scopeRevision = prepareScopeRevision(
+        createdScopeRevision,
+      );
+
+      await databaseClient.query("COMMIT");
+
+      response.status(201).json({
+        ok: true,
+        scopeRevision,
+      });
+    } catch (error) {
+      await databaseClient.query("ROLLBACK");
+      console.error(error);
+
+      response.status(500).json({
+        ok: false,
+        error: "Unable to create scope revision.",
       });
     } finally {
       databaseClient.release();

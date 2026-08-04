@@ -173,6 +173,19 @@ export const closeJobCycleSchema = z.object({
 
 export const reopenJobCycleSchema = z.object({}).strict();
 
+export const createScopeRevisionSchema = z.object({
+  scopeText: z
+    .string()
+    .trim()
+    .min(1, "Scope description is required."),
+  priceChange: z
+    .number()
+    .finite("Price change must be a valid number.")
+    .optional()
+    .default(0),
+  reason: optionalTextInputSchema,
+});
+
 export const createFieldNoteSchema = z.object({
   content: z
     .string()
@@ -210,6 +223,17 @@ export const closureSchema = z.object({
   finalPrice: z.number().finite().nonnegative().nullable(),
   completionDate: z.string().datetime(),
   notes: z.string().nullable(),
+  createdAt: z.string().datetime(),
+});
+
+export const scopeRevisionSchema = z.object({
+  id: idSchema,
+  jobId: idSchema,
+  jobCycleId: idSchema,
+  revisionNumber: z.number().int().positive(),
+  scopeText: z.string().min(1),
+  priceChange: z.number().finite(),
+  reason: z.string().nullable(),
   createdAt: z.string().datetime(),
 });
 
@@ -321,6 +345,11 @@ export const reopenJobCycleResponseSchema = z.object({
   job: jobSchema,
 });
 
+export const scopeRevisionResponseSchema = z.object({
+  ok: z.literal(true),
+  scopeRevision: scopeRevisionSchema,
+});
+
 export const basicVowResponseSchema = z.object({
   ok: z.literal(true),
   vow: vowSchema,
@@ -378,6 +407,9 @@ export type CloseJobCycleInput = z.infer<
 export type ReopenJobCycleInput = z.infer<
   typeof reopenJobCycleSchema
 >;
+export type CreateScopeRevisionInput = z.infer<
+  typeof createScopeRevisionSchema
+>;
 export type CreateBasicVowInput = z.infer<
   typeof createBasicVowSchema
 >;
@@ -385,6 +417,9 @@ export type JobCycle = z.infer<typeof jobCycleSchema>;
 export type FieldNote = z.infer<typeof fieldNoteSchema>;
 export type Media = z.infer<typeof mediaSchema>;
 export type Closure = z.infer<typeof closureSchema>;
+export type ScopeRevision = z.infer<
+  typeof scopeRevisionSchema
+>;
 export type BasicVowSnapshot = z.infer<
   typeof basicVowSnapshotSchema
 >;
@@ -405,6 +440,9 @@ export type CloseJobCycleResponse = z.infer<
 >;
 export type ReopenJobCycleResponse = z.infer<
   typeof reopenJobCycleResponseSchema
+>;
+export type ScopeRevisionResponse = z.infer<
+  typeof scopeRevisionResponseSchema
 >;
 export type BasicVowResponse = z.infer<
   typeof basicVowResponseSchema

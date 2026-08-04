@@ -6,13 +6,16 @@ import {
   jobsResponseSchema,
   mediaResponseSchema,
   reopenJobCycleResponseSchema,
+  scopeRevisionResponseSchema,
   type CloseJobCycleInput,
   type Closure,
   type CreateFieldNoteInput,
+  type CreateScopeRevisionInput,
   type FieldNote,
   type Job,
   type Media,
   type MediaStage,
+  type ScopeRevision,
   type Vow,
 } from "@vizow/shared";
 
@@ -322,4 +325,53 @@ export async function reopenJobCycle(
   }
 
   return result.data.job;
+}
+
+export async function createScopeRevision(
+  jobId: string,
+  input: CreateScopeRevisionInput,
+  signal?: AbortSignal,
+): Promise<ScopeRevision> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/scope-revisions`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to create scope revision. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result =
+    scopeRevisionResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid scope revision response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The scope revision API returned an invalid response.",
+    );
+  }
+
+  return result.data.scopeRevision;
 }
