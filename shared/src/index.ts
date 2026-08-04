@@ -281,7 +281,29 @@ export const createScopeRevisionSchema = z.object({
 
 export const updateScopeRevisionVisitPlanSchema = z
   .object({
-    visitPlan: scopeVisitPlanSchema,
+    visitPlan: z.discriminatedUnion("mode", [
+      z
+        .object({
+          mode: z.literal("not_required"),
+        })
+        .strict(),
+      z
+        .object({
+          mode: z.literal("existing"),
+          visitId: idSchema,
+          relationshipType: z
+            .literal("planned_for")
+            .optional()
+            .default("planned_for"),
+        })
+        .strict(),
+      z
+        .object({
+          mode: z.literal("new"),
+          visit: createVisitSchema,
+        })
+        .strict(),
+    ]),
   })
   .strict();
 

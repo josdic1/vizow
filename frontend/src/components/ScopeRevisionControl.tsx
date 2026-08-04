@@ -293,9 +293,7 @@ export function ScopeRevisionControl({
         },
       );
 
-      if (result.visit) {
-        onVisitsChanged();
-      }
+      onVisitsChanged();
 
       const savedRevision =
         result.scopeRevision.revisionNumber;

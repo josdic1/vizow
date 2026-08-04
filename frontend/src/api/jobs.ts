@@ -8,6 +8,7 @@ import {
   mediaResponseSchema,
   reopenJobCycleResponseSchema,
   scopeRevisionResponseSchema,
+  scopeRevisionsResponseSchema,
   visitResponseSchema,
   visitsResponseSchema,
   type CloseJobCycleInput,
@@ -21,6 +22,7 @@ import {
   type Media,
   type MediaStage,
   type ScopeRevision,
+  type UpdateScopeRevisionVisitPlanInput,
   type UpdateVisitStatusInput,
   type Visit,
   type Vow,
@@ -359,6 +361,52 @@ export async function reopenJobCycle(
   return result.data.job;
 }
 
+export async function fetchScopeRevisions(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<ScopeRevision[]> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/scope-revisions`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to load scope revisions. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result =
+    scopeRevisionsResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid scope revisions response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The scope revisions API returned an invalid response.",
+    );
+  }
+
+  return result.data.scopeRevisions;
+}
+
 export async function createScopeRevision(
   jobId: string,
   input: CreateScopeRevisionInput,
@@ -405,6 +453,62 @@ export async function createScopeRevision(
 
     throw new Error(
       "The scope revision API returned an invalid response.",
+    );
+  }
+
+  return {
+    scopeRevision: result.data.scopeRevision,
+    visit: result.data.visit,
+  };
+}
+
+export async function updateScopeRevisionVisitPlan(
+  jobId: string,
+  scopeRevisionId: string,
+  input: UpdateScopeRevisionVisitPlanInput,
+  signal?: AbortSignal,
+): Promise<{
+  scopeRevision: ScopeRevision;
+  visit: Visit | null;
+}> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/scope-revisions/${encodeURIComponent(scopeRevisionId)}/visit-plan`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to update Scope Revision. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result =
+    scopeRevisionResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid Scope Revision update response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The Scope Revision update API returned an invalid response.",
     );
   }
 

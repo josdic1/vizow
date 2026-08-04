@@ -18,6 +18,7 @@ import {
   uploadJobPhoto,
 } from "../api/jobs";
 import { ScopeRevisionControl } from "../components/ScopeRevisionControl";
+import { ScopeRevisionLedger } from "../components/ScopeRevisionLedger";
 import { VisitControl } from "../components/VisitControl";
 import { useActiveJob } from "../contexts/ActiveJobContext";
 import { AppLayout } from "../layouts/AppLayout";
@@ -700,6 +701,16 @@ export function FieldPage() {
                   key={`${activeJob.id}:${activeJob.currentCycle.id}:${activeJob.currentCycle.stage}`}
                   job={activeJob}
                   onVisitsChanged={() =>
+                    setVisitRefreshVersion(
+                      (current) => current + 1,
+                    )
+                  }
+                />
+
+                <ScopeRevisionLedger
+                  job={activeJob}
+                  refreshKey={visitRefreshVersion}
+                  onChanged={() =>
                     setVisitRefreshVersion(
                       (current) => current + 1,
                     )
