@@ -2,9 +2,12 @@ import {
   fieldNoteResponseSchema,
   jobResponseSchema,
   jobsResponseSchema,
+  mediaResponseSchema,
   type CreateFieldNoteInput,
   type FieldNote,
   type Job,
+  type Media,
+  type MediaStage,
 } from "@vizow/shared";
 
 export async function fetchJobs(signal?: AbortSignal): Promise<Job[]> {
@@ -109,4 +112,57 @@ export async function createFieldNote(
   }
 
   return result.data.fieldNote;
+}
+
+export async function uploadJobPhoto(
+  jobId: string,
+  photo: File,
+  stage: MediaStage,
+  signal?: AbortSignal,
+): Promise<Media> {
+  const formData = new FormData();
+
+  formData.append("photo", photo);
+  formData.append("stage", stage);
+
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/photos`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+      body: formData,
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to upload photo. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result = mediaResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid photo upload response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The photo API returned an invalid response.",
+    );
+  }
+
+  return result.data.media;
 }

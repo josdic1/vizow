@@ -22,6 +22,26 @@ const environmentSchema = z.object({
     z.string().trim().min(1).optional(),
   ),
 
+  CLOUDINARY_CLOUD_NAME: z
+    .string()
+    .trim()
+    .min(1, "CLOUDINARY_CLOUD_NAME is required."),
+
+  CLOUDINARY_API_KEY: z
+    .string()
+    .trim()
+    .min(1, "CLOUDINARY_API_KEY is required."),
+
+  CLOUDINARY_API_SECRET: z
+    .string()
+    .trim()
+    .min(1, "CLOUDINARY_API_SECRET is required."),
+
+  CLOUDINARY_FOLDER: z
+    .string()
+    .trim()
+    .min(1, "CLOUDINARY_FOLDER is required."),
+
   ORGANIZATION_SLUG: z
     .string()
     .regex(

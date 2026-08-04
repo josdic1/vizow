@@ -6,6 +6,7 @@ import { env } from "./env.js";
 import { addressAutocompleteRouter } from "./routes/addressAutocomplete.js";
 import { clientsRouter } from "./routes/clients.js";
 import { jobsRouter } from "./routes/jobs.js";
+import { jobPhotosRouter } from "./routes/jobPhotos.js";
 import { organizationRouter } from "./routes/organization.js";
 import { requestsRouter } from "./routes/requests.js";
 
@@ -56,4 +57,5 @@ app.use(
 app.use("/api/organization", organizationRouter);
 app.use("/api/clients", clientsRouter);
 app.use("/api/jobs", jobsRouter);
+app.use("/api/jobs", jobPhotosRouter);
 app.use("/api/requests", requestsRouter);

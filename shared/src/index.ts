@@ -171,6 +171,19 @@ export const fieldNoteSchema = z.object({
   createdAt: z.string().datetime(),
 });
 
+export const mediaSchema = z.object({
+  id: idSchema,
+  jobId: idSchema,
+  jobCycleId: idSchema,
+  url: z.string().url(),
+  storageKey: z.string().nullable(),
+  mimeType: z.string().nullable(),
+  stage: mediaStageSchema,
+  caption: z.string().nullable(),
+  capturedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+});
+
 export const requestSchema = z.object({
   id: idSchema,
   clientId: idSchema,
@@ -226,6 +239,11 @@ export const fieldNoteResponseSchema = z.object({
   fieldNote: fieldNoteSchema,
 });
 
+export const mediaResponseSchema = z.object({
+  ok: z.literal(true),
+  media: mediaSchema,
+});
+
 export const requestsResponseSchema = z.object({
   ok: z.literal(true),
   requests: z.array(requestSchema),
@@ -273,6 +291,7 @@ export type CreateFieldNoteInput = z.infer<
 >;
 export type JobCycle = z.infer<typeof jobCycleSchema>;
 export type FieldNote = z.infer<typeof fieldNoteSchema>;
+export type Media = z.infer<typeof mediaSchema>;
 export type Job = z.infer<typeof jobSchema>;
 export type Request = z.infer<typeof requestSchema>;
 export type ClientsResponse = z.infer<typeof clientsResponseSchema>;
@@ -280,6 +299,9 @@ export type JobsResponse = z.infer<typeof jobsResponseSchema>;
 export type JobResponse = z.infer<typeof jobResponseSchema>;
 export type FieldNoteResponse = z.infer<
   typeof fieldNoteResponseSchema
+>;
+export type MediaResponse = z.infer<
+  typeof mediaResponseSchema
 >;
 export type RequestsResponse = z.infer<typeof requestsResponseSchema>;
 export type RequestResponse = z.infer<typeof requestResponseSchema>;

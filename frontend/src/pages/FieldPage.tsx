@@ -1,7 +1,18 @@
-import type { Job } from "@vizow/shared";
-import { useState, type FormEvent } from "react";
+import type {
+  Job,
+  MediaStage,
+} from "@vizow/shared";
+import {
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 
-import { createFieldNote } from "../api/jobs";
+import {
+  createFieldNote,
+  uploadJobPhoto,
+} from "../api/jobs";
 import { useActiveJob } from "../contexts/ActiveJobContext";
 import { AppLayout } from "../layouts/AppLayout";
 
@@ -53,6 +64,16 @@ export function FieldPage() {
   const [noteMessage, setNoteMessage] =
     useState<string | null>(null);
 
+  const photoInputRef =
+    useRef<HTMLInputElement>(null);
+  const [photoStage, setPhotoStage] =
+    useState<MediaStage>("during");
+  const [photoStatus, setPhotoStatus] = useState<
+    "idle" | "uploading" | "saved" | "error"
+  >("idle");
+  const [photoMessage, setPhotoMessage] =
+    useState<string | null>(null);
+
   const showJobPicker =
     status === "ready" &&
     (!activeJob || isChangingJob);
@@ -64,6 +85,57 @@ export function FieldPage() {
     setNoteText("");
     setNoteStatus("idle");
     setNoteMessage(null);
+    setPhotoStatus("idle");
+    setPhotoMessage(null);
+  }
+
+  function handleChoosePhoto(): void {
+    if (
+      !activeJob ||
+      photoStatus === "uploading"
+    ) {
+      return;
+    }
+
+    setPhotoStatus("idle");
+    setPhotoMessage(null);
+    photoInputRef.current?.click();
+  }
+
+  async function handlePhotoSelected(
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const input = event.currentTarget;
+    const photo = input.files?.[0];
+
+    input.value = "";
+
+    if (!activeJob || !photo) {
+      return;
+    }
+
+    setPhotoStatus("uploading");
+    setPhotoMessage(null);
+
+    try {
+      await uploadJobPhoto(
+        activeJob.id,
+        photo,
+        photoStage,
+      );
+
+      setPhotoStatus("saved");
+      setPhotoMessage(
+        `${formatLabel(photoStage)} photo saved to ${activeJob.title}.`,
+      );
+    } catch (caughtError: unknown) {
+      setPhotoStatus("error");
+      setPhotoMessage(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to save the photo.",
+      );
+    }
   }
 
   async function handleSubmitNote(
@@ -318,17 +390,76 @@ export function FieldPage() {
                 </section>
 
                 <section
+                  className="field-photo-settings"
+                  aria-label="Photo settings"
+                >
+                  <label htmlFor="field-photo-stage">
+                    Photo Type
+                  </label>
+
+                  <select
+                    disabled={
+                      photoStatus === "uploading"
+                    }
+                    id="field-photo-stage"
+                    value={photoStage}
+                    onChange={(event) =>
+                      setPhotoStage(
+                        event.target
+                          .value as MediaStage,
+                      )
+                    }
+                  >
+                    <option value="before">
+                      Before
+                    </option>
+                    <option value="during">
+                      During
+                    </option>
+                    <option value="after">
+                      After
+                    </option>
+                  </select>
+
+                  <span>
+                    Automatically attaches to{" "}
+                    <strong>{activeJob.title}</strong>
+                    {" · "}
+                    {activeJob.clientName}
+                  </span>
+                </section>
+
+                <input
+                  ref={photoInputRef}
+                  accept="image/*"
+                  capture="environment"
+                  className="field-photo-input"
+                  type="file"
+                  onChange={handlePhotoSelected}
+                />
+
+                <section
                   className="field-action-grid"
                   aria-label="Field actions"
                 >
                   <button
                     className="field-action field-action-primary"
-                    disabled
+                    disabled={
+                      photoStatus === "uploading"
+                    }
                     type="button"
+                    onClick={handleChoosePhoto}
                   >
-                    <strong>Take Picture</strong>
+                    <strong>
+                      {photoStatus === "uploading"
+                        ? "Uploading…"
+                        : "Take Picture"}
+                    </strong>
+
                     <span>
-                      Photo capture connects next
+                      {formatLabel(photoStage)}
+                      {" · "}
+                      {activeJob.clientName}
                     </span>
                   </button>
 
@@ -346,6 +477,23 @@ export function FieldPage() {
                     <span>Record work immediately</span>
                   </button>
                 </section>
+
+                {photoMessage && (
+                  <div
+                    className={
+                      photoStatus === "error"
+                        ? "notice notice-error"
+                        : "notice notice-success"
+                    }
+                    role={
+                      photoStatus === "error"
+                        ? "alert"
+                        : "status"
+                    }
+                  >
+                    <strong>{photoMessage}</strong>
+                  </div>
+                )}
 
                 {isWritingNote && (
                   <section className="field-note-panel">
