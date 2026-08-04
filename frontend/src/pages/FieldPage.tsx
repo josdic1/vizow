@@ -11,6 +11,7 @@ import {
 
 import {
   closeJobCycle,
+  createBasicVow,
   createFieldNote,
   uploadJobPhoto,
 } from "../api/jobs";
@@ -81,6 +82,12 @@ export function FieldPage() {
   const [closeMessage, setCloseMessage] =
     useState<string | null>(null);
 
+  const [vowStatus, setVowStatus] = useState<
+    "idle" | "generating" | "generated" | "error"
+  >("idle");
+  const [vowMessage, setVowMessage] =
+    useState<string | null>(null);
+
   const showJobPicker =
     status === "ready" &&
     (!activeJob || isChangingJob);
@@ -96,6 +103,8 @@ export function FieldPage() {
     setPhotoMessage(null);
     setCloseStatus("idle");
     setCloseMessage(null);
+    setVowStatus("idle");
+    setVowMessage(null);
   }
 
   function handleChoosePhoto(): void {
@@ -184,6 +193,33 @@ export function FieldPage() {
         caughtError instanceof Error
           ? caughtError.message
           : "Unable to close the work cycle.",
+      );
+    }
+  }
+
+  async function handleGenerateVow(): Promise<void> {
+    if (
+      !activeJob ||
+      activeJob.currentCycle.stage !== "completed" ||
+      vowStatus === "generating"
+    ) {
+      return;
+    }
+
+    setVowStatus("generating");
+    setVowMessage(null);
+
+    try {
+      const vow = await createBasicVow(activeJob.id);
+
+      setVowStatus("generated");
+      setVowMessage(`Draft VOW ready: ${vow.title}.`);
+    } catch (caughtError: unknown) {
+      setVowStatus("error");
+      setVowMessage(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to generate the VOW.",
       );
     }
   }
@@ -554,7 +590,42 @@ export function FieldPage() {
                         ? "Closing…"
                         : "Close Work Cycle"}
                   </button>
+
+                  <button
+                    className="btn btn-primary"
+                    disabled={
+                      activeJob.currentCycle.stage !==
+                        "completed" ||
+                      vowStatus === "generating" ||
+                      vowStatus === "generated"
+                    }
+                    type="button"
+                    onClick={handleGenerateVow}
+                  >
+                    {vowStatus === "generating"
+                      ? "Generating…"
+                      : vowStatus === "generated"
+                        ? "VOW Ready"
+                        : "Generate Basic VOW"}
+                  </button>
                 </div>
+
+                {vowMessage && (
+                  <div
+                    className={
+                      vowStatus === "error"
+                        ? "notice notice-error"
+                        : "notice notice-success"
+                    }
+                    role={
+                      vowStatus === "error"
+                        ? "alert"
+                        : "status"
+                    }
+                  >
+                    <strong>{vowMessage}</strong>
+                  </div>
+                )}
 
                 {closeMessage && (
                   <div

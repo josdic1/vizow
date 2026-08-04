@@ -30,6 +30,12 @@ export const mediaStageSchema = z.enum([
   "after",
 ]);
 
+export const vowStatusSchema = z.enum([
+  "draft",
+  "published",
+  "archived",
+]);
+
 const optionalTextInputSchema = z
   .string()
   .trim()
@@ -205,6 +211,43 @@ export const closureSchema = z.object({
   createdAt: z.string().datetime(),
 });
 
+export const createBasicVowSchema = z.object({}).strict();
+
+export const basicVowSnapshotSchema = z.object({
+  client: z.object({
+    id: idSchema,
+    name: z.string().min(1),
+  }),
+  job: z.object({
+    id: idSchema,
+    title: z.string().min(1),
+    serviceAddressLine1: z.string().nullable(),
+    serviceAddressLine2: z.string().nullable(),
+    serviceCity: z.string().nullable(),
+    serviceState: z.string().nullable(),
+    servicePostalCode: z.string().nullable(),
+  }),
+  cycle: z.object({
+    id: idSchema,
+    cycleNumber: z.number().int().positive(),
+    openedAt: z.string().datetime(),
+    completedAt: z.string().datetime(),
+  }),
+  fieldNotes: z.array(fieldNoteSchema),
+  media: z.array(mediaSchema),
+});
+
+export const vowSchema = z.object({
+  id: idSchema,
+  clientId: idSchema,
+  title: z.string().min(1),
+  status: vowStatusSchema,
+  snapshot: basicVowSnapshotSchema,
+  publishedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
 export const requestSchema = z.object({
   id: idSchema,
   clientId: idSchema,
@@ -271,6 +314,11 @@ export const closeJobCycleResponseSchema = z.object({
   job: jobSchema,
 });
 
+export const basicVowResponseSchema = z.object({
+  ok: z.literal(true),
+  vow: vowSchema,
+});
+
 export const requestsResponseSchema = z.object({
   ok: z.literal(true),
   requests: z.array(requestSchema),
@@ -292,6 +340,7 @@ export type RequestStatus = z.infer<typeof requestStatusSchema>;
 export type CycleReason = z.infer<typeof cycleReasonSchema>;
 export type DisputeStatus = z.infer<typeof disputeStatusSchema>;
 export type MediaStage = z.infer<typeof mediaStageSchema>;
+export type VowStatus = z.infer<typeof vowStatusSchema>;
 export type Organization = z.infer<typeof organizationSchema>;
 export type CreateClientAddressInput = z.infer<
   typeof createClientAddressSchema
@@ -319,10 +368,17 @@ export type CreateFieldNoteInput = z.infer<
 export type CloseJobCycleInput = z.infer<
   typeof closeJobCycleSchema
 >;
+export type CreateBasicVowInput = z.infer<
+  typeof createBasicVowSchema
+>;
 export type JobCycle = z.infer<typeof jobCycleSchema>;
 export type FieldNote = z.infer<typeof fieldNoteSchema>;
 export type Media = z.infer<typeof mediaSchema>;
 export type Closure = z.infer<typeof closureSchema>;
+export type BasicVowSnapshot = z.infer<
+  typeof basicVowSnapshotSchema
+>;
+export type Vow = z.infer<typeof vowSchema>;
 export type Job = z.infer<typeof jobSchema>;
 export type Request = z.infer<typeof requestSchema>;
 export type ClientsResponse = z.infer<typeof clientsResponseSchema>;
@@ -336,6 +392,9 @@ export type MediaResponse = z.infer<
 >;
 export type CloseJobCycleResponse = z.infer<
   typeof closeJobCycleResponseSchema
+>;
+export type BasicVowResponse = z.infer<
+  typeof basicVowResponseSchema
 >;
 export type RequestsResponse = z.infer<typeof requestsResponseSchema>;
 export type RequestResponse = z.infer<typeof requestResponseSchema>;

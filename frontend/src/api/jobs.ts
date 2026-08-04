@@ -1,4 +1,5 @@
 import {
+  basicVowResponseSchema,
   closeJobCycleResponseSchema,
   fieldNoteResponseSchema,
   jobResponseSchema,
@@ -11,6 +12,7 @@ import {
   type Job,
   type Media,
   type MediaStage,
+  type Vow,
 } from "@vizow/shared";
 
 export async function fetchJobs(signal?: AbortSignal): Promise<Job[]> {
@@ -223,4 +225,52 @@ export async function closeJobCycle(
     closure: result.data.closure,
     job: result.data.job,
   };
+}
+
+export async function createBasicVow(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<Vow> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/basic-vow`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to generate VOW. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result =
+    basicVowResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid basic VOW response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The VOW API returned an invalid response.",
+    );
+  }
+
+  return result.data.vow;
 }
