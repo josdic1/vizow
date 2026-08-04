@@ -31,11 +31,21 @@ type ActiveJobContextValue = {
 const ActiveJobContext =
   createContext<ActiveJobContextValue | null>(null);
 
+const retryDelays = [0, 250, 750, 1500, 3000];
+
+function wait(delay: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, delay);
+  });
+}
+
 function getStorageKey(organizationId: string): string {
   return `vizow.activeJobId.${organizationId}`;
 }
 
-function readStoredJobId(organizationId: string): string | null {
+function readStoredJobId(
+  organizationId: string,
+): string | null {
   try {
     return window.localStorage.getItem(
       getStorageKey(organizationId),
@@ -58,7 +68,7 @@ function writeStoredJobId(
       window.localStorage.removeItem(key);
     }
   } catch {
-    // Job selection still works for this browser session.
+    // Selection still works for this browser session.
   }
 }
 
@@ -70,6 +80,8 @@ export function ActiveJobProvider({
   const {
     organization,
     status: organizationStatus,
+    error: organizationError,
+    reloadOrganization,
   } = useOrganization();
 
   const organizationId = organization?.id ?? null;
@@ -87,73 +99,118 @@ export function ActiveJobProvider({
   const [reloadVersion, setReloadVersion] = useState(0);
 
   const reloadJobs = useCallback(() => {
-    setReloadVersion((current) => current + 1);
-  }, []);
-
-  useEffect(() => {
-    if (organizationStatus === "loading") {
-      setStatus("loading");
+    if (organizationStatus === "error") {
+      reloadOrganization();
       return;
     }
 
-    if (
-      organizationStatus === "error" ||
-      !organizationId
-    ) {
+    setReloadVersion((current) => current + 1);
+  }, [organizationStatus, reloadOrganization]);
+
+  useEffect(() => {
+    if (organizationStatus === "error") {
       setJobs([]);
       setActiveJobId(null);
       setStatus("error");
       setError(
-        "The organization must load before jobs can be loaded.",
+        organizationError ??
+          "Unable to load the organization.",
       );
       return;
     }
 
+    if (
+      organizationStatus !== "ready" ||
+      !organizationId
+    ) {
+      setStatus("loading");
+      setError(null);
+      return;
+    }
+
+    const readyOrganizationId = organizationId;
     const controller = new AbortController();
-    const storedJobId = readStoredJobId(organizationId);
+    let cancelled = false;
 
     setStatus("loading");
     setError(null);
 
-    fetchJobs(controller.signal)
-      .then((nextJobs) => {
-        const storedJobExists =
-          storedJobId !== null &&
-          nextJobs.some((job) => job.id === storedJobId);
+    async function loadJobs(): Promise<void> {
+      let lastError: unknown = null;
 
-        setJobs(nextJobs);
-
-        if (storedJobExists) {
-          setActiveJobId(storedJobId);
-        } else {
-          setActiveJobId(null);
-          writeStoredJobId(organizationId, null);
+      for (const delay of retryDelays) {
+        if (delay > 0) {
+          await wait(delay);
         }
 
-        setStatus("ready");
-      })
-      .catch((caughtError: unknown) => {
-        if (
-          caughtError instanceof DOMException &&
-          caughtError.name === "AbortError"
-        ) {
+        if (cancelled) {
           return;
         }
 
-        setJobs([]);
-        setActiveJobId(null);
-        setStatus("error");
-        setError(
-          caughtError instanceof Error
-            ? caughtError.message
-            : "Unable to load jobs.",
-        );
-      });
+        try {
+          const nextJobs = await fetchJobs(
+            controller.signal,
+          );
+
+          if (cancelled) {
+            return;
+          }
+
+          const storedJobId =
+            readStoredJobId(readyOrganizationId);
+
+          const storedJobExists =
+            storedJobId !== null &&
+            nextJobs.some(
+              (job) => job.id === storedJobId,
+            );
+
+          setJobs(nextJobs);
+
+          if (storedJobExists) {
+            setActiveJobId(storedJobId);
+          } else {
+            setActiveJobId(null);
+            writeStoredJobId(readyOrganizationId, null);
+          }
+
+          setStatus("ready");
+          setError(null);
+          return;
+        } catch (caughtError: unknown) {
+          if (
+            caughtError instanceof DOMException &&
+            caughtError.name === "AbortError"
+          ) {
+            return;
+          }
+
+          lastError = caughtError;
+        }
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      setJobs([]);
+      setActiveJobId(null);
+      setStatus("error");
+      setError(
+        lastError instanceof Error
+          ? lastError.message
+          : "Unable to load jobs.",
+      );
+    }
+
+    void loadJobs();
 
     return () => {
+      cancelled = true;
       controller.abort();
     };
   }, [
+    organizationError,
     organizationId,
     organizationStatus,
     reloadVersion,

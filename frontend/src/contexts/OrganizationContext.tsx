@@ -16,29 +16,37 @@ type OrganizationStatus =
   | "ready"
   | "error";
 
-type OrganizationContextValue = {
+type OrganizationState = {
   organization: Organization | null;
   status: OrganizationStatus;
   error: string | null;
+};
+
+type OrganizationContextValue = OrganizationState & {
   reloadOrganization: () => void;
 };
 
 const OrganizationContext =
   createContext<OrganizationContextValue | null>(null);
 
+const retryDelays = [0, 250, 750, 1500];
+
+function wait(delay: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, delay);
+  });
+}
+
 export function OrganizationProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  const [organization, setOrganization] =
-    useState<Organization | null>(null);
-
-  const [status, setStatus] =
-    useState<OrganizationStatus>("loading");
-
-  const [error, setError] =
-    useState<string | null>(null);
+  const [state, setState] = useState<OrganizationState>({
+    organization: null,
+    status: "loading",
+    error: null,
+  });
 
   const [reloadVersion, setReloadVersion] = useState(0);
 
@@ -48,50 +56,82 @@ export function OrganizationProvider({
 
   useEffect(() => {
     const controller = new AbortController();
+    let cancelled = false;
 
-    setStatus("loading");
-    setError(null);
+    setState((current) => ({
+      organization: current.organization,
+      status: "loading",
+      error: null,
+    }));
 
-    fetchOrganization(controller.signal)
-      .then((nextOrganization) => {
-        setOrganization(nextOrganization);
-        setStatus("ready");
-      })
-      .catch((caughtError: unknown) => {
-        if (
-          caughtError instanceof DOMException &&
-          caughtError.name === "AbortError"
-        ) {
+    async function loadOrganization(): Promise<void> {
+      let lastError: unknown = null;
+
+      for (const delay of retryDelays) {
+        if (delay > 0) {
+          await wait(delay);
+        }
+
+        if (cancelled) {
           return;
         }
 
-        setOrganization(null);
-        setStatus("error");
-        setError(
-          caughtError instanceof Error
-            ? caughtError.message
+        try {
+          const organization = await fetchOrganization(
+            controller.signal,
+          );
+
+          if (cancelled) {
+            return;
+          }
+
+          setState({
+            organization,
+            status: "ready",
+            error: null,
+          });
+
+          return;
+        } catch (caughtError: unknown) {
+          if (
+            caughtError instanceof DOMException &&
+            caughtError.name === "AbortError"
+          ) {
+            return;
+          }
+
+          lastError = caughtError;
+        }
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      setState({
+        organization: null,
+        status: "error",
+        error:
+          lastError instanceof Error
+            ? lastError.message
             : "Unable to load the organization.",
-        );
       });
+    }
+
+    void loadOrganization();
 
     return () => {
+      cancelled = true;
       controller.abort();
     };
   }, [reloadVersion]);
 
   const value = useMemo<OrganizationContextValue>(
     () => ({
-      organization,
-      status,
-      error,
+      ...state,
       reloadOrganization,
     }),
-    [
-      error,
-      organization,
-      reloadOrganization,
-      status,
-    ],
+    [reloadOrganization, state],
   );
 
   return (
