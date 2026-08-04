@@ -1,8 +1,11 @@
 import {
+  closeJobCycleSchema,
+  closureSchema,
   createFieldNoteSchema,
   fieldNoteSchema,
   idSchema,
   jobSchema,
+  type Closure,
   type FieldNote,
   type Job,
 } from "@vizow/shared";
@@ -63,7 +66,12 @@ function prepareJob(row: JobDatabaseRow): Job {
   });
 }
 
-async function loadJobs(jobId?: string): Promise<Job[]> {
+type JobQueryClient = Pick<typeof pool, "query">;
+
+async function loadJobs(
+  jobId?: string,
+  queryClient: JobQueryClient = pool,
+): Promise<Job[]> {
   const parameters: string[] = [env.ORGANIZATION_SLUG];
   let jobFilter = "";
 
@@ -72,7 +80,7 @@ async function loadJobs(jobId?: string): Promise<Job[]> {
     jobFilter = "AND j.id = $2";
   }
 
-  const result = await pool.query<JobDatabaseRow>(
+  const result = await queryClient.query<JobDatabaseRow>(
     `
       SELECT
         j.id,
@@ -166,6 +174,34 @@ jobsRouter.get("/:jobId", async (request, response) => {
     });
   }
 });
+
+type ClosureDatabaseRow = {
+  id: string;
+  jobId: string;
+  jobCycleId: string;
+  finalPrice: string | null;
+  completionDate: Date;
+  notes: string | null;
+  createdAt: Date;
+};
+
+function prepareClosure(
+  row: ClosureDatabaseRow,
+): Closure {
+  return closureSchema.parse({
+    id: row.id,
+    jobId: row.jobId,
+    jobCycleId: row.jobCycleId,
+    finalPrice:
+      row.finalPrice === null
+        ? null
+        : Number(row.finalPrice),
+    completionDate:
+      row.completionDate.toISOString(),
+    notes: row.notes,
+    createdAt: row.createdAt.toISOString(),
+  });
+}
 
 type FieldNoteDatabaseRow = {
   id: string;
@@ -358,6 +394,235 @@ jobsRouter.post(
       response.status(500).json({
         ok: false,
         error: "Unable to create field note.",
+      });
+    } finally {
+      databaseClient.release();
+    }
+  },
+);
+
+jobsRouter.post(
+  "/:jobId/close-cycle",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(
+      request.params.jobId,
+    );
+
+    if (!jobIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid job ID.",
+      });
+      return;
+    }
+
+    const inputResult = closeJobCycleSchema.safeParse(
+      request.body,
+    );
+
+    if (!inputResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid closure details.",
+        details: inputResult.error.flatten(),
+      });
+      return;
+    }
+
+    const databaseClient = await pool.connect();
+
+    try {
+      await databaseClient.query("BEGIN");
+
+      const cycleResult = await databaseClient.query<{
+        organizationId: string;
+        jobCycleId: string;
+        cycleNumber: number;
+        stage: Job["currentCycle"]["stage"];
+      }>(
+        `
+          SELECT
+            job.organization_id AS "organizationId",
+            cycle.id AS "jobCycleId",
+            cycle.cycle_number AS "cycleNumber",
+            cycle.stage
+          FROM jobs job
+          JOIN organizations organization
+            ON organization.id = job.organization_id
+          JOIN job_cycles cycle
+            ON cycle.organization_id = job.organization_id
+           AND cycle.job_id = job.id
+           AND cycle.cycle_number = (
+             SELECT MAX(candidate.cycle_number)
+             FROM job_cycles candidate
+             WHERE candidate.organization_id =
+               job.organization_id
+               AND candidate.job_id = job.id
+           )
+          WHERE job.id = $1
+            AND organization.slug = $2
+          FOR UPDATE OF cycle
+        `,
+        [
+          jobIdResult.data,
+          env.ORGANIZATION_SLUG,
+        ],
+      );
+
+      const currentCycle = cycleResult.rows[0];
+
+      if (!currentCycle) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(404).json({
+          ok: false,
+          error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (currentCycle.stage !== "project") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error: "The current work cycle is already closed.",
+        });
+        return;
+      }
+
+      const closureResult =
+        await databaseClient.query<ClosureDatabaseRow>(
+          `
+            INSERT INTO closures (
+              organization_id,
+              job_id,
+              job_cycle_id,
+              final_price,
+              notes
+            )
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING
+              id,
+              job_id AS "jobId",
+              job_cycle_id AS "jobCycleId",
+              final_price AS "finalPrice",
+              completion_date AS "completionDate",
+              notes,
+              created_at AS "createdAt"
+          `,
+          [
+            currentCycle.organizationId,
+            jobIdResult.data,
+            currentCycle.jobCycleId,
+            inputResult.data.finalPrice,
+            inputResult.data.notes,
+          ],
+        );
+
+      const createdClosure = closureResult.rows[0];
+
+      if (!createdClosure) {
+        throw new Error(
+          "PostgreSQL did not return the created closure.",
+        );
+      }
+
+      const updatedCycleResult =
+        await databaseClient.query<{ id: string }>(
+          `
+            UPDATE job_cycles
+            SET
+              stage = 'completed',
+              completed_at = (
+                SELECT closure.completion_date
+                FROM closures closure
+                WHERE closure.organization_id = $1
+                  AND closure.job_id = $2
+                  AND closure.job_cycle_id = $3
+                  AND closure.id = $4
+              ),
+              updated_at = now()
+            WHERE organization_id = $1
+              AND job_id = $2
+              AND id = $3
+              AND stage = 'project'
+            RETURNING id
+          `,
+          [
+            currentCycle.organizationId,
+            jobIdResult.data,
+            currentCycle.jobCycleId,
+            createdClosure.id,
+          ],
+        );
+
+      if (!updatedCycleResult.rows[0]) {
+        throw new Error(
+          "The active work cycle could not be closed.",
+        );
+      }
+
+      await databaseClient.query(
+        `
+          INSERT INTO job_events (
+            organization_id,
+            job_id,
+            job_cycle_id,
+            event_type,
+            details
+          )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            'cycle_closed',
+            jsonb_build_object(
+              'closureId',
+              $4::uuid,
+              'cycleNumber',
+              $5::integer,
+              'finalPrice',
+              $6::numeric
+            )
+          )
+        `,
+        [
+          currentCycle.organizationId,
+          jobIdResult.data,
+          currentCycle.jobCycleId,
+          createdClosure.id,
+          currentCycle.cycleNumber,
+          inputResult.data.finalPrice,
+        ],
+      );
+
+      const jobs = await loadJobs(
+        jobIdResult.data,
+        databaseClient,
+      );
+      const updatedJob = jobs[0];
+
+      if (!updatedJob) {
+        throw new Error(
+          "The closed Job could not be reloaded.",
+        );
+      }
+
+      await databaseClient.query("COMMIT");
+
+      response.status(201).json({
+        ok: true,
+        closure: prepareClosure(createdClosure),
+        job: updatedJob,
+      });
+    } catch (error) {
+      await databaseClient.query("ROLLBACK");
+      console.error(error);
+
+      response.status(500).json({
+        ok: false,
+        error: "Unable to close the work cycle.",
       });
     } finally {
       databaseClient.release();

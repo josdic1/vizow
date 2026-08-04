@@ -154,6 +154,17 @@ export const jobSchema = z.object({
   currentCycle: jobCycleSchema,
 });
 
+export const closeJobCycleSchema = z.object({
+  finalPrice: z
+    .number()
+    .finite()
+    .nonnegative("Final price cannot be negative.")
+    .optional()
+    .nullable()
+    .transform((value) => value ?? null),
+  notes: optionalTextInputSchema,
+});
+
 export const createFieldNoteSchema = z.object({
   content: z
     .string()
@@ -181,6 +192,16 @@ export const mediaSchema = z.object({
   stage: mediaStageSchema,
   caption: z.string().nullable(),
   capturedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+});
+
+export const closureSchema = z.object({
+  id: idSchema,
+  jobId: idSchema,
+  jobCycleId: idSchema,
+  finalPrice: z.number().finite().nonnegative().nullable(),
+  completionDate: z.string().datetime(),
+  notes: z.string().nullable(),
   createdAt: z.string().datetime(),
 });
 
@@ -244,6 +265,12 @@ export const mediaResponseSchema = z.object({
   media: mediaSchema,
 });
 
+export const closeJobCycleResponseSchema = z.object({
+  ok: z.literal(true),
+  closure: closureSchema,
+  job: jobSchema,
+});
+
 export const requestsResponseSchema = z.object({
   ok: z.literal(true),
   requests: z.array(requestSchema),
@@ -289,9 +316,13 @@ export type CreateRequestInput = z.infer<typeof createRequestSchema>;
 export type CreateFieldNoteInput = z.infer<
   typeof createFieldNoteSchema
 >;
+export type CloseJobCycleInput = z.infer<
+  typeof closeJobCycleSchema
+>;
 export type JobCycle = z.infer<typeof jobCycleSchema>;
 export type FieldNote = z.infer<typeof fieldNoteSchema>;
 export type Media = z.infer<typeof mediaSchema>;
+export type Closure = z.infer<typeof closureSchema>;
 export type Job = z.infer<typeof jobSchema>;
 export type Request = z.infer<typeof requestSchema>;
 export type ClientsResponse = z.infer<typeof clientsResponseSchema>;
@@ -302,6 +333,9 @@ export type FieldNoteResponse = z.infer<
 >;
 export type MediaResponse = z.infer<
   typeof mediaResponseSchema
+>;
+export type CloseJobCycleResponse = z.infer<
+  typeof closeJobCycleResponseSchema
 >;
 export type RequestsResponse = z.infer<typeof requestsResponseSchema>;
 export type RequestResponse = z.infer<typeof requestResponseSchema>;

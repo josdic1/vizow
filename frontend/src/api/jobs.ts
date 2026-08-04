@@ -1,8 +1,11 @@
 import {
+  closeJobCycleResponseSchema,
   fieldNoteResponseSchema,
   jobResponseSchema,
   jobsResponseSchema,
   mediaResponseSchema,
+  type CloseJobCycleInput,
+  type Closure,
   type CreateFieldNoteInput,
   type FieldNote,
   type Job,
@@ -165,4 +168,59 @@ export async function uploadJobPhoto(
   }
 
   return result.data.media;
+}
+
+export async function closeJobCycle(
+  jobId: string,
+  input: CloseJobCycleInput,
+  signal?: AbortSignal,
+): Promise<{
+  closure: Closure;
+  job: Job;
+}> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/close-cycle`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to close work cycle. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result =
+    closeJobCycleResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid close-cycle response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The close-cycle API returned an invalid response.",
+    );
+  }
+
+  return {
+    closure: result.data.closure,
+    job: result.data.job,
+  };
 }

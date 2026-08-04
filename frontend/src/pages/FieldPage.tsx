@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import {
+  closeJobCycle,
   createFieldNote,
   uploadJobPhoto,
 } from "../api/jobs";
@@ -74,6 +75,12 @@ export function FieldPage() {
   const [photoMessage, setPhotoMessage] =
     useState<string | null>(null);
 
+  const [closeStatus, setCloseStatus] = useState<
+    "idle" | "closing" | "closed" | "error"
+  >("idle");
+  const [closeMessage, setCloseMessage] =
+    useState<string | null>(null);
+
   const showJobPicker =
     status === "ready" &&
     (!activeJob || isChangingJob);
@@ -87,6 +94,8 @@ export function FieldPage() {
     setNoteMessage(null);
     setPhotoStatus("idle");
     setPhotoMessage(null);
+    setCloseStatus("idle");
+    setCloseMessage(null);
   }
 
   function handleChoosePhoto(): void {
@@ -134,6 +143,47 @@ export function FieldPage() {
         caughtError instanceof Error
           ? caughtError.message
           : "Unable to save the photo.",
+      );
+    }
+  }
+
+  async function handleCloseCycle(): Promise<void> {
+    if (
+      !activeJob ||
+      activeJob.currentCycle.stage !== "project" ||
+      closeStatus === "closing"
+    ) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Close Cycle ${activeJob.currentCycle.cycleNumber} for ${activeJob.title}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setCloseStatus("closing");
+    setCloseMessage(null);
+
+    try {
+      await closeJobCycle(activeJob.id, {
+        finalPrice: null,
+        notes: null,
+      });
+
+      setCloseStatus("closed");
+      setCloseMessage(
+        `Cycle ${activeJob.currentCycle.cycleNumber} closed.`,
+      );
+      reloadJobs();
+    } catch (caughtError: unknown) {
+      setCloseStatus("error");
+      setCloseMessage(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to close the work cycle.",
       );
     }
   }
@@ -399,7 +449,9 @@ export function FieldPage() {
 
                   <select
                     disabled={
-                      photoStatus === "uploading"
+                      photoStatus === "uploading" ||
+                      activeJob.currentCycle.stage !==
+                        "project"
                     }
                     id="field-photo-stage"
                     value={photoStage}
@@ -445,7 +497,9 @@ export function FieldPage() {
                   <button
                     className="field-action field-action-primary"
                     disabled={
-                      photoStatus === "uploading"
+                      photoStatus === "uploading" ||
+                      activeJob.currentCycle.stage !==
+                        "project"
                     }
                     type="button"
                     onClick={handleChoosePhoto}
@@ -466,6 +520,10 @@ export function FieldPage() {
                   <button
                     aria-expanded={isWritingNote}
                     className="field-action"
+                    disabled={
+                      activeJob.currentCycle.stage !==
+                        "project"
+                    }
                     type="button"
                     onClick={() => {
                       setIsWritingNote(true);
@@ -477,6 +535,43 @@ export function FieldPage() {
                     <span>Record work immediately</span>
                   </button>
                 </section>
+
+                <div className="field-note-actions">
+                  <button
+                    className="btn btn-primary"
+                    disabled={
+                      activeJob.currentCycle.stage !==
+                        "project" ||
+                      closeStatus === "closing"
+                    }
+                    type="button"
+                    onClick={handleCloseCycle}
+                  >
+                    {activeJob.currentCycle.stage ===
+                    "completed"
+                      ? "Cycle Closed"
+                      : closeStatus === "closing"
+                        ? "Closing…"
+                        : "Close Work Cycle"}
+                  </button>
+                </div>
+
+                {closeMessage && (
+                  <div
+                    className={
+                      closeStatus === "error"
+                        ? "notice notice-error"
+                        : "notice notice-success"
+                    }
+                    role={
+                      closeStatus === "error"
+                        ? "alert"
+                        : "status"
+                    }
+                  >
+                    <strong>{closeMessage}</strong>
+                  </div>
+                )}
 
                 {photoMessage && (
                   <div
