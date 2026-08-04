@@ -13,6 +13,7 @@ import {
 
 type VisitControlProps = {
   job: Job;
+  refreshKey: number;
 };
 
 type LoadStatus = "loading" | "ready" | "error";
@@ -25,6 +26,18 @@ function formatVisitTime(value: string): string {
   }).format(new Date(value));
 }
 
+function formatPriceChange(value: number): string {
+  if (value === 0) {
+    return "No price change";
+  }
+
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "USD",
+    signDisplay: "always",
+  }).format(value);
+}
+
 function sortVisits(visits: Visit[]): Visit[] {
   return [...visits].sort((left, right) =>
     left.scheduledStart.localeCompare(
@@ -35,6 +48,7 @@ function sortVisits(visits: Visit[]): Visit[] {
 
 export function VisitControl({
   job,
+  refreshKey,
 }: VisitControlProps) {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loadStatus, setLoadStatus] =
@@ -90,7 +104,7 @@ export function VisitControl({
     return () => {
       controller.abort();
     };
-  }, [job.id]);
+  }, [job.id, refreshKey]);
 
   function resetForm(): void {
     setIsOpen(false);
@@ -416,6 +430,14 @@ export function VisitControl({
                             )}`
                           : ""}
                       </span>
+
+                      <span className="visit-cycle">
+                        Cycle {visit.cycleNumber}
+                        {visit.cycleNumber ===
+                        job.currentCycle.cycleNumber
+                          ? " · Current"
+                          : ""}
+                      </span>
                     </div>
 
                     <span className="visit-status">
@@ -423,7 +445,64 @@ export function VisitControl({
                     </span>
 
                     {visit.notes && (
-                      <p>{visit.notes}</p>
+                      <div className="visit-detail-block">
+                        <span className="visit-detail-label">
+                          Visit Notes
+                        </span>
+                        <p>{visit.notes}</p>
+                      </div>
+                    )}
+
+                    {visit.linkedScopeRevisions.length > 0 && (
+                      <section className="visit-scope-panel">
+                        <header className="visit-scope-heading">
+                          <span className="visit-detail-label">
+                            Related Scope Changes
+                          </span>
+                          <strong>
+                            {visit.linkedScopeRevisions.length}
+                          </strong>
+                        </header>
+
+                        <div className="visit-scope-list">
+                          {visit.linkedScopeRevisions.map(
+                            (revision) => (
+                              <article
+                                className="visit-scope-record"
+                                key={revision.id}
+                              >
+                                <div className="visit-scope-record-heading">
+                                  <strong>
+                                    Revision{" "}
+                                    {revision.revisionNumber}
+                                  </strong>
+
+                                  <span>
+                                    {formatPriceChange(
+                                      revision.priceChange,
+                                    )}
+                                  </span>
+                                </div>
+
+                                <p>{revision.scopeText}</p>
+
+                                {revision.reason && (
+                                  <p className="visit-scope-reason">
+                                    {revision.reason}
+                                  </p>
+                                )}
+
+                                <span className="visit-relationship">
+                                  {revision.relationshipType ===
+                                  "planned_for"
+                                    ? "Planned for this Visit"
+                                    : "Discovered during this Visit"}
+                                </span>
+                              </article>
+                            ),
+                          )}
+                        </div>
+                      </section>
                     )}
 
                     {visit.status === "scheduled" && (

@@ -1,22 +1,69 @@
-import type { Job } from "@vizow/shared";
+import type {
+  Job,
+  ScopeVisitPlan,
+  Visit,
+} from "@vizow/shared";
 import {
+  useEffect,
+  useMemo,
   useState,
   type FormEvent,
 } from "react";
 
-import { createScopeRevision } from "../api/jobs";
+import {
+  createScopeRevision,
+  fetchVisits,
+} from "../api/jobs";
 
 type ScopeRevisionControlProps = {
   job: Job;
+  onVisitsChanged: () => void;
 };
+
+type VisitChoice =
+  | "undecided"
+  | "not_required"
+  | "existing"
+  | "new";
+
+type VisitLoadStatus =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "error";
+
+function formatVisitTime(value: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
 
 export function ScopeRevisionControl({
   job,
+  onVisitsChanged,
 }: ScopeRevisionControlProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [scopeText, setScopeText] = useState("");
   const [priceChange, setPriceChange] = useState("0");
   const [reason, setReason] = useState("");
+
+  const [visitChoice, setVisitChoice] =
+    useState<VisitChoice>("undecided");
+  const [existingVisitId, setExistingVisitId] =
+    useState("");
+  const [scheduledStart, setScheduledStart] =
+    useState("");
+  const [scheduledEnd, setScheduledEnd] =
+    useState("");
+  const [visitNotes, setVisitNotes] = useState("");
+
+  const [visits, setVisits] = useState<Visit[]>([]);
+  const [visitLoadStatus, setVisitLoadStatus] =
+    useState<VisitLoadStatus>("idle");
+  const [visitLoadError, setVisitLoadError] =
+    useState<string | null>(null);
+
   const [status, setStatus] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
@@ -27,13 +74,177 @@ export function ScopeRevisionControl({
     job.currentCycle.stage === "project";
   const isSaving = status === "saving";
 
-  function closeForm(): void {
+  const eligibleVisits = useMemo(
+    () =>
+      visits.filter(
+        (visit) =>
+          visit.jobCycleId === job.currentCycle.id &&
+          visit.status !== "cancelled",
+      ),
+    [job.currentCycle.id, visits],
+  );
+
+  useEffect(() => {
+    if (!isOpen || visitChoice !== "existing") {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    setVisitLoadStatus("loading");
+    setVisitLoadError(null);
+
+    void fetchVisits(job.id, controller.signal)
+      .then((loadedVisits) => {
+        const availableVisits = loadedVisits.filter(
+          (visit) =>
+            visit.jobCycleId === job.currentCycle.id &&
+            visit.status !== "cancelled",
+        );
+
+        setVisits(loadedVisits);
+        setExistingVisitId((current) => {
+          if (
+            current &&
+            availableVisits.some(
+              (visit) => visit.id === current,
+            )
+          ) {
+            return current;
+          }
+
+          return availableVisits[0]?.id ?? "";
+        });
+        setVisitLoadStatus("ready");
+      })
+      .catch((caughtError: unknown) => {
+        if (
+          caughtError instanceof DOMException &&
+          caughtError.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setVisitLoadStatus("error");
+        setVisitLoadError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Unable to load Visits.",
+        );
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    isOpen,
+    job.currentCycle.id,
+    job.id,
+    visitChoice,
+  ]);
+
+  function resetForm(): void {
     setIsOpen(false);
     setScopeText("");
     setPriceChange("0");
     setReason("");
+    setVisitChoice("undecided");
+    setExistingVisitId("");
+    setScheduledStart("");
+    setScheduledEnd("");
+    setVisitNotes("");
+    setVisits([]);
+    setVisitLoadStatus("idle");
+    setVisitLoadError(null);
+  }
+
+  function closeForm(): void {
+    resetForm();
     setStatus("idle");
     setMessage(null);
+  }
+
+  function buildVisitPlan():
+    | ScopeVisitPlan
+    | null {
+    if (visitChoice === "undecided") {
+      return {
+        mode: "undecided",
+      };
+    }
+
+    if (visitChoice === "not_required") {
+      return {
+        mode: "not_required",
+      };
+    }
+
+    if (visitChoice === "existing") {
+      const selectedVisit = eligibleVisits.find(
+        (visit) => visit.id === existingVisitId,
+      );
+
+      if (!selectedVisit) {
+        setStatus("error");
+        setMessage(
+          "Select an existing Visit before saving.",
+        );
+        return null;
+      }
+
+      return {
+        mode: "existing",
+        visitId: selectedVisit.id,
+        relationshipType:
+          selectedVisit.status === "completed"
+            ? "discovered_during"
+            : "planned_for",
+      };
+    }
+
+    if (!scheduledStart) {
+      setStatus("error");
+      setMessage(
+        "A start date and time are required for the new Visit.",
+      );
+      return null;
+    }
+
+    const startDate = new Date(scheduledStart);
+
+    if (Number.isNaN(startDate.getTime())) {
+      setStatus("error");
+      setMessage("The Visit start is invalid.");
+      return null;
+    }
+
+    let endIso: string | null = null;
+
+    if (scheduledEnd) {
+      const endDate = new Date(scheduledEnd);
+
+      if (
+        Number.isNaN(endDate.getTime()) ||
+        endDate <= startDate
+      ) {
+        setStatus("error");
+        setMessage(
+          "The Visit end must be after its start.",
+        );
+        return null;
+      }
+
+      endIso = endDate.toISOString();
+    }
+
+    return {
+      mode: "new",
+      visit: {
+        scheduledStart: startDate.toISOString(),
+        scheduledEnd: endIso,
+        notes: visitNotes,
+      },
+    };
   }
 
   async function handleSubmit(
@@ -62,28 +273,60 @@ export function ScopeRevisionControl({
       return;
     }
 
+    const visitPlan = buildVisitPlan();
+
+    if (!visitPlan) {
+      return;
+    }
+
     setStatus("saving");
     setMessage(null);
 
     try {
-      const revision = await createScopeRevision(
+      const result = await createScopeRevision(
         job.id,
         {
           scopeText,
           priceChange: parsedPriceChange,
           reason,
+          visitPlan,
         },
       );
 
-      setIsOpen(false);
-      setScopeText("");
-      setPriceChange("0");
-      setReason("");
-      setStatus("saved");
-      setMessage(
-        `Scope Revision ${revision.revisionNumber} saved.`,
-      );
+      if (result.visit) {
+        onVisitsChanged();
+      }
 
+      const savedRevision =
+        result.scopeRevision.revisionNumber;
+
+      resetForm();
+      setStatus("saved");
+
+      if (visitPlan.mode === "new" && result.visit) {
+        setMessage(
+          `Scope Revision ${savedRevision} saved. Visit scheduled for ${formatVisitTime(
+            result.visit.scheduledStart,
+          )}.`,
+        );
+      } else if (
+        visitPlan.mode === "existing" &&
+        result.visit
+      ) {
+        setMessage(
+          `Scope Revision ${savedRevision} saved and linked to the selected Visit.`,
+        );
+      } else if (
+        visitPlan.mode === "not_required"
+      ) {
+        setMessage(
+          `Scope Revision ${savedRevision} saved. No Visit required.`,
+        );
+      } else {
+        setMessage(
+          `Scope Revision ${savedRevision} saved. Visit decision remains open.`,
+        );
+      }
     } catch (caughtError: unknown) {
       setStatus("error");
       setMessage(
@@ -179,6 +422,173 @@ export function ScopeRevisionControl({
               />
             </label>
 
+            <label
+              className="field-note-field"
+              htmlFor="scope-visit-choice"
+            >
+              <span>Visit Needed?</span>
+
+              <select
+                className="input"
+                disabled={isSaving}
+                id="scope-visit-choice"
+                value={visitChoice}
+                onChange={(event) => {
+                  setVisitChoice(
+                    event.target.value as VisitChoice,
+                  );
+                  setMessage(null);
+                  setStatus("idle");
+                }}
+              >
+                <option value="undecided">
+                  Decide Later
+                </option>
+                <option value="not_required">
+                  No Visit Needed
+                </option>
+                <option value="existing">
+                  Use Existing Visit
+                </option>
+                <option value="new">
+                  Schedule New Visit
+                </option>
+              </select>
+            </label>
+
+            {visitChoice === "existing" && (
+              <>
+                {visitLoadStatus === "loading" && (
+                  <div className="notice">
+                    Loading available Visits…
+                  </div>
+                )}
+
+                {visitLoadStatus === "error" && (
+                  <div
+                    className="notice notice-error"
+                    role="alert"
+                  >
+                    <strong>
+                      {visitLoadError ??
+                        "Unable to load Visits."}
+                    </strong>
+                  </div>
+                )}
+
+                {visitLoadStatus === "ready" &&
+                  eligibleVisits.length === 0 && (
+                    <div className="notice">
+                      No non-cancelled Visits exist in
+                      this work cycle.
+                    </div>
+                  )}
+
+                {visitLoadStatus === "ready" &&
+                  eligibleVisits.length > 0 && (
+                    <label
+                      className="field-note-field"
+                      htmlFor="scope-existing-visit"
+                    >
+                      <span>Existing Visit</span>
+
+                      <select
+                        className="input"
+                        disabled={isSaving}
+                        id="scope-existing-visit"
+                        required
+                        value={existingVisitId}
+                        onChange={(event) =>
+                          setExistingVisitId(
+                            event.target.value,
+                          )
+                        }
+                      >
+                        {eligibleVisits.map((visit) => (
+                          <option
+                            key={visit.id}
+                            value={visit.id}
+                          >
+                            {formatVisitTime(
+                              visit.scheduledStart,
+                            )}{" "}
+                            —{" "}
+                            {visit.status === "completed"
+                              ? "Completed · Discovered during"
+                              : "Scheduled · Planned work"}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+              </>
+            )}
+
+            {visitChoice === "new" && (
+              <>
+                <div className="visit-form-grid">
+                  <label
+                    className="field-note-field"
+                    htmlFor="scope-new-visit-start"
+                  >
+                    <span>Visit Start</span>
+
+                    <input
+                      className="input"
+                      disabled={isSaving}
+                      id="scope-new-visit-start"
+                      required
+                      type="datetime-local"
+                      value={scheduledStart}
+                      onChange={(event) =>
+                        setScheduledStart(
+                          event.target.value,
+                        )
+                      }
+                    />
+                  </label>
+
+                  <label
+                    className="field-note-field"
+                    htmlFor="scope-new-visit-end"
+                  >
+                    <span>Visit End — Optional</span>
+
+                    <input
+                      className="input"
+                      disabled={isSaving}
+                      id="scope-new-visit-end"
+                      type="datetime-local"
+                      value={scheduledEnd}
+                      onChange={(event) =>
+                        setScheduledEnd(
+                          event.target.value,
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+
+                <label
+                  className="field-note-field"
+                  htmlFor="scope-new-visit-notes"
+                >
+                  <span>Visit Notes — Optional</span>
+
+                  <textarea
+                    className="textarea"
+                    disabled={isSaving}
+                    id="scope-new-visit-notes"
+                    placeholder="Purpose, access details, or preparation."
+                    value={visitNotes}
+                    onChange={(event) =>
+                      setVisitNotes(event.target.value)
+                    }
+                  />
+                </label>
+              </>
+            )}
+
             <div className="field-note-actions">
               <button
                 className="btn"
@@ -193,7 +603,11 @@ export function ScopeRevisionControl({
                 className="btn btn-primary"
                 disabled={
                   isSaving ||
-                  scopeText.trim().length === 0
+                  scopeText.trim().length === 0 ||
+                  (visitChoice === "existing" &&
+                    !existingVisitId) ||
+                  (visitChoice === "new" &&
+                    !scheduledStart)
                 }
                 type="submit"
               >

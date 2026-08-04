@@ -1,6 +1,7 @@
 import {
   basicVowResponseSchema,
   closeJobCycleResponseSchema,
+  closeJobCycleWarningResponseSchema,
   fieldNoteResponseSchema,
   jobResponseSchema,
   jobsResponseSchema,
@@ -10,6 +11,7 @@ import {
   visitResponseSchema,
   visitsResponseSchema,
   type CloseJobCycleInput,
+  type CloseJobCycleWarning,
   type Closure,
   type CreateFieldNoteInput,
   type CreateScopeRevisionInput,
@@ -23,6 +25,19 @@ import {
   type Visit,
   type Vow,
 } from "@vizow/shared";
+
+export class CloseJobCycleWarningError extends Error {
+  readonly warnings: CloseJobCycleWarning[];
+
+  constructor(
+    message: string,
+    warnings: CloseJobCycleWarning[],
+  ) {
+    super(message);
+    this.name = "CloseJobCycleWarningError";
+    this.warnings = warnings;
+  }
+}
 
 export async function fetchJobs(signal?: AbortSignal): Promise<Job[]> {
   const response = await fetch("/api/jobs", {
@@ -205,6 +220,18 @@ export async function closeJobCycle(
   const payload: unknown = await response.json();
 
   if (!response.ok) {
+    if (response.status === 409) {
+      const warningResult =
+        closeJobCycleWarningResponseSchema.safeParse(payload);
+
+      if (warningResult.success) {
+        throw new CloseJobCycleWarningError(
+          warningResult.data.error,
+          warningResult.data.warnings,
+        );
+      }
+    }
+
     const message =
       typeof payload === "object" &&
       payload !== null &&
@@ -336,7 +363,10 @@ export async function createScopeRevision(
   jobId: string,
   input: CreateScopeRevisionInput,
   signal?: AbortSignal,
-): Promise<ScopeRevision> {
+): Promise<{
+  scopeRevision: ScopeRevision;
+  visit: Visit | null;
+}> {
   const response = await fetch(
     `/api/jobs/${encodeURIComponent(jobId)}/scope-revisions`,
     {
@@ -378,7 +408,10 @@ export async function createScopeRevision(
     );
   }
 
-  return result.data.scopeRevision;
+  return {
+    scopeRevision: result.data.scopeRevision,
+    visit: result.data.visit,
+  };
 }
 
 export async function fetchVisits(

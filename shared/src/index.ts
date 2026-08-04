@@ -175,22 +175,42 @@ export const closeJobCycleSchema = z.object({
     .nullable()
     .transform((value) => value ?? null),
   notes: optionalTextInputSchema,
+  confirmScopeVisitWarnings: z
+    .boolean()
+    .optional()
+    .default(false),
+});
+
+export const closeJobCycleWarningCodeSchema = z.enum([
+  "visit_decision_undecided",
+  "required_visit_missing",
+  "required_visit_incomplete",
+]);
+
+export const closeJobCycleWarningSchema = z.object({
+  code: closeJobCycleWarningCodeSchema,
+  revisionNumber: z.number().int().positive(),
+  scopeText: z.string().min(1),
+});
+
+export const closeJobCycleWarningResponseSchema = z.object({
+  ok: z.literal(false),
+  error: z.string().min(1),
+  warnings: z.array(closeJobCycleWarningSchema).min(1),
 });
 
 export const reopenJobCycleSchema = z.object({}).strict();
 
-export const createScopeRevisionSchema = z.object({
-  scopeText: z
-    .string()
-    .trim()
-    .min(1, "Scope description is required."),
-  priceChange: z
-    .number()
-    .finite("Price change must be a valid number.")
-    .optional()
-    .default(0),
-  reason: optionalTextInputSchema,
-});
+export const scopeVisitRequirementSchema = z.enum([
+  "undecided",
+  "not_required",
+  "required",
+]);
+
+export const scopeVisitRelationshipTypeSchema = z.enum([
+  "planned_for",
+  "discovered_during",
+]);
 
 export const createVisitSchema = z
   .object({
@@ -213,6 +233,57 @@ export const createVisitSchema = z
       path: ["scheduledEnd"],
     },
   );
+
+export const scopeVisitPlanSchema = z.discriminatedUnion("mode", [
+  z
+    .object({
+      mode: z.literal("undecided"),
+    })
+    .strict(),
+  z
+    .object({
+      mode: z.literal("not_required"),
+    })
+    .strict(),
+  z
+    .object({
+      mode: z.literal("existing"),
+      visitId: idSchema,
+      relationshipType:
+        scopeVisitRelationshipTypeSchema
+          .optional()
+          .default("planned_for"),
+    })
+    .strict(),
+  z
+    .object({
+      mode: z.literal("new"),
+      visit: createVisitSchema,
+    })
+    .strict(),
+]);
+
+export const createScopeRevisionSchema = z.object({
+  scopeText: z
+    .string()
+    .trim()
+    .min(1, "Scope description is required."),
+  priceChange: z
+    .number()
+    .finite("Price change must be a valid number.")
+    .optional()
+    .default(0),
+  reason: optionalTextInputSchema,
+  visitPlan: scopeVisitPlanSchema
+    .optional()
+    .default({ mode: "undecided" }),
+});
+
+export const updateScopeRevisionVisitPlanSchema = z
+  .object({
+    visitPlan: scopeVisitPlanSchema,
+  })
+  .strict();
 
 export const updateVisitStatusSchema = z
   .object({
@@ -268,6 +339,20 @@ export const scopeRevisionSchema = z.object({
   scopeText: z.string().min(1),
   priceChange: z.number().finite(),
   reason: z.string().nullable(),
+  visitRequirement: scopeVisitRequirementSchema,
+  linkedVisitIds: z.array(idSchema),
+  createdAt: z.string().datetime(),
+});
+
+export const visitScopeRevisionSchema = z.object({
+  id: idSchema,
+  jobCycleId: idSchema,
+  revisionNumber: z.number().int().positive(),
+  scopeText: z.string().min(1),
+  priceChange: z.number().finite(),
+  reason: z.string().nullable(),
+  visitRequirement: scopeVisitRequirementSchema,
+  relationshipType: scopeVisitRelationshipTypeSchema,
   createdAt: z.string().datetime(),
 });
 
@@ -275,10 +360,14 @@ export const visitSchema = z.object({
   id: idSchema,
   jobId: idSchema,
   jobCycleId: idSchema,
+  cycleNumber: z.number().int().positive(),
   status: visitStatusSchema,
   scheduledStart: z.string().datetime(),
   scheduledEnd: z.string().datetime().nullable(),
   notes: z.string().nullable(),
+  linkedScopeRevisions: z
+    .array(visitScopeRevisionSchema)
+    .default([]),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -391,9 +480,15 @@ export const reopenJobCycleResponseSchema = z.object({
   job: jobSchema,
 });
 
+export const scopeRevisionsResponseSchema = z.object({
+  ok: z.literal(true),
+  scopeRevisions: z.array(scopeRevisionSchema),
+});
+
 export const scopeRevisionResponseSchema = z.object({
   ok: z.literal(true),
   scopeRevision: scopeRevisionSchema,
+  visit: visitSchema.nullable(),
 });
 
 export const visitsResponseSchema = z.object({
@@ -432,6 +527,13 @@ export type RequestStatus = z.infer<typeof requestStatusSchema>;
 export type CycleReason = z.infer<typeof cycleReasonSchema>;
 export type DisputeStatus = z.infer<typeof disputeStatusSchema>;
 export type VisitStatus = z.infer<typeof visitStatusSchema>;
+export type ScopeVisitRequirement = z.infer<
+  typeof scopeVisitRequirementSchema
+>;
+export type ScopeVisitRelationshipType = z.infer<
+  typeof scopeVisitRelationshipTypeSchema
+>;
+export type ScopeVisitPlan = z.infer<typeof scopeVisitPlanSchema>;
 export type MediaStage = z.infer<typeof mediaStageSchema>;
 export type VowStatus = z.infer<typeof vowStatusSchema>;
 export type Organization = z.infer<typeof organizationSchema>;
@@ -458,14 +560,23 @@ export type CreateRequestInput = z.infer<typeof createRequestSchema>;
 export type CreateFieldNoteInput = z.infer<
   typeof createFieldNoteSchema
 >;
-export type CloseJobCycleInput = z.infer<
+export type CloseJobCycleInput = z.input<
   typeof closeJobCycleSchema
+>;
+export type CloseJobCycleWarningCode = z.infer<
+  typeof closeJobCycleWarningCodeSchema
+>;
+export type CloseJobCycleWarning = z.infer<
+  typeof closeJobCycleWarningSchema
 >;
 export type ReopenJobCycleInput = z.infer<
   typeof reopenJobCycleSchema
 >;
 export type CreateScopeRevisionInput = z.infer<
   typeof createScopeRevisionSchema
+>;
+export type UpdateScopeRevisionVisitPlanInput = z.infer<
+  typeof updateScopeRevisionVisitPlanSchema
 >;
 export type CreateVisitInput = z.infer<
   typeof createVisitSchema
@@ -482,6 +593,9 @@ export type Media = z.infer<typeof mediaSchema>;
 export type Closure = z.infer<typeof closureSchema>;
 export type ScopeRevision = z.infer<
   typeof scopeRevisionSchema
+>;
+export type VisitScopeRevision = z.infer<
+  typeof visitScopeRevisionSchema
 >;
 export type Visit = z.infer<typeof visitSchema>;
 export type BasicVowSnapshot = z.infer<
@@ -502,8 +616,14 @@ export type MediaResponse = z.infer<
 export type CloseJobCycleResponse = z.infer<
   typeof closeJobCycleResponseSchema
 >;
+export type CloseJobCycleWarningResponse = z.infer<
+  typeof closeJobCycleWarningResponseSchema
+>;
 export type ReopenJobCycleResponse = z.infer<
   typeof reopenJobCycleResponseSchema
+>;
+export type ScopeRevisionsResponse = z.infer<
+  typeof scopeRevisionsResponseSchema
 >;
 export type ScopeRevisionResponse = z.infer<
   typeof scopeRevisionResponseSchema

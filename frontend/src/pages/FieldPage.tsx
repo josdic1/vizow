@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import {
+  CloseJobCycleWarningError,
   closeJobCycle,
   createBasicVow,
   createFieldNote,
@@ -96,6 +97,9 @@ export function FieldPage() {
   >("idle");
   const [reopenMessage, setReopenMessage] =
     useState<string | null>(null);
+
+  const [visitRefreshVersion, setVisitRefreshVersion] =
+    useState(0);
 
   const showJobPicker =
     status === "ready" &&
@@ -188,10 +192,60 @@ export function FieldPage() {
     setCloseMessage(null);
 
     try {
-      await closeJobCycle(activeJob.id, {
-        finalPrice: null,
-        notes: null,
-      });
+      let confirmScopeVisitWarnings = false;
+
+      while (true) {
+        try {
+          await closeJobCycle(activeJob.id, {
+            finalPrice: null,
+            notes: null,
+            confirmScopeVisitWarnings,
+          });
+
+          break;
+        } catch (caughtError: unknown) {
+          if (
+            !confirmScopeVisitWarnings &&
+            caughtError instanceof CloseJobCycleWarningError
+          ) {
+            const warningLines = caughtError.warnings.map(
+              (warning) => {
+                const problem =
+                  warning.code === "visit_decision_undecided"
+                    ? "Visit decision is still undecided"
+                    : warning.code === "required_visit_missing"
+                      ? "Required Visit is missing"
+                      : "Required Visit is not completed";
+
+                return `Revision ${warning.revisionNumber}: ${problem}\n${warning.scopeText}`;
+              },
+            );
+
+            const closeAnyway = window.confirm(
+              [
+                "This Cycle has unresolved Scope Revision / Visit items:",
+                "",
+                ...warningLines,
+                "",
+                "Close the Cycle anyway?",
+              ].join("\n\n"),
+            );
+
+            if (!closeAnyway) {
+              setCloseStatus("idle");
+              setCloseMessage(
+                "Cycle remains open so the unresolved items can be handled.",
+              );
+              return;
+            }
+
+            confirmScopeVisitWarnings = true;
+            continue;
+          }
+
+          throw caughtError;
+        }
+      }
 
       setCloseStatus("closed");
       setCloseMessage(
@@ -645,11 +699,17 @@ export function FieldPage() {
                 <ScopeRevisionControl
                   key={`${activeJob.id}:${activeJob.currentCycle.id}:${activeJob.currentCycle.stage}`}
                   job={activeJob}
+                  onVisitsChanged={() =>
+                    setVisitRefreshVersion(
+                      (current) => current + 1,
+                    )
+                  }
                 />
 
                 <VisitControl
                   key={`visits:${activeJob.id}:${activeJob.currentCycle.id}:${activeJob.currentCycle.stage}`}
                   job={activeJob}
+                  refreshKey={visitRefreshVersion}
                 />
 
                 <div className="field-note-actions">

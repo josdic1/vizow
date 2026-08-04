@@ -1,5 +1,6 @@
 import {
   closeJobCycleSchema,
+  closeJobCycleWarningSchema,
   closureSchema,
   createFieldNoteSchema,
   createScopeRevisionSchema,
@@ -11,11 +12,14 @@ import {
   scopeRevisionSchema,
   updateVisitStatusSchema,
   visitSchema,
+  visitScopeRevisionSchema,
   type Closure,
   type FieldNote,
   type Job,
   type ScopeRevision,
+  type ScopeVisitRelationshipType,
   type Visit,
+  type VisitScopeRevision,
 } from "@vizow/shared";
 import { Router } from "express";
 
@@ -243,6 +247,8 @@ type ScopeRevisionDatabaseRow = {
   scopeText: string;
   priceChange: string;
   reason: string | null;
+  visitRequirement: ScopeRevision["visitRequirement"];
+  linkedVisitIds: string[];
   createdAt: Date;
 };
 
@@ -257,6 +263,8 @@ function prepareScopeRevision(
     scopeText: row.scopeText,
     priceChange: Number(row.priceChange),
     reason: row.reason,
+    visitRequirement: row.visitRequirement,
+    linkedVisitIds: row.linkedVisitIds,
     createdAt: row.createdAt.toISOString(),
   });
 }
@@ -265,6 +273,7 @@ type VisitDatabaseRow = {
   id: string;
   jobId: string;
   jobCycleId: string;
+  cycleNumber: number;
   status: Visit["status"];
   scheduledStart: Date;
   scheduledEnd: Date | null;
@@ -273,18 +282,50 @@ type VisitDatabaseRow = {
   updatedAt: Date;
 };
 
+type VisitScopeRevisionDatabaseRow = {
+  visitId: string;
+  id: string;
+  jobCycleId: string;
+  revisionNumber: number;
+  scopeText: string;
+  priceChange: string;
+  reason: string | null;
+  visitRequirement: ScopeRevision["visitRequirement"];
+  relationshipType: ScopeVisitRelationshipType;
+  createdAt: Date;
+};
+
+function prepareVisitScopeRevision(
+  row: VisitScopeRevisionDatabaseRow,
+): VisitScopeRevision {
+  return visitScopeRevisionSchema.parse({
+    id: row.id,
+    jobCycleId: row.jobCycleId,
+    revisionNumber: row.revisionNumber,
+    scopeText: row.scopeText,
+    priceChange: Number(row.priceChange),
+    reason: row.reason,
+    visitRequirement: row.visitRequirement,
+    relationshipType: row.relationshipType,
+    createdAt: row.createdAt.toISOString(),
+  });
+}
+
 function prepareVisit(
   row: VisitDatabaseRow,
+  linkedScopeRevisions: VisitScopeRevision[] = [],
 ): Visit {
   return visitSchema.parse({
     id: row.id,
     jobId: row.jobId,
     jobCycleId: row.jobCycleId,
+    cycleNumber: row.cycleNumber,
     status: row.status,
     scheduledStart: row.scheduledStart.toISOString(),
     scheduledEnd:
       row.scheduledEnd?.toISOString() ?? null,
     notes: row.notes,
+    linkedScopeRevisions,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   });
@@ -336,6 +377,7 @@ jobsRouter.get(
               visit.id,
               visit.job_id AS "jobId",
               visit.job_cycle_id AS "jobCycleId",
+              cycle.cycle_number AS "cycleNumber",
               visit.status,
               visit.scheduled_start AS "scheduledStart",
               visit.scheduled_end AS "scheduledEnd",
@@ -346,6 +388,11 @@ jobsRouter.get(
             JOIN organizations organization
               ON organization.id =
                 visit.organization_id
+            JOIN job_cycles cycle
+              ON cycle.organization_id =
+                visit.organization_id
+             AND cycle.job_id = visit.job_id
+             AND cycle.id = visit.job_cycle_id
             WHERE visit.job_id = $1
               AND organization.slug = $2
             ORDER BY
@@ -358,9 +405,69 @@ jobsRouter.get(
           ],
         );
 
+      const linkedRevisionResult =
+        await pool.query<VisitScopeRevisionDatabaseRow>(
+          `
+            SELECT
+              link.visit_id AS "visitId",
+              revision.id,
+              revision.job_cycle_id AS "jobCycleId",
+              revision.revision_number AS "revisionNumber",
+              revision.scope_text AS "scopeText",
+              revision.price_change AS "priceChange",
+              revision.reason,
+              revision.visit_requirement AS "visitRequirement",
+              link.relationship_type AS "relationshipType",
+              revision.created_at AS "createdAt"
+            FROM scope_revision_visits link
+            JOIN scope_revisions revision
+              ON revision.organization_id =
+                link.organization_id
+             AND revision.job_id = link.job_id
+             AND revision.job_cycle_id =
+                link.job_cycle_id
+             AND revision.id =
+                link.scope_revision_id
+            JOIN organizations organization
+              ON organization.id =
+                link.organization_id
+            WHERE link.job_id = $1
+              AND organization.slug = $2
+            ORDER BY
+              revision.revision_number ASC,
+              revision.created_at ASC
+          `,
+          [
+            jobIdResult.data,
+            env.ORGANIZATION_SLUG,
+          ],
+        );
+
+      const revisionsByVisit =
+        new Map<string, VisitScopeRevision[]>();
+
+      for (const row of linkedRevisionResult.rows) {
+        const linkedRevisions =
+          revisionsByVisit.get(row.visitId) ?? [];
+
+        linkedRevisions.push(
+          prepareVisitScopeRevision(row),
+        );
+
+        revisionsByVisit.set(
+          row.visitId,
+          linkedRevisions,
+        );
+      }
+
       response.json({
         ok: true,
-        visits: visitResult.rows.map(prepareVisit),
+        visits: visitResult.rows.map((visit) =>
+          prepareVisit(
+            visit,
+            revisionsByVisit.get(visit.id) ?? [],
+          ),
+        ),
       });
     } catch (error) {
       console.error(error);
@@ -409,12 +516,14 @@ jobsRouter.post(
       const cycleResult = await databaseClient.query<{
         organizationId: string;
         jobCycleId: string;
+        cycleNumber: number;
         stage: Job["currentCycle"]["stage"];
       }>(
         `
           SELECT
             job.organization_id AS "organizationId",
             cycle.id AS "jobCycleId",
+            cycle.cycle_number AS "cycleNumber",
             cycle.stage
           FROM jobs job
           JOIN organizations organization
@@ -503,6 +612,9 @@ jobsRouter.post(
           "PostgreSQL did not return the created visit.",
         );
       }
+
+      createdVisit.cycleNumber =
+        currentCycle.cycleNumber;
 
       await databaseClient.query(
         `
@@ -614,16 +726,23 @@ jobsRouter.patch(
       const existingResult = await databaseClient.query<{
         organizationId: string;
         jobCycleId: string;
+        cycleNumber: number;
         status: Visit["status"];
       }>(
         `
           SELECT
             visit.organization_id AS "organizationId",
             visit.job_cycle_id AS "jobCycleId",
+            cycle.cycle_number AS "cycleNumber",
             visit.status
           FROM visits visit
           JOIN organizations organization
             ON organization.id = visit.organization_id
+          JOIN job_cycles cycle
+            ON cycle.organization_id =
+              visit.organization_id
+           AND cycle.job_id = visit.job_id
+           AND cycle.id = visit.job_cycle_id
           WHERE visit.id = $1
             AND visit.job_id = $2
             AND organization.slug = $3
@@ -695,6 +814,9 @@ jobsRouter.patch(
           "PostgreSQL did not return the updated Visit.",
         );
       }
+
+      updatedVisit.cycleNumber =
+        existingVisit.cycleNumber;
 
       const eventType =
         inputResult.data.status === "completed"
@@ -978,12 +1100,14 @@ jobsRouter.post(
       const cycleResult = await databaseClient.query<{
         organizationId: string;
         jobCycleId: string;
+        cycleNumber: number;
         stage: Job["currentCycle"]["stage"];
       }>(
         `
           SELECT
             job.organization_id AS "organizationId",
             cycle.id AS "jobCycleId",
+            cycle.cycle_number AS "cycleNumber",
             cycle.stage
           FROM jobs job
           JOIN organizations organization
@@ -1031,6 +1155,149 @@ jobsRouter.post(
         return;
       }
 
+      const visitPlan = inputResult.data.visitPlan;
+      const visitRequirement: ScopeRevision["visitRequirement"] =
+        visitPlan.mode === "undecided"
+          ? "undecided"
+          : visitPlan.mode === "not_required"
+            ? "not_required"
+            : visitPlan.mode === "existing" &&
+                visitPlan.relationshipType ===
+                  "discovered_during"
+              ? "undecided"
+              : "required";
+      const relationshipType:
+        | ScopeVisitRelationshipType
+        | null =
+        visitPlan.mode === "new"
+          ? "planned_for"
+          : visitPlan.mode === "existing"
+            ? visitPlan.relationshipType
+            : null;
+
+      let linkedVisitRow: VisitDatabaseRow | null = null;
+
+      if (visitPlan.mode === "existing") {
+        const existingVisitResult =
+          await databaseClient.query<VisitDatabaseRow>(
+            `
+              SELECT
+                visit.id,
+                visit.job_id AS "jobId",
+                visit.job_cycle_id AS "jobCycleId",
+                visit.status,
+                visit.scheduled_start AS "scheduledStart",
+                visit.scheduled_end AS "scheduledEnd",
+                visit.notes,
+                visit.created_at AS "createdAt",
+                visit.updated_at AS "updatedAt"
+              FROM visits visit
+              WHERE visit.organization_id = $1
+                AND visit.job_id = $2
+                AND visit.job_cycle_id = $3
+                AND visit.id = $4
+              FOR SHARE OF visit
+            `,
+            [
+              currentCycle.organizationId,
+              jobIdResult.data,
+              currentCycle.jobCycleId,
+              visitPlan.visitId,
+            ],
+          );
+
+        linkedVisitRow =
+          existingVisitResult.rows[0] ?? null;
+
+        if (!linkedVisitRow) {
+          await databaseClient.query("ROLLBACK");
+
+          response.status(409).json({
+            ok: false,
+            error:
+              "The selected Visit is not available in the active work cycle.",
+          });
+          return;
+        }
+
+        if (
+          visitPlan.relationshipType === "planned_for" &&
+          linkedVisitRow.status !== "scheduled"
+        ) {
+          await databaseClient.query("ROLLBACK");
+
+          response.status(409).json({
+            ok: false,
+            error:
+              "Only a scheduled Visit can be used for planned work.",
+          });
+          return;
+        }
+
+        if (
+          visitPlan.relationshipType ===
+            "discovered_during" &&
+          linkedVisitRow.status !== "completed"
+        ) {
+          await databaseClient.query("ROLLBACK");
+
+          response.status(409).json({
+            ok: false,
+            error:
+              "Only a completed Visit can be used as where the scope change was discovered.",
+          });
+          return;
+        }
+      }
+
+      if (visitPlan.mode === "new") {
+        const newVisitResult =
+          await databaseClient.query<VisitDatabaseRow>(
+            `
+              INSERT INTO visits (
+                organization_id,
+                job_id,
+                job_cycle_id,
+                scheduled_start,
+                scheduled_end,
+                notes
+              )
+              VALUES ($1, $2, $3, $4, $5, $6)
+              RETURNING
+                id,
+                job_id AS "jobId",
+                job_cycle_id AS "jobCycleId",
+                status,
+                scheduled_start AS "scheduledStart",
+                scheduled_end AS "scheduledEnd",
+                notes,
+                created_at AS "createdAt",
+                updated_at AS "updatedAt"
+            `,
+            [
+              currentCycle.organizationId,
+              jobIdResult.data,
+              currentCycle.jobCycleId,
+              visitPlan.visit.scheduledStart,
+              visitPlan.visit.scheduledEnd,
+              visitPlan.visit.notes,
+            ],
+          );
+
+        linkedVisitRow = newVisitResult.rows[0] ?? null;
+
+        if (!linkedVisitRow) {
+          throw new Error(
+            "PostgreSQL did not return the newly scheduled Visit.",
+          );
+        }
+      }
+
+      if (linkedVisitRow) {
+        linkedVisitRow.cycleNumber =
+          currentCycle.cycleNumber;
+      }
+
       const revisionNumberResult =
         await databaseClient.query<{
           revisionNumber: number;
@@ -1070,9 +1337,10 @@ jobsRouter.post(
               revision_number,
               scope_text,
               price_change,
-              reason
+              reason,
+              visit_requirement
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING
               id,
               job_id AS "jobId",
@@ -1081,6 +1349,8 @@ jobsRouter.post(
               scope_text AS "scopeText",
               price_change AS "priceChange",
               reason,
+              visit_requirement AS "visitRequirement",
+              ARRAY[]::uuid[] AS "linkedVisitIds",
               created_at AS "createdAt"
           `,
           [
@@ -1091,6 +1361,7 @@ jobsRouter.post(
             inputResult.data.scopeText,
             inputResult.data.priceChange,
             inputResult.data.reason ?? null,
+            visitRequirement,
           ],
         );
 
@@ -1100,6 +1371,113 @@ jobsRouter.post(
       if (!createdScopeRevision) {
         throw new Error(
           "PostgreSQL did not return the created scope revision.",
+        );
+      }
+
+      if (linkedVisitRow) {
+        if (!relationshipType) {
+          throw new Error(
+            "A linked Visit requires a relationship type.",
+          );
+        }
+
+        await databaseClient.query(
+          `
+            INSERT INTO scope_revision_visits (
+              organization_id,
+              job_id,
+              job_cycle_id,
+              scope_revision_id,
+              visit_id,
+              relationship_type
+            )
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `,
+          [
+            currentCycle.organizationId,
+            jobIdResult.data,
+            currentCycle.jobCycleId,
+            createdScopeRevision.id,
+            linkedVisitRow.id,
+            relationshipType,
+          ],
+        );
+
+        createdScopeRevision.linkedVisitIds = [
+          linkedVisitRow.id,
+        ];
+
+        await databaseClient.query(
+          `
+            INSERT INTO job_events (
+              organization_id,
+              job_id,
+              job_cycle_id,
+              event_type,
+              details
+            )
+            VALUES (
+              $1,
+              $2,
+              $3,
+              'scope_revision_visit_linked',
+              jsonb_build_object(
+                'scopeRevisionId',
+                $4::uuid,
+                'visitId',
+                $5::uuid,
+                'visitSource',
+                $6::text,
+                'relationshipType',
+                $7::text
+              )
+            )
+          `,
+          [
+            currentCycle.organizationId,
+            jobIdResult.data,
+            currentCycle.jobCycleId,
+            createdScopeRevision.id,
+            linkedVisitRow.id,
+            visitPlan.mode,
+            relationshipType,
+          ],
+        );
+      }
+
+      if (visitPlan.mode === "new" && linkedVisitRow) {
+        await databaseClient.query(
+          `
+            INSERT INTO job_events (
+              organization_id,
+              job_id,
+              job_cycle_id,
+              event_type,
+              details
+            )
+            VALUES (
+              $1,
+              $2,
+              $3,
+              'visit_scheduled',
+              jsonb_build_object(
+                'visitId',
+                $4::uuid,
+                'scheduledStart',
+                $5::timestamptz,
+                'scopeRevisionId',
+                $6::uuid
+              )
+            )
+          `,
+          [
+            currentCycle.organizationId,
+            jobIdResult.data,
+            currentCycle.jobCycleId,
+            linkedVisitRow.id,
+            linkedVisitRow.scheduledStart,
+            createdScopeRevision.id,
+          ],
         );
       }
 
@@ -1117,13 +1495,19 @@ jobsRouter.post(
             $2,
             $3,
             'scope_revision_created',
-            jsonb_build_object(
-              'scopeRevisionId',
-              $4::uuid,
-              'revisionNumber',
-              $5::integer,
-              'priceChange',
-              $6::numeric
+            jsonb_strip_nulls(
+              jsonb_build_object(
+                'scopeRevisionId',
+                $4::uuid,
+                'revisionNumber',
+                $5::integer,
+                'priceChange',
+                $6::numeric,
+                'visitRequirement',
+                $7::text,
+                'linkedVisitId',
+                $8::uuid
+              )
             )
           )
         `,
@@ -1134,6 +1518,8 @@ jobsRouter.post(
           createdScopeRevision.id,
           revisionNumber,
           inputResult.data.priceChange,
+          visitRequirement,
+          linkedVisitRow?.id ?? null,
         ],
       );
 
@@ -1153,12 +1539,16 @@ jobsRouter.post(
       const scopeRevision = prepareScopeRevision(
         createdScopeRevision,
       );
+      const visit = linkedVisitRow
+        ? prepareVisit(linkedVisitRow)
+        : null;
 
       await databaseClient.query("COMMIT");
 
       response.status(201).json({
         ok: true,
         scopeRevision,
+        visit,
       });
     } catch (error) {
       await databaseClient.query("ROLLBACK");
@@ -1260,6 +1650,96 @@ jobsRouter.post(
         response.status(409).json({
           ok: false,
           error: "The current work cycle is already closed.",
+        });
+        return;
+      }
+
+      const warningResult = await databaseClient.query<{
+        code:
+          | "visit_decision_undecided"
+          | "required_visit_missing"
+          | "required_visit_incomplete";
+        revisionNumber: number;
+        scopeText: string;
+      }>(
+        `
+          SELECT
+            CASE
+              WHEN revision.visit_requirement = 'undecided'
+                THEN 'visit_decision_undecided'
+              WHEN NOT EXISTS (
+                SELECT 1
+                FROM scope_revision_visits link
+                WHERE link.organization_id =
+                    revision.organization_id
+                  AND link.job_id = revision.job_id
+                  AND link.job_cycle_id =
+                    revision.job_cycle_id
+                  AND link.scope_revision_id =
+                    revision.id
+                  AND link.relationship_type =
+                    'planned_for'
+              )
+                THEN 'required_visit_missing'
+              ELSE 'required_visit_incomplete'
+            END AS code,
+            revision.revision_number AS "revisionNumber",
+            revision.scope_text AS "scopeText"
+          FROM scope_revisions revision
+          WHERE revision.organization_id = $1
+            AND revision.job_id = $2
+            AND revision.job_cycle_id = $3
+            AND (
+              revision.visit_requirement = 'undecided'
+              OR (
+                revision.visit_requirement = 'required'
+                AND NOT EXISTS (
+                  SELECT 1
+                  FROM scope_revision_visits link
+                  JOIN visits visit
+                    ON visit.organization_id =
+                        link.organization_id
+                   AND visit.job_id = link.job_id
+                   AND visit.job_cycle_id =
+                        link.job_cycle_id
+                   AND visit.id = link.visit_id
+                  WHERE link.organization_id =
+                      revision.organization_id
+                    AND link.job_id = revision.job_id
+                    AND link.job_cycle_id =
+                      revision.job_cycle_id
+                    AND link.scope_revision_id =
+                      revision.id
+                    AND link.relationship_type =
+                      'planned_for'
+                    AND visit.status = 'completed'
+                )
+              )
+            )
+          ORDER BY revision.revision_number ASC
+        `,
+        [
+          currentCycle.organizationId,
+          jobIdResult.data,
+          currentCycle.jobCycleId,
+        ],
+      );
+
+      const warnings = warningResult.rows.map((warning) =>
+        closeJobCycleWarningSchema.parse(warning),
+      );
+
+      if (
+        warnings.length > 0 &&
+        !inputResult.data.confirmScopeVisitWarnings
+      ) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "This work cycle has unresolved Scope Revision and Visit items.",
+          warnings,
         });
         return;
       }
