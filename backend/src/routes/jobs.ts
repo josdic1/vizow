@@ -5,6 +5,7 @@ import {
   fieldNoteSchema,
   idSchema,
   jobSchema,
+  reopenJobCycleSchema,
   type Closure,
   type FieldNote,
   type Job,
@@ -623,6 +624,230 @@ jobsRouter.post(
       response.status(500).json({
         ok: false,
         error: "Unable to close the work cycle.",
+      });
+    } finally {
+      databaseClient.release();
+    }
+  },
+);
+
+jobsRouter.post(
+  "/:jobId/reopen-cycle",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(
+      request.params.jobId,
+    );
+
+    if (!jobIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid job ID.",
+      });
+      return;
+    }
+
+    const inputResult = reopenJobCycleSchema.safeParse(
+      request.body,
+    );
+
+    if (!inputResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid reopen request.",
+        details: inputResult.error.flatten(),
+      });
+      return;
+    }
+
+    const databaseClient = await pool.connect();
+
+    try {
+      await databaseClient.query("BEGIN");
+
+      const jobResult = await databaseClient.query<{
+        organizationId: string;
+      }>(
+        `
+          SELECT
+            job.organization_id AS "organizationId"
+          FROM jobs job
+          JOIN organizations organization
+            ON organization.id = job.organization_id
+          WHERE job.id = $1
+            AND organization.slug = $2
+          FOR UPDATE OF job
+        `,
+        [
+          jobIdResult.data,
+          env.ORGANIZATION_SLUG,
+        ],
+      );
+
+      const lockedJob = jobResult.rows[0];
+
+      if (!lockedJob) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(404).json({
+          ok: false,
+          error: "Job was not found.",
+        });
+        return;
+      }
+
+      const cycleResult = await databaseClient.query<{
+        jobCycleId: string;
+        cycleNumber: number;
+        stage: Job["currentCycle"]["stage"];
+      }>(
+        `
+          SELECT
+            cycle.id AS "jobCycleId",
+            cycle.cycle_number AS "cycleNumber",
+            cycle.stage
+          FROM job_cycles cycle
+          WHERE cycle.organization_id = $1
+            AND cycle.job_id = $2
+          ORDER BY cycle.cycle_number DESC
+          LIMIT 1
+        `,
+        [
+          lockedJob.organizationId,
+          jobIdResult.data,
+        ],
+      );
+
+      const currentCycle = cycleResult.rows[0];
+
+      if (!currentCycle) {
+        throw new Error(
+          "The Job does not have a work cycle.",
+        );
+      }
+
+      if (currentCycle.stage !== "completed") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Only a completed work cycle can be reopened.",
+        });
+        return;
+      }
+
+      const nextCycleNumber =
+        currentCycle.cycleNumber + 1;
+
+      const newCycleResult =
+        await databaseClient.query<{
+          id: string;
+        }>(
+          `
+            INSERT INTO job_cycles (
+              organization_id,
+              job_id,
+              cycle_number,
+              reason,
+              stage
+            )
+            VALUES (
+              $1,
+              $2,
+              $3,
+              'reopened',
+              'project'
+            )
+            RETURNING id
+          `,
+          [
+            lockedJob.organizationId,
+            jobIdResult.data,
+            nextCycleNumber,
+          ],
+        );
+
+      const newCycle = newCycleResult.rows[0];
+
+      if (!newCycle) {
+        throw new Error(
+          "PostgreSQL did not return the reopened cycle.",
+        );
+      }
+
+      await databaseClient.query(
+        `
+          UPDATE jobs
+          SET updated_at = now()
+          WHERE organization_id = $1
+            AND id = $2
+        `,
+        [
+          lockedJob.organizationId,
+          jobIdResult.data,
+        ],
+      );
+
+      await databaseClient.query(
+        `
+          INSERT INTO job_events (
+            organization_id,
+            job_id,
+            job_cycle_id,
+            event_type,
+            details
+          )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            'cycle_reopened',
+            jsonb_build_object(
+              'previousCycleId',
+              $4::uuid,
+              'previousCycleNumber',
+              $5::integer,
+              'cycleNumber',
+              $6::integer
+            )
+          )
+        `,
+        [
+          lockedJob.organizationId,
+          jobIdResult.data,
+          newCycle.id,
+          currentCycle.jobCycleId,
+          currentCycle.cycleNumber,
+          nextCycleNumber,
+        ],
+      );
+
+      const refreshedJobs = await loadJobs(
+        jobIdResult.data,
+        databaseClient,
+      );
+
+      const reopenedJob = refreshedJobs[0];
+
+      if (!reopenedJob) {
+        throw new Error(
+          "Unable to reload the reopened Job.",
+        );
+      }
+
+      await databaseClient.query("COMMIT");
+
+      response.status(201).json({
+        ok: true,
+        job: reopenedJob,
+      });
+    } catch (error) {
+      await databaseClient.query("ROLLBACK");
+      console.error(error);
+
+      response.status(500).json({
+        ok: false,
+        error: "Unable to reopen the work cycle.",
       });
     } finally {
       databaseClient.release();

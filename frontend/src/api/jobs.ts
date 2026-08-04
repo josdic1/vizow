@@ -5,6 +5,7 @@ import {
   jobResponseSchema,
   jobsResponseSchema,
   mediaResponseSchema,
+  reopenJobCycleResponseSchema,
   type CloseJobCycleInput,
   type Closure,
   type CreateFieldNoteInput,
@@ -273,4 +274,52 @@ export async function createBasicVow(
   }
 
   return result.data.vow;
+}
+
+export async function reopenJobCycle(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<Job> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/reopen-cycle`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to reopen work cycle. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result =
+    reopenJobCycleResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid reopen-cycle response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The reopen-cycle API returned an invalid response.",
+    );
+  }
+
+  return result.data.job;
 }

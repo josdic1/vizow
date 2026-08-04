@@ -171,6 +171,8 @@ export const closeJobCycleSchema = z.object({
   notes: optionalTextInputSchema,
 });
 
+export const reopenJobCycleSchema = z.object({}).strict();
+
 export const createFieldNoteSchema = z.object({
   content: z
     .string()
@@ -314,6 +316,11 @@ export const closeJobCycleResponseSchema = z.object({
   job: jobSchema,
 });
 
+export const reopenJobCycleResponseSchema = z.object({
+  ok: z.literal(true),
+  job: jobSchema,
+});
+
 export const basicVowResponseSchema = z.object({
   ok: z.literal(true),
   vow: vowSchema,
@@ -368,6 +375,9 @@ export type CreateFieldNoteInput = z.infer<
 export type CloseJobCycleInput = z.infer<
   typeof closeJobCycleSchema
 >;
+export type ReopenJobCycleInput = z.infer<
+  typeof reopenJobCycleSchema
+>;
 export type CreateBasicVowInput = z.infer<
   typeof createBasicVowSchema
 >;
@@ -392,6 +402,9 @@ export type MediaResponse = z.infer<
 >;
 export type CloseJobCycleResponse = z.infer<
   typeof closeJobCycleResponseSchema
+>;
+export type ReopenJobCycleResponse = z.infer<
+  typeof reopenJobCycleResponseSchema
 >;
 export type BasicVowResponse = z.infer<
   typeof basicVowResponseSchema

@@ -13,6 +13,7 @@ import {
   closeJobCycle,
   createBasicVow,
   createFieldNote,
+  reopenJobCycle,
   uploadJobPhoto,
 } from "../api/jobs";
 import { useActiveJob } from "../contexts/ActiveJobContext";
@@ -88,6 +89,12 @@ export function FieldPage() {
   const [vowMessage, setVowMessage] =
     useState<string | null>(null);
 
+  const [reopenStatus, setReopenStatus] = useState<
+    "idle" | "reopening" | "reopened" | "error"
+  >("idle");
+  const [reopenMessage, setReopenMessage] =
+    useState<string | null>(null);
+
   const showJobPicker =
     status === "ready" &&
     (!activeJob || isChangingJob);
@@ -105,6 +112,8 @@ export function FieldPage() {
     setCloseMessage(null);
     setVowStatus("idle");
     setVowMessage(null);
+    setReopenStatus("idle");
+    setReopenMessage(null);
   }
 
   function handleChoosePhoto(): void {
@@ -186,6 +195,16 @@ export function FieldPage() {
       setCloseMessage(
         `Cycle ${activeJob.currentCycle.cycleNumber} closed.`,
       );
+
+      setReopenStatus("idle");
+      setReopenMessage(null);
+      setIsWritingNote(false);
+      setNoteText("");
+      setNoteStatus("idle");
+      setNoteMessage(null);
+      setPhotoStatus("idle");
+      setPhotoMessage(null);
+
       reloadJobs();
     } catch (caughtError: unknown) {
       setCloseStatus("error");
@@ -220,6 +239,55 @@ export function FieldPage() {
         caughtError instanceof Error
           ? caughtError.message
           : "Unable to generate the VOW.",
+      );
+    }
+  }
+
+  async function handleReopenCycle(): Promise<void> {
+    if (
+      !activeJob ||
+      activeJob.currentCycle.stage !== "completed" ||
+      reopenStatus === "reopening"
+    ) {
+      return;
+    }
+
+    const currentCycleNumber =
+      activeJob.currentCycle.cycleNumber;
+    const nextCycleNumber = currentCycleNumber + 1;
+
+    const confirmed = window.confirm(
+      `Reopen ${activeJob.title} as Cycle ${nextCycleNumber}? Cycle ${currentCycleNumber} will remain closed.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setReopenStatus("reopening");
+    setReopenMessage(null);
+
+    try {
+      const reopenedJob = await reopenJobCycle(
+        activeJob.id,
+      );
+
+      setReopenStatus("reopened");
+      setReopenMessage(
+        `Cycle ${reopenedJob.currentCycle.cycleNumber} opened.`,
+      );
+      setCloseStatus("idle");
+      setCloseMessage(null);
+      setVowStatus("idle");
+      setVowMessage(null);
+
+      reloadJobs();
+    } catch (caughtError: unknown) {
+      setReopenStatus("error");
+      setReopenMessage(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to reopen the work cycle.",
       );
     }
   }
@@ -608,7 +676,45 @@ export function FieldPage() {
                         ? "VOW Ready"
                         : "Generate Basic VOW"}
                   </button>
+
+                  <button
+                    className="btn btn-primary"
+                    disabled={
+                      activeJob.currentCycle.stage !==
+                        "completed" ||
+                      reopenStatus === "reopening" ||
+                      reopenStatus === "reopened"
+                    }
+                    type="button"
+                    onClick={handleReopenCycle}
+                  >
+                    {reopenStatus === "reopening"
+                      ? "Reopening…"
+                      : reopenStatus === "reopened"
+                        ? "New Cycle Open"
+                        : `Reopen as Cycle ${
+                            activeJob.currentCycle
+                              .cycleNumber + 1
+                          }`}
+                  </button>
                 </div>
+
+                {reopenMessage && (
+                  <div
+                    className={
+                      reopenStatus === "error"
+                        ? "notice notice-error"
+                        : "notice notice-success"
+                    }
+                    role={
+                      reopenStatus === "error"
+                        ? "alert"
+                        : "status"
+                    }
+                  >
+                    <strong>{reopenMessage}</strong>
+                  </div>
+                )}
 
                 {vowMessage && (
                   <div
