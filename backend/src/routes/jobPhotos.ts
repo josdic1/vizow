@@ -149,6 +149,8 @@ jobPhotosRouter.post(
         organizationId: string;
         clientId: string;
         jobCycleId: string;
+        lifecycleStatus: "active" | "cancelled";
+        archivedAt: Date | null;
         stage: string;
       }>(
         `
@@ -156,6 +158,8 @@ jobPhotosRouter.post(
             job.organization_id AS "organizationId",
             job.client_id AS "clientId",
             cycle.id AS "jobCycleId",
+            job.lifecycle_status AS "lifecycleStatus",
+            job.archived_at AS "archivedAt",
             cycle.stage
           FROM jobs job
           JOIN organizations organization
@@ -172,7 +176,7 @@ jobPhotosRouter.post(
            )
           WHERE job.id = $1
             AND organization.slug = $2
-          FOR SHARE OF job, cycle
+          FOR UPDATE OF job, cycle
         `,
         [
           jobIdResult.data,
@@ -188,6 +192,26 @@ jobPhotosRouter.post(
         response.status(404).json({
           ok: false,
           error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (currentCycle.lifecycleStatus !== "active") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error: "Cancelled Jobs cannot be modified.",
+        });
+        return;
+      }
+
+      if (currentCycle.archivedAt !== null) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error: "Archived Jobs cannot be modified.",
         });
         return;
       }
