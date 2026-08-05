@@ -1,4 +1,7 @@
-import { idSchema } from "@vizow/shared";
+import {
+  idSchema,
+  mediaResponseSchema,
+} from "@vizow/shared";
 import {
   type NextFunction,
   type Request,
@@ -141,6 +144,7 @@ jobPhotosRouter.post(
 
     const databaseClient = await pool.connect();
     let uploadedPublicId: string | null = null;
+    let transactionCommitted = false;
 
     try {
       await databaseClient.query("BEGIN");
@@ -324,9 +328,7 @@ jobPhotosRouter.post(
         ],
       );
 
-      await databaseClient.query("COMMIT");
-
-      response.status(201).json({
+      const responsePayload = mediaResponseSchema.parse({
         ok: true,
         media: {
           ...createdMedia,
@@ -337,26 +339,35 @@ jobPhotosRouter.post(
             createdMedia.createdAt.toISOString(),
         },
       });
-    } catch (error) {
-      await databaseClient.query("ROLLBACK");
 
-      if (uploadedPublicId) {
-        try {
-          await deleteJobPhoto(uploadedPublicId);
-        } catch (cleanupError) {
-          console.error(
-            "Unable to remove orphaned Cloudinary photo.",
-            cleanupError,
-          );
+      await databaseClient.query("COMMIT");
+      transactionCommitted = true;
+
+      response.status(201).json(responsePayload);
+    } catch (error) {
+      if (!transactionCommitted) {
+        await databaseClient.query("ROLLBACK");
+
+        if (uploadedPublicId) {
+          try {
+            await deleteJobPhoto(uploadedPublicId);
+          } catch (cleanupError) {
+            console.error(
+              "Unable to remove orphaned Cloudinary photo.",
+              cleanupError,
+            );
+          }
         }
       }
 
       console.error(error);
 
-      response.status(500).json({
-        ok: false,
-        error: "Unable to save photo.",
-      });
+      if (!response.headersSent) {
+        response.status(500).json({
+          ok: false,
+          error: "Unable to save photo.",
+        });
+      }
     } finally {
       databaseClient.release();
     }
