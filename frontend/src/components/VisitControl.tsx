@@ -72,6 +72,8 @@ export function VisitControl({
     useState<MessageTone>("success");
 
   const isActive =
+    job.lifecycleStatus === "active" &&
+    job.archivedAt === null &&
     job.currentCycle.stage === "project";
 
   useEffect(() => {
@@ -190,6 +192,8 @@ export function VisitControl({
     status: "completed" | "cancelled",
   ): Promise<void> {
     if (
+      !isActive ||
+      visit.jobCycleId !== job.currentCycle.id ||
       visit.status !== "scheduled" ||
       updatingVisitId !== null
     ) {
@@ -505,37 +509,40 @@ export function VisitControl({
                       </section>
                     )}
 
-                    {visit.status === "scheduled" && (
-                      <div className="visit-card-actions">
-                        <button
-                          className="btn btn-primary"
-                          disabled={isUpdating}
-                          type="button"
-                          onClick={() =>
-                            void handleStatusChange(
-                              visit,
-                              "completed",
-                            )
-                          }
-                        >
-                          Complete
-                        </button>
+                    {isActive &&
+                      visit.jobCycleId ===
+                        job.currentCycle.id &&
+                      visit.status === "scheduled" && (
+                        <div className="visit-card-actions">
+                          <button
+                            className="btn btn-primary"
+                            disabled={isUpdating}
+                            type="button"
+                            onClick={() =>
+                              void handleStatusChange(
+                                visit,
+                                "completed",
+                              )
+                            }
+                          >
+                            Complete
+                          </button>
 
-                        <button
-                          className="btn"
-                          disabled={isUpdating}
-                          type="button"
-                          onClick={() =>
-                            void handleStatusChange(
-                              visit,
-                              "cancelled",
-                            )
-                          }
-                        >
-                          Cancel Visit
-                        </button>
-                      </div>
-                    )}
+                          <button
+                            className="btn"
+                            disabled={isUpdating}
+                            type="button"
+                            onClick={() =>
+                              void handleStatusChange(
+                                visit,
+                                "cancelled",
+                              )
+                            }
+                          >
+                            Cancel Visit
+                          </button>
+                        </div>
+                      )}
                   </article>
                 );
               })}
