@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router";
 import { ContextRail } from "../components/ContextRail";
 
 type AppLayoutProps = ComponentProps<typeof ContextRail> & {

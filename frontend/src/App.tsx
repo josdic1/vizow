@@ -10,7 +10,7 @@ import { Link,
   Routes,
   useParams,
   useSearchParams,
-} from "react-router-dom";
+} from "react-router";
 import type { Job } from "@vizow/shared";
 import { fetchClient } from "./api/clients";
 import {
