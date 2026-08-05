@@ -1,6 +1,8 @@
 import {
   approveRequestResponseSchema,
   createRequestSchema,
+  declineRequestResponseSchema,
+  declineRequestSchema,
   idSchema,
   jobSchema,
   requestSchema,
@@ -27,6 +29,7 @@ type RequestDatabaseRow = {
   servicePostalCode: string | null;
   status: Request["status"];
   approvedJobId: string | null;
+  declineReason: string | null;
   submittedAt: Date;
   decidedAt: Date | null;
   createdAt: Date;
@@ -124,6 +127,7 @@ requestsRouter.get("/", async (_request, response) => {
           request.service_postal_code AS "servicePostalCode",
           request.status,
           request.approved_job_id AS "approvedJobId",
+          request.decline_reason AS "declineReason",
           request.submitted_at AS "submittedAt",
           request.decided_at AS "decidedAt",
           request.created_at AS "createdAt",
@@ -250,6 +254,7 @@ requestsRouter.post("/", async (request, response) => {
           service_postal_code AS "servicePostalCode",
           status,
           approved_job_id AS "approvedJobId",
+          decline_reason AS "declineReason",
           submitted_at AS "submittedAt",
           decided_at AS "decidedAt",
           created_at AS "createdAt",
@@ -355,6 +360,7 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
           work_request.service_postal_code AS "servicePostalCode",
           work_request.status,
           work_request.approved_job_id AS "approvedJobId",
+          work_request.decline_reason AS "declineReason",
           work_request.submitted_at AS "submittedAt",
           work_request.decided_at AS "decidedAt",
           work_request.created_at AS "createdAt",
@@ -514,6 +520,7 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
           service_postal_code AS "servicePostalCode",
           status,
           approved_job_id AS "approvedJobId",
+          decline_reason AS "declineReason",
           submitted_at AS "submittedAt",
           decided_at AS "decidedAt",
           created_at AS "createdAt",
@@ -613,6 +620,205 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
     response.status(500).json({
       ok: false,
       error: "Unable to approve request.",
+    });
+  } finally {
+    databaseClient.release();
+  }
+});
+
+requestsRouter.post("/:requestId/decline", async (request, response) => {
+  const requestIdResult = idSchema.safeParse(
+    request.params.requestId,
+  );
+
+  if (!requestIdResult.success) {
+    response.status(400).json({
+      ok: false,
+      error: "Invalid request ID.",
+    });
+    return;
+  }
+
+  const inputResult = declineRequestSchema.safeParse(
+    request.body,
+  );
+
+  if (!inputResult.success) {
+    response.status(400).json({
+      ok: false,
+      error: "Invalid Request decline.",
+      details: inputResult.error.flatten(),
+    });
+    return;
+  }
+
+  const databaseClient = await pool.connect();
+  let transactionOpen = false;
+
+  try {
+    await databaseClient.query("BEGIN");
+    transactionOpen = true;
+
+    const selectedRequestResult = await databaseClient.query<
+      RequestDatabaseRow & { organizationId: string }
+    >(
+      `
+        SELECT
+          work_request.organization_id AS "organizationId",
+          work_request.id,
+          work_request.client_id AS "clientId",
+          client.name AS "clientName",
+          work_request.title,
+          work_request.description,
+          work_request.service_address_line_1 AS "serviceAddressLine1",
+          work_request.service_address_line_2 AS "serviceAddressLine2",
+          work_request.service_city AS "serviceCity",
+          work_request.service_state AS "serviceState",
+          work_request.service_postal_code AS "servicePostalCode",
+          work_request.status,
+          work_request.approved_job_id AS "approvedJobId",
+          work_request.decline_reason AS "declineReason",
+          work_request.submitted_at AS "submittedAt",
+          work_request.decided_at AS "decidedAt",
+          work_request.created_at AS "createdAt",
+          work_request.updated_at AS "updatedAt"
+        FROM requests work_request
+        JOIN clients client
+          ON client.organization_id = work_request.organization_id
+         AND client.id = work_request.client_id
+        JOIN organizations organization
+          ON organization.id = work_request.organization_id
+        WHERE work_request.id = $1
+          AND organization.slug = $2
+        FOR UPDATE OF work_request
+      `,
+      [requestIdResult.data, env.ORGANIZATION_SLUG],
+    );
+
+    const selectedRequest = selectedRequestResult.rows[0];
+
+    if (!selectedRequest) {
+      await databaseClient.query("ROLLBACK");
+      transactionOpen = false;
+
+      response.status(404).json({
+        ok: false,
+        error: "Request was not found.",
+      });
+      return;
+    }
+
+    if (selectedRequest.status !== "open") {
+      await databaseClient.query("ROLLBACK");
+      transactionOpen = false;
+
+      response.status(409).json({
+        ok: false,
+        error:
+          selectedRequest.status === "approved"
+            ? "An approved Request cannot be declined."
+            : "Request has already been declined.",
+      });
+      return;
+    }
+
+    const declinedRequestResult = await databaseClient.query<
+      Omit<RequestDatabaseRow, "clientName">
+    >(
+      `
+        UPDATE requests
+        SET
+          status = 'declined',
+          decline_reason = $1,
+          decided_at = now(),
+          updated_at = now()
+        WHERE organization_id = $2
+          AND id = $3
+          AND status = 'open'
+        RETURNING
+          id,
+          client_id AS "clientId",
+          title,
+          description,
+          service_address_line_1 AS "serviceAddressLine1",
+          service_address_line_2 AS "serviceAddressLine2",
+          service_city AS "serviceCity",
+          service_state AS "serviceState",
+          service_postal_code AS "servicePostalCode",
+          status,
+          approved_job_id AS "approvedJobId",
+          decline_reason AS "declineReason",
+          submitted_at AS "submittedAt",
+          decided_at AS "decidedAt",
+          created_at AS "createdAt",
+          updated_at AS "updatedAt"
+      `,
+      [
+        inputResult.data.reason,
+        selectedRequest.organizationId,
+        selectedRequest.id,
+      ],
+    );
+
+    const declinedRequest = declinedRequestResult.rows[0];
+
+    if (!declinedRequest) {
+      throw new Error(
+        "Request decline update did not return a row.",
+      );
+    }
+
+    await databaseClient.query(
+      `
+        INSERT INTO request_events (
+          organization_id,
+          request_id,
+          event_type,
+          details
+        )
+        VALUES (
+          $1,
+          $2,
+          'request_declined',
+          jsonb_build_object('reason', $3::text)
+        )
+      `,
+      [
+        selectedRequest.organizationId,
+        selectedRequest.id,
+        inputResult.data.reason,
+      ],
+    );
+
+    const responsePayload = declineRequestResponseSchema.parse({
+      ok: true,
+      request: prepareRequest({
+        ...declinedRequest,
+        clientName: selectedRequest.clientName,
+      }),
+    });
+
+    await databaseClient.query("COMMIT");
+    transactionOpen = false;
+
+    response.json(responsePayload);
+  } catch (error) {
+    if (transactionOpen) {
+      await databaseClient
+        .query("ROLLBACK")
+        .catch((rollbackError) => {
+          console.error(
+            "Unable to roll back Request decline.",
+            rollbackError,
+          );
+        });
+    }
+
+    console.error(error);
+
+    response.status(500).json({
+      ok: false,
+      error: "Unable to decline request.",
     });
   } finally {
     databaseClient.release();

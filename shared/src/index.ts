@@ -144,6 +144,19 @@ export const createRequestSchema = z.object({
   servicePostalCode: optionalTextInputSchema,
 });
 
+export const declineRequestSchema = z
+  .object({
+    reason: z
+      .string()
+      .trim()
+      .min(1, "Decline reason is required.")
+      .max(
+        1000,
+        "Decline reason cannot exceed 1000 characters.",
+      ),
+  })
+  .strict();
+
 export const jobCycleSchema = z.object({
   id: idSchema,
   cycleNumber: z.number().int().positive(),
@@ -468,6 +481,7 @@ export const requestSchema = z.object({
   servicePostalCode: z.string().nullable(),
   status: requestStatusSchema,
   approvedJobId: idSchema.nullable(),
+  declineReason: z.string().min(1).nullable(),
   submittedAt: z.string().datetime(),
   decidedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
@@ -568,6 +582,11 @@ export const approveRequestResponseSchema = z.object({
   job: jobSchema,
 });
 
+export const declineRequestResponseSchema = z.object({
+  ok: z.literal(true),
+  request: requestSchema,
+});
+
 export type JobStage = z.infer<typeof jobStageSchema>;
 export type JobLifecycleStatus = z.infer<
   typeof jobLifecycleStatusSchema
@@ -606,6 +625,9 @@ export type ClientRecordResponse = z.infer<
   typeof clientRecordResponseSchema
 >;
 export type CreateRequestInput = z.infer<typeof createRequestSchema>;
+export type DeclineRequestInput = z.infer<
+  typeof declineRequestSchema
+>;
 export type CreateFieldNoteInput = z.infer<
   typeof createFieldNoteSchema
 >;
@@ -696,4 +718,7 @@ export type RequestsResponse = z.infer<typeof requestsResponseSchema>;
 export type RequestResponse = z.infer<typeof requestResponseSchema>;
 export type ApproveRequestResponse = z.infer<
   typeof approveRequestResponseSchema
+>;
+export type DeclineRequestResponse = z.infer<
+  typeof declineRequestResponseSchema
 >;

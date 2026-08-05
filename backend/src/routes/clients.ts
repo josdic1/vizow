@@ -83,6 +83,7 @@ type RequestDatabaseRow = {
   servicePostalCode: string | null;
   status: WorkRequest["status"];
   approvedJobId: string | null;
+  declineReason: string | null;
   submittedAt: Date;
   decidedAt: Date | null;
   createdAt: Date;
@@ -304,6 +305,7 @@ async function loadClientRecord(
             AS "servicePostalCode",
           request.status,
           request.approved_job_id AS "approvedJobId",
+          request.decline_reason AS "declineReason",
           request.submitted_at AS "submittedAt",
           request.decided_at AS "decidedAt",
           request.created_at AS "createdAt",
