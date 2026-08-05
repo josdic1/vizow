@@ -1366,59 +1366,132 @@ export function ClientDetailPage() {
                       </label>
 
                       <div className="field">
-                          <label htmlFor="property-address-line1">
-                            Address line 1
-                          </label>
+                        <label htmlFor="property-address-line1">
+                          Address line 1
+                        </label>
 
-                          <AddressAutocomplete
-                            id="property-address-line1"
-                            required
-                            placeholder="Start typing, or enter manually"
-                            value={
-                              propertyEditor.draft
-                                .addressLine1
-                            }
-                            onValueChange={(value) => {
-                              updatePropertyDraft(
-                                "addressLine1",
-                                value,
-                              );
+                        <AddressAutocomplete
+                          id="property-address-line1"
+                          required
+                          placeholder="Start typing, or enter manually"
+                          value={
+                            propertyEditor.draft
+                              .addressLine1
+                          }
+                          onValueChange={(value) => {
+                            updatePropertyDraft(
+                              "addressLine1",
+                              value,
+                            );
 
-                              if (!value) {
-                                updatePropertyDraft(
-                                  "city",
-                                  "",
-                                );
-                                updatePropertyDraft(
-                                  "state",
-                                  "",
-                                );
-                                updatePropertyDraft(
-                                  "postalCode",
-                                  "",
-                                );
-                              }
-                            }}
-                            onSelect={(suggestion) => {
-                              updatePropertyDraft(
-                                "addressLine1",
-                                suggestion.addressLine1,
-                              );
+                            if (!value) {
                               updatePropertyDraft(
                                 "city",
-                                suggestion.city,
+                                "",
                               );
                               updatePropertyDraft(
                                 "state",
-                                suggestion.state,
+                                "",
                               );
                               updatePropertyDraft(
                                 "postalCode",
-                                suggestion.postalCode,
+                                "",
                               );
-                            }}
-                          />
-                        </div>
+                            }
+                          }}
+                          onSelect={(suggestion) => {
+                            updatePropertyDraft(
+                              "addressLine1",
+                              suggestion.addressLine1,
+                            );
+                            updatePropertyDraft(
+                              "city",
+                              suggestion.city,
+                            );
+                            updatePropertyDraft(
+                              "state",
+                              suggestion.state,
+                            );
+                            updatePropertyDraft(
+                              "postalCode",
+                              suggestion.postalCode,
+                            );
+                          }}
+                        />
+                      </div>
+
+                      <label className="field">
+                        Address line 2
+                        <input
+                          autoComplete="address-line2"
+                          className="input"
+                          type="text"
+                          value={
+                            propertyEditor.draft
+                              .addressLine2
+                          }
+                          onChange={(event) =>
+                            updatePropertyDraft(
+                              "addressLine2",
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </label>
+
+                      <label className="field">
+                        City
+                        <input
+                          autoComplete="address-level2"
+                          className="input"
+                          required
+                          type="text"
+                          value={propertyEditor.draft.city}
+                          onChange={(event) =>
+                            updatePropertyDraft(
+                              "city",
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </label>
+
+                      <label className="field">
+                        State
+                        <input
+                          autoComplete="address-level1"
+                          className="input"
+                          required
+                          type="text"
+                          value={propertyEditor.draft.state}
+                          onChange={(event) =>
+                            updatePropertyDraft(
+                              "state",
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </label>
+
+                      <label className="field">
+                        Postal code
+                        <input
+                          autoComplete="postal-code"
+                          className="input"
+                          required
+                          type="text"
+                          value={
+                            propertyEditor.draft
+                              .postalCode
+                          }
+                          onChange={(event) =>
+                            updatePropertyDraft(
+                              "postalCode",
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </label>
 
                       <label className="client-property-default-control clients-field-wide">
                         <input
