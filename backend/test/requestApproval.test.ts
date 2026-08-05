@@ -41,6 +41,7 @@ const requestId = "00000000-0000-4000-8000-000000000003";
 const jobId = "00000000-0000-4000-8000-000000000004";
 const cycleId = "00000000-0000-4000-8000-000000000005";
 const now = new Date("2026-08-05T12:00:00.000Z");
+let clientArchivedAt: Date | null;
 
 beforeAll(async () => {
   process.env.DATABASE_URL =
@@ -55,6 +56,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  clientArchivedAt = null;
   database.connect.mockClear();
   database.query.mockReset();
   database.release.mockClear();
@@ -71,6 +73,7 @@ beforeEach(() => {
           id: requestId,
           clientId,
           clientName: "Jamie Whitfield",
+          clientArchivedAt,
           title: "Repair roof leak",
           description: "Water near the chimney.",
           serviceAddressLine1: "482 Maple Street",
@@ -194,6 +197,52 @@ describe("POST /api/requests/:requestId/approve", () => {
       );
 
     expect(transactionCommands).toEqual(["BEGIN", "COMMIT"]);
+    expect(database.release).toHaveBeenCalledOnce();
+  });
+
+  it("rejects an open Request when its Client is archived", async () => {
+    clientArchivedAt = now;
+
+    const response = await request(app)
+      .post(`/api/requests/${requestId}/approve`)
+      .send({})
+      .expect(409);
+
+    expect(response.body).toEqual({
+      ok: false,
+      error:
+        "Restore this Client before approving its Request.",
+    });
+
+    const sqlStatements = database.query.mock.calls.map(
+      ([sql]) => sql,
+    );
+
+    expect(
+      sqlStatements.find((sql) =>
+        sql.includes("FROM requests work_request"),
+      ),
+    ).toContain("FOR UPDATE OF work_request, client");
+
+    expect(sqlStatements).not.toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("INSERT INTO jobs"),
+        expect.stringContaining("INSERT INTO job_cycles"),
+        expect.stringContaining("UPDATE requests"),
+      ]),
+    );
+
+    const transactionCommands = sqlStatements.filter(
+      (sql) =>
+        sql === "BEGIN" ||
+        sql === "COMMIT" ||
+        sql === "ROLLBACK",
+    );
+
+    expect(transactionCommands).toEqual([
+      "BEGIN",
+      "ROLLBACK",
+    ]);
     expect(database.release).toHaveBeenCalledOnce();
   });
 });

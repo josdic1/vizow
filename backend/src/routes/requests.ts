@@ -334,7 +334,10 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
     transactionOpen = true;
 
     const selectedRequestResult = await databaseClient.query<
-      RequestDatabaseRow & { organizationId: string }
+      RequestDatabaseRow & {
+        organizationId: string;
+        clientArchivedAt: Date | null;
+      }
     >(
       `
         SELECT
@@ -342,6 +345,7 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
           work_request.id,
           work_request.client_id AS "clientId",
           client.name AS "clientName",
+          client.archived_at AS "clientArchivedAt",
           work_request.title,
           work_request.description,
           work_request.service_address_line_1 AS "serviceAddressLine1",
@@ -363,7 +367,7 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
           ON organization.id = work_request.organization_id
         WHERE work_request.id = $1
           AND organization.slug = $2
-        FOR UPDATE OF work_request
+        FOR UPDATE OF work_request, client
       `,
       [requestIdResult.data, env.ORGANIZATION_SLUG],
     );
@@ -390,6 +394,17 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
             ? "Request has already been approved."
             : "A declined request cannot be approved.",
         approvedJobId: selectedRequest.approvedJobId,
+      });
+      return;
+    }
+
+    if (selectedRequest.clientArchivedAt !== null) {
+      await databaseClient.query("ROLLBACK");
+
+      response.status(409).json({
+        ok: false,
+        error:
+          "Restore this Client before approving its Request.",
       });
       return;
     }
