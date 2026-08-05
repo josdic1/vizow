@@ -1,8 +1,10 @@
 import {
+  approveRequestResponseSchema,
   createRequestSchema,
   idSchema,
   jobSchema,
   requestSchema,
+  type ApproveRequestResponse,
   type Job,
   type Request,
 } from "@vizow/shared";
@@ -42,6 +44,10 @@ type CreatedJobDatabaseRow = {
   serviceCity: string | null;
   serviceState: string | null;
   servicePostalCode: string | null;
+  lifecycleStatus: Job["lifecycleStatus"];
+  cancelledAt: Date | null;
+  cancellationReason: string | null;
+  archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -73,6 +79,10 @@ function prepareCreatedJob(
     serviceCity: job.serviceCity,
     serviceState: job.serviceState,
     servicePostalCode: job.servicePostalCode,
+    lifecycleStatus: job.lifecycleStatus,
+    cancelledAt: job.cancelledAt?.toISOString() ?? null,
+    cancellationReason: job.cancellationReason,
+    archivedAt: job.archivedAt?.toISOString() ?? null,
     createdAt: job.createdAt.toISOString(),
     updatedAt: job.updatedAt.toISOString(),
     currentCycle: {
@@ -318,6 +328,7 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
   }
 
   const databaseClient = await pool.connect();
+  let successfulResponse: ApproveRequestResponse | null = null;
 
   try {
     await databaseClient.query("BEGIN");
@@ -407,6 +418,10 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
           service_city AS "serviceCity",
           service_state AS "serviceState",
           service_postal_code AS "servicePostalCode",
+          lifecycle_status AS "lifecycleStatus",
+          cancelled_at AS "cancelledAt",
+          cancellation_reason AS "cancellationReason",
+          archived_at AS "archivedAt",
           created_at AS "createdAt",
           updated_at AS "updatedAt"
       `,
@@ -549,9 +564,7 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
       ],
     );
 
-    await databaseClient.query("COMMIT");
-
-    response.status(201).json({
+    successfulResponse = approveRequestResponseSchema.parse({
       ok: true,
       request: prepareRequest({
         ...approvedRequest,
@@ -563,6 +576,8 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
         selectedRequest.clientName,
       ),
     });
+
+    await databaseClient.query("COMMIT");
   } catch (error) {
     await databaseClient.query("ROLLBACK");
     console.error(error);
@@ -573,5 +588,9 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
     });
   } finally {
     databaseClient.release();
+  }
+
+  if (successfulResponse) {
+    response.status(201).json(successfulResponse);
   }
 });
