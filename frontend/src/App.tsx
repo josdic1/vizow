@@ -13,8 +13,15 @@ import { Link,
 } from "react-router-dom";
 import type { Job } from "@vizow/shared";
 import { fetchClient } from "./api/clients";
-import { fetchJob, fetchJobs } from "./api/jobs";
+import {
+  archiveJob,
+  cancelJob,
+  fetchJob,
+  fetchJobs,
+  unarchiveJob,
+} from "./api/jobs";
 import { AdminPageHeader } from "./components/AdminPageHeader";
+import { useActiveJob } from "./contexts/ActiveJobContext";
 import { AppLayout } from "./layouts/AppLayout";
 import { FieldPage } from "./pages/FieldPage";
 import { RequestsPage } from "./pages/RequestsPage";
@@ -59,6 +66,9 @@ function JobsPage() {
   const [state, setState] = useState<JobsState>({ status: "loading" });
   const [stageFilter, setStageFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [archiveFilter, setArchiveFilter] = useState<
+    "CURRENT" | "ARCHIVED"
+  >("CURRENT");
   const [sortKey, setSortKey] = useState<
     "client" | "job" | "address" | "stage" | "cycle"
   >("client");
@@ -67,7 +77,7 @@ function JobsPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetchJobs(controller.signal)
+    fetchJobs(controller.signal, true)
       .then((jobs) => {
         setState({ status: "ready", jobs });
       })
@@ -97,6 +107,20 @@ function JobsPage() {
         (job) => job.clientId === scopedClientId,
       )
     : jobs;
+
+  const currentJobCount = scopedJobs.filter(
+    (job) => job.archivedAt === null,
+  ).length;
+
+  const archivedJobCount = scopedJobs.filter(
+    (job) => job.archivedAt !== null,
+  ).length;
+
+  const viewJobs = scopedJobs.filter((job) =>
+    archiveFilter === "ARCHIVED"
+      ? job.archivedAt !== null
+      : job.archivedAt === null,
+  );
 
   const [scopedClientName, setScopedClientName] =
     useState<string | null>(null);
@@ -134,28 +158,34 @@ function JobsPage() {
     scopedClientName ?? "Client";
 
   useEffect(() => {
+    setArchiveFilter("CURRENT");
     setStageFilter("ALL");
     setSearchTerm("");
   }, [scopedClientId]);
+
+  useEffect(() => {
+    setStageFilter("ALL");
+    setSearchTerm("");
+  }, [archiveFilter]);
 
   const stages = useMemo(
     () =>
       Array.from(
         new Set(
-          scopedJobs.map(
+          viewJobs.map(
             (job) => job.currentCycle.stage,
           ),
         ),
       ).sort(
         (first, second) => first.localeCompare(second),
       ),
-    [scopedJobs],
+    [viewJobs],
   );
 
   const visibleJobs = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    const nextJobs = scopedJobs.filter((job) => {
+    const nextJobs = viewJobs.filter((job) => {
       if (
         stageFilter !== "ALL" &&
         job.currentCycle.stage !== stageFilter
@@ -214,7 +244,7 @@ function JobsPage() {
 
     return nextJobs;
   }, [
-    scopedJobs,
+    viewJobs,
     searchTerm,
     sortDirection,
     sortKey,
@@ -289,10 +319,14 @@ function JobsPage() {
             }
             meta={
               state.status === "ready" ? (
-                <span>
-                  {scopedJobs.length} total job
-                  {scopedJobs.length === 1 ? "" : "s"}
-                </span>
+                <>
+                  <span>
+                    {currentJobCount} current
+                  </span>
+                  <span>
+                    {archivedJobCount} archived
+                  </span>
+                </>
               ) : undefined
             }
           />
@@ -336,6 +370,43 @@ function JobsPage() {
             <div className="admin-toolbar jobs-toolbar">
               <div
                 className="admin-filter-tabs"
+                aria-label="Job archive filter"
+              >
+                <button
+                  aria-pressed={archiveFilter === "CURRENT"}
+                  className={
+                    archiveFilter === "CURRENT"
+                      ? "is-active"
+                      : undefined
+                  }
+                  type="button"
+                  onClick={() => setArchiveFilter("CURRENT")}
+                >
+                  <span>Current</span>
+                  <strong>{currentJobCount}</strong>
+                </button>
+
+                <button
+                  aria-pressed={archiveFilter === "ARCHIVED"}
+                  className={
+                    archiveFilter === "ARCHIVED"
+                      ? "is-active"
+                      : undefined
+                  }
+                  type="button"
+                  onClick={() => setArchiveFilter("ARCHIVED")}
+                >
+                  <span>Archived</span>
+                  <strong>{archivedJobCount}</strong>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {state.status === "ready" && (
+            <div className="admin-toolbar jobs-toolbar">
+              <div
+                className="admin-filter-tabs"
                 aria-label="Job stage filter"
               >
                 <button
@@ -345,11 +416,11 @@ function JobsPage() {
                   onClick={() => setStageFilter("ALL")}
                 >
                   <span>All</span>
-                  <strong>{scopedJobs.length}</strong>
+                  <strong>{viewJobs.length}</strong>
                 </button>
 
                 {stages.map((stage) => {
-                  const count = scopedJobs.filter(
+                  const count = viewJobs.filter(
                     (job) => job.currentCycle.stage === stage,
                   ).length;
 
@@ -465,6 +536,12 @@ function JobsPage() {
                           <Link to={`/jobs/${job.id}`}>{job.title}</Link>
                           <small>
                             {formatLabel(job.currentCycle.reason)}
+                            {" · "}
+                            {job.archivedAt
+                              ? "Archived"
+                              : job.lifecycleStatus === "cancelled"
+                                ? "Cancelled"
+                                : "Active"}
                           </small>
                         </td>
 
@@ -495,8 +572,14 @@ function JobsPage() {
 
           {state.status === "ready" && visibleJobs.length === 0 && (
             <div className="admin-empty-state admin-empty-state-large">
-              <strong>No jobs match this view.</strong>
-              <span>Choose another stage or clear the search.</span>
+              <strong>
+                {archiveFilter === "ARCHIVED"
+                  ? "No archived Jobs match this view."
+                  : "No current Jobs match this view."}
+              </strong>
+              <span>
+                Choose another stage or clear the search.
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -514,10 +597,162 @@ function JobsPage() {
   );
 }
 
-function JobDetailContent({ job }: { job: Job }) {
+type JobDetailContentProps = {
+  job: Job;
+  onJobUpdated: (job: Job) => void;
+};
+
+function JobDetailContent({
+  job,
+  onJobUpdated,
+}: JobDetailContentProps) {
+  const {
+    activeJobId,
+    clearActiveJob,
+    reloadJobs,
+    selectActiveJob,
+  } = useActiveJob();
+
+  const [showCancelForm, setShowCancelForm] =
+    useState(false);
+  const [cancellationReason, setCancellationReason] =
+    useState("");
+  const [actionStatus, setActionStatus] = useState<
+    "idle" | "working" | "success" | "error"
+  >("idle");
+  const [actionMessage, setActionMessage] =
+    useState<string | null>(null);
+
   const address = formatAddress(job);
   const stageClass =
     `admin-status-chip project-status-${job.currentCycle.stage.toLowerCase()}`;
+
+  const isArchived = job.archivedAt !== null;
+  const isCancelled =
+    job.lifecycleStatus === "cancelled";
+
+  const canOpenField =
+    !isArchived &&
+    !isCancelled &&
+    job.currentCycle.stage === "project";
+
+  const canCancel = canOpenField;
+
+  const canArchive =
+    !isArchived &&
+    (
+      isCancelled ||
+      job.currentCycle.stage === "completed"
+    );
+
+  function finishAction(
+    updatedJob: Job,
+    message: string,
+    clearSelection: boolean,
+  ): void {
+    onJobUpdated(updatedJob);
+
+    if (
+      clearSelection &&
+      activeJobId === updatedJob.id
+    ) {
+      clearActiveJob();
+    }
+
+    reloadJobs();
+    setActionStatus("success");
+    setActionMessage(message);
+    setShowCancelForm(false);
+    setCancellationReason("");
+  }
+
+  async function handleCancelJob(): Promise<void> {
+    const reason = cancellationReason.trim();
+
+    if (!reason || actionStatus === "working") {
+      return;
+    }
+
+    setActionStatus("working");
+    setActionMessage(null);
+
+    try {
+      const updatedJob = await cancelJob(
+        job.id,
+        { reason },
+      );
+
+      finishAction(
+        updatedJob,
+        "Job cancelled. Its complete history was preserved.",
+        true,
+      );
+    } catch (error: unknown) {
+      setActionStatus("error");
+      setActionMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to cancel the Job.",
+      );
+    }
+  }
+
+  async function handleArchiveJob(): Promise<void> {
+    if (
+      actionStatus === "working" ||
+      !window.confirm(
+        "Archive this Job? It will be hidden from the normal Jobs list, but nothing will be deleted.",
+      )
+    ) {
+      return;
+    }
+
+    setActionStatus("working");
+    setActionMessage(null);
+
+    try {
+      const updatedJob = await archiveJob(job.id);
+
+      finishAction(
+        updatedJob,
+        "Job archived. No history or media was deleted.",
+        true,
+      );
+    } catch (error: unknown) {
+      setActionStatus("error");
+      setActionMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to archive the Job.",
+      );
+    }
+  }
+
+  async function handleUnarchiveJob(): Promise<void> {
+    if (actionStatus === "working") {
+      return;
+    }
+
+    setActionStatus("working");
+    setActionMessage(null);
+
+    try {
+      const updatedJob = await unarchiveJob(job.id);
+
+      finishAction(
+        updatedJob,
+        "Job restored to the normal Jobs list.",
+        false,
+      );
+    } catch (error: unknown) {
+      setActionStatus("error");
+      setActionMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to unarchive the Job.",
+      );
+    }
+  }
 
   return (
     <>
@@ -529,14 +764,39 @@ function JobDetailContent({ job }: { job: Job }) {
           "Review this job’s current work cycle and service information."
         }
         actions={
-          <Link className="btn" to="/jobs">
-            ← Jobs
-          </Link>
+          <div className="cluster">
+            <Link className="btn" to="/jobs">
+              ← Jobs
+            </Link>
+
+            {canOpenField && (
+              <Link
+                className="btn btn-primary"
+                to="/field"
+                onClick={() => {
+                  selectActiveJob(job.id);
+                }}
+              >
+                Open Field Mode
+              </Link>
+            )}
+          </div>
         }
         meta={
           <>
-            <span>Stage: {formatLabel(job.currentCycle.stage)}</span>
-            <span>Cycle {job.currentCycle.cycleNumber}</span>
+            <span>
+              Stage:{" "}
+              {formatLabel(job.currentCycle.stage)}
+            </span>
+            <span>
+              Status:{" "}
+              {isArchived
+                ? "Archived"
+                : formatLabel(job.lifecycleStatus)}
+            </span>
+            <span>
+              Cycle {job.currentCycle.cycleNumber}
+            </span>
           </>
         }
       />
@@ -544,7 +804,133 @@ function JobDetailContent({ job }: { job: Job }) {
       <section className="helper-card stack-lg">
         <div className="card-topline">
           <div className="stack">
-            <p className="eyebrow">Current Work Cycle</p>
+            <p className="eyebrow">
+              Job Actions
+            </p>
+            <h2>Manage Job</h2>
+          </div>
+
+          <div className="cluster">
+            {canCancel && (
+              <button
+                className="btn"
+                type="button"
+                disabled={actionStatus === "working"}
+                onClick={() => {
+                  setShowCancelForm((current) => !current);
+                  setActionStatus("idle");
+                  setActionMessage(null);
+                }}
+              >
+                Cancel Job
+              </button>
+            )}
+
+            {canArchive && (
+              <button
+                className="btn"
+                type="button"
+                disabled={actionStatus === "working"}
+                onClick={() => {
+                  void handleArchiveJob();
+                }}
+              >
+                Archive Job
+              </button>
+            )}
+
+            {isArchived && (
+              <button
+                className="btn btn-primary"
+                type="button"
+                disabled={actionStatus === "working"}
+                onClick={() => {
+                  void handleUnarchiveJob();
+                }}
+              >
+                Unarchive Job
+              </button>
+            )}
+          </div>
+        </div>
+
+        {showCancelForm && canCancel && (
+          <div className="card-drawer stack">
+            <label htmlFor="job-cancellation-reason">
+              <strong>Cancellation reason</strong>
+            </label>
+
+            <textarea
+              className="textarea"
+              id="job-cancellation-reason"
+              maxLength={1000}
+              placeholder="Why is this Job being cancelled?"
+              value={cancellationReason}
+              onChange={(event) => {
+                setCancellationReason(
+                  event.currentTarget.value,
+                );
+              }}
+            />
+
+            <div className="cluster">
+              <button
+                className="btn"
+                type="button"
+                disabled={actionStatus === "working"}
+                onClick={() => {
+                  setShowCancelForm(false);
+                  setCancellationReason("");
+                  setActionStatus("idle");
+                  setActionMessage(null);
+                }}
+              >
+                Keep Job Active
+              </button>
+
+              <button
+                className="btn btn-primary"
+                type="button"
+                disabled={
+                  actionStatus === "working" ||
+                  cancellationReason.trim() === ""
+                }
+                onClick={() => {
+                  void handleCancelJob();
+                }}
+              >
+                {actionStatus === "working"
+                  ? "Cancelling…"
+                  : "Confirm Cancellation"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {actionMessage && (
+          <div
+            className={
+              actionStatus === "error"
+                ? "notice notice-error"
+                : "notice"
+            }
+            role={
+              actionStatus === "error"
+                ? "alert"
+                : "status"
+            }
+          >
+            {actionMessage}
+          </div>
+        )}
+      </section>
+
+      <section className="helper-card stack-lg">
+        <div className="card-topline">
+          <div className="stack">
+            <p className="eyebrow">
+              Current Work Cycle
+            </p>
             <h2>Job Record</h2>
           </div>
 
@@ -566,24 +952,62 @@ function JobDetailContent({ job }: { job: Job }) {
 
           <div>
             <span>Cycle</span>
-            <strong>{job.currentCycle.cycleNumber}</strong>
+            <strong>
+              {job.currentCycle.cycleNumber}
+            </strong>
           </div>
 
           <div>
             <span>Reason</span>
-            <strong>{formatLabel(job.currentCycle.reason)}</strong>
+            <strong>
+              {formatLabel(job.currentCycle.reason)}
+            </strong>
+          </div>
+
+          <div>
+            <span>Lifecycle</span>
+            <strong>
+              {formatLabel(job.lifecycleStatus)}
+            </strong>
+          </div>
+
+          <div>
+            <span>Archive</span>
+            <strong>
+              {isArchived ? "Archived" : "Not archived"}
+            </strong>
           </div>
         </div>
 
+        {isCancelled && (
+          <div className="card-drawer">
+            <p className="eyebrow">
+              Cancellation Reason
+            </p>
+            <p>
+              {job.cancellationReason ??
+                "No cancellation reason recorded."}
+            </p>
+          </div>
+        )}
+
         <div className="grid-2">
           <div className="card-drawer">
-            <p className="eyebrow">Service Address</p>
-            <p>{address ?? "No service address recorded."}</p>
+            <p className="eyebrow">
+              Service Address
+            </p>
+            <p>
+              {address ??
+                "No service address recorded."}
+            </p>
           </div>
 
           <div className="card-drawer">
             <p className="eyebrow">Scope</p>
-            <p>{job.description ?? "No scope description recorded."}</p>
+            <p>
+              {job.description ??
+                "No scope description recorded."}
+            </p>
           </div>
         </div>
       </section>
@@ -689,7 +1113,12 @@ function JobDetailPage() {
           )}
 
           {state.status === "ready" && (
-            <JobDetailContent job={state.job} />
+            <JobDetailContent
+              job={state.job}
+              onJobUpdated={(job) => {
+                setState({ status: "ready", job });
+              }}
+            />
           )}
         </div>
       </div>

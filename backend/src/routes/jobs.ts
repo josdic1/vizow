@@ -1,4 +1,6 @@
 import {
+  archiveJobSchema,
+  cancelJobSchema,
   closeJobCycleSchema,
   closeJobCycleWarningSchema,
   closureSchema,
@@ -40,6 +42,10 @@ type JobDatabaseRow = {
   serviceCity: string | null;
   serviceState: string | null;
   servicePostalCode: string | null;
+  lifecycleStatus: Job["lifecycleStatus"];
+  cancelledAt: Date | null;
+  cancellationReason: string | null;
+  archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   cycleId: string;
@@ -64,6 +70,10 @@ function prepareJob(row: JobDatabaseRow): Job {
     serviceCity: row.serviceCity,
     serviceState: row.serviceState,
     servicePostalCode: row.servicePostalCode,
+    lifecycleStatus: row.lifecycleStatus,
+    cancelledAt: row.cancelledAt?.toISOString() ?? null,
+    cancellationReason: row.cancellationReason,
+    archivedAt: row.archivedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     currentCycle: {
@@ -84,9 +94,12 @@ type JobQueryClient = Pick<typeof pool, "query">;
 async function loadJobs(
   jobId?: string,
   queryClient: JobQueryClient = pool,
+  includeArchived = false,
 ): Promise<Job[]> {
   const parameters: string[] = [env.ORGANIZATION_SLUG];
-  let jobFilter = "";
+  let jobFilter = includeArchived
+    ? ""
+    : "AND j.archived_at IS NULL";
 
   if (jobId) {
     parameters.push(jobId);
@@ -106,6 +119,10 @@ async function loadJobs(
         j.service_city AS "serviceCity",
         j.service_state AS "serviceState",
         j.service_postal_code AS "servicePostalCode",
+        j.lifecycle_status AS "lifecycleStatus",
+        j.cancelled_at AS "cancelledAt",
+        j.cancellation_reason AS "cancellationReason",
+        j.archived_at AS "archivedAt",
         j.created_at AS "createdAt",
         j.updated_at AS "updatedAt",
         cycle.job_cycle_id AS "cycleId",
@@ -135,11 +152,18 @@ async function loadJobs(
   return result.rows.map(prepareJob);
 }
 
-jobsRouter.get("/", async (_request, response) => {
+jobsRouter.get("/", async (request, response) => {
+  const includeArchived =
+    request.query.includeArchived === "true";
+
   try {
     response.json({
       ok: true,
-      jobs: await loadJobs(),
+      jobs: await loadJobs(
+        undefined,
+        pool,
+        includeArchived,
+      ),
     });
   } catch (error) {
     console.error(error);
@@ -518,6 +542,8 @@ jobsRouter.post(
         organizationId: string;
         jobCycleId: string;
         cycleNumber: number;
+        lifecycleStatus: Job["lifecycleStatus"];
+        archivedAt: Date | null;
         stage: Job["currentCycle"]["stage"];
       }>(
         `
@@ -525,6 +551,8 @@ jobsRouter.post(
             job.organization_id AS "organizationId",
             cycle.id AS "jobCycleId",
             cycle.cycle_number AS "cycleNumber",
+            job.lifecycle_status AS "lifecycleStatus",
+            job.archived_at AS "archivedAt",
             cycle.stage
           FROM jobs job
           JOIN organizations organization
@@ -542,7 +570,7 @@ jobsRouter.post(
            )
           WHERE job.id = $1
             AND organization.slug = $2
-          FOR SHARE OF job, cycle
+          FOR UPDATE OF job, cycle
         `,
         [
           jobIdResult.data,
@@ -558,6 +586,28 @@ jobsRouter.post(
         response.status(404).json({
           ok: false,
           error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (currentCycle.lifecycleStatus !== "active") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Cancelled Jobs cannot be modified.",
+        });
+        return;
+      }
+
+      if (currentCycle.archivedAt !== null) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Archived Jobs cannot be modified.",
         });
         return;
       }
@@ -729,14 +779,23 @@ jobsRouter.patch(
         jobCycleId: string;
         cycleNumber: number;
         status: Visit["status"];
+        lifecycleStatus: Job["lifecycleStatus"];
+        archivedAt: Date | null;
+        currentCycleStage: Job["currentCycle"]["stage"];
       }>(
         `
           SELECT
             visit.organization_id AS "organizationId",
             visit.job_cycle_id AS "jobCycleId",
             cycle.cycle_number AS "cycleNumber",
-            visit.status
+            visit.status,
+            job.lifecycle_status AS "lifecycleStatus",
+            job.archived_at AS "archivedAt",
+            current_cycle.stage AS "currentCycleStage"
           FROM visits visit
+          JOIN jobs job
+            ON job.organization_id = visit.organization_id
+           AND job.id = visit.job_id
           JOIN organizations organization
             ON organization.id = visit.organization_id
           JOIN job_cycles cycle
@@ -744,10 +803,21 @@ jobsRouter.patch(
               visit.organization_id
            AND cycle.job_id = visit.job_id
            AND cycle.id = visit.job_cycle_id
+          JOIN job_cycles current_cycle
+            ON current_cycle.organization_id =
+              job.organization_id
+           AND current_cycle.job_id = job.id
+           AND current_cycle.cycle_number = (
+             SELECT MAX(candidate.cycle_number)
+             FROM job_cycles candidate
+             WHERE candidate.organization_id =
+               job.organization_id
+               AND candidate.job_id = job.id
+           )
           WHERE visit.id = $1
             AND visit.job_id = $2
             AND organization.slug = $3
-          FOR UPDATE OF visit
+          FOR UPDATE OF job, current_cycle, visit
         `,
         [
           visitIdResult.data,
@@ -764,6 +834,39 @@ jobsRouter.patch(
         response.status(404).json({
           ok: false,
           error: "Visit was not found.",
+        });
+        return;
+      }
+
+      if (existingVisit.lifecycleStatus !== "active") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Cancelled Jobs cannot be modified.",
+        });
+        return;
+      }
+
+      if (existingVisit.archivedAt !== null) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Archived Jobs cannot be modified.",
+        });
+        return;
+      }
+
+      if (existingVisit.currentCycleStage !== "project") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Visit status can only be updated during an active work cycle.",
         });
         return;
       }
@@ -927,12 +1030,16 @@ jobsRouter.post(
       const cycleResult = await databaseClient.query<{
         organizationId: string;
         jobCycleId: string;
+        lifecycleStatus: Job["lifecycleStatus"];
+        archivedAt: Date | null;
         stage: Job["currentCycle"]["stage"];
       }>(
         `
           SELECT
             job.organization_id AS "organizationId",
             cycle.id AS "jobCycleId",
+            job.lifecycle_status AS "lifecycleStatus",
+            job.archived_at AS "archivedAt",
             cycle.stage
           FROM jobs job
           JOIN organizations organization
@@ -949,7 +1056,7 @@ jobsRouter.post(
            )
           WHERE job.id = $1
             AND organization.slug = $2
-          FOR SHARE OF job, cycle
+          FOR UPDATE OF job, cycle
         `,
         [
           jobIdResult.data,
@@ -965,6 +1072,28 @@ jobsRouter.post(
         response.status(404).json({
           ok: false,
           error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (currentCycle.lifecycleStatus !== "active") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Cancelled Jobs cannot be modified.",
+        });
+        return;
+      }
+
+      if (currentCycle.archivedAt !== null) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Archived Jobs cannot be modified.",
         });
         return;
       }
@@ -1719,6 +1848,8 @@ jobsRouter.patch(
         organizationId: string;
         jobCycleId: string;
         cycleNumber: number;
+        lifecycleStatus: Job["lifecycleStatus"];
+        archivedAt: Date | null;
         stage: Job["currentCycle"]["stage"];
       }>(
         `
@@ -1726,6 +1857,8 @@ jobsRouter.patch(
             job.organization_id AS "organizationId",
             cycle.id AS "jobCycleId",
             cycle.cycle_number AS "cycleNumber",
+            job.lifecycle_status AS "lifecycleStatus",
+            job.archived_at AS "archivedAt",
             cycle.stage
           FROM jobs job
           JOIN organizations organization
@@ -1759,6 +1892,28 @@ jobsRouter.patch(
         response.status(404).json({
           ok: false,
           error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (currentCycle.lifecycleStatus !== "active") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Cancelled Jobs cannot be modified.",
+        });
+        return;
+      }
+
+      if (currentCycle.archivedAt !== null) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Archived Jobs cannot be modified.",
         });
         return;
       }
@@ -2175,6 +2330,8 @@ jobsRouter.post(
         organizationId: string;
         jobCycleId: string;
         cycleNumber: number;
+        lifecycleStatus: Job["lifecycleStatus"];
+        archivedAt: Date | null;
         stage: Job["currentCycle"]["stage"];
       }>(
         `
@@ -2182,6 +2339,8 @@ jobsRouter.post(
             job.organization_id AS "organizationId",
             cycle.id AS "jobCycleId",
             cycle.cycle_number AS "cycleNumber",
+            job.lifecycle_status AS "lifecycleStatus",
+            job.archived_at AS "archivedAt",
             cycle.stage
           FROM jobs job
           JOIN organizations organization
@@ -2198,7 +2357,7 @@ jobsRouter.post(
            )
           WHERE job.id = $1
             AND organization.slug = $2
-          FOR UPDATE OF cycle
+          FOR UPDATE OF job, cycle
         `,
         [
           jobIdResult.data,
@@ -2214,6 +2373,28 @@ jobsRouter.post(
         response.status(404).json({
           ok: false,
           error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (currentCycle.lifecycleStatus !== "active") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Cancelled Jobs cannot be modified.",
+        });
+        return;
+      }
+
+      if (currentCycle.archivedAt !== null) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Archived Jobs cannot be modified.",
         });
         return;
       }
@@ -2492,10 +2673,14 @@ jobsRouter.post(
 
       const jobResult = await databaseClient.query<{
         organizationId: string;
+        lifecycleStatus: Job["lifecycleStatus"];
+        archivedAt: Date | null;
       }>(
         `
           SELECT
-            job.organization_id AS "organizationId"
+            job.organization_id AS "organizationId",
+            job.lifecycle_status AS "lifecycleStatus",
+            job.archived_at AS "archivedAt"
           FROM jobs job
           JOIN organizations organization
             ON organization.id = job.organization_id
@@ -2517,6 +2702,27 @@ jobsRouter.post(
         response.status(404).json({
           ok: false,
           error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (lockedJob.archivedAt !== null) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Unarchive this Job before reopening its work cycle.",
+        });
+        return;
+      }
+
+      if (lockedJob.lifecycleStatus !== "active") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error: "A cancelled Job cannot be reopened.",
         });
         return;
       }
@@ -2674,6 +2880,573 @@ jobsRouter.post(
       response.status(500).json({
         ok: false,
         error: "Unable to reopen the work cycle.",
+      });
+    } finally {
+      databaseClient.release();
+    }
+  },
+);
+
+jobsRouter.post(
+  "/:jobId/cancel",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(
+      request.params.jobId,
+    );
+
+    if (!jobIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid job ID.",
+      });
+      return;
+    }
+
+    const inputResult = cancelJobSchema.safeParse(
+      request.body,
+    );
+
+    if (!inputResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid cancellation request.",
+        details: inputResult.error.flatten(),
+      });
+      return;
+    }
+
+    const databaseClient = await pool.connect();
+
+    try {
+      await databaseClient.query("BEGIN");
+
+      const jobResult = await databaseClient.query<{
+        organizationId: string;
+        lifecycleStatus: Job["lifecycleStatus"];
+        archivedAt: Date | null;
+        jobCycleId: string;
+        cycleStage: Job["currentCycle"]["stage"];
+      }>(
+        `
+          SELECT
+            job.organization_id AS "organizationId",
+            job.lifecycle_status AS "lifecycleStatus",
+            job.archived_at AS "archivedAt",
+            cycle.id AS "jobCycleId",
+            cycle.stage AS "cycleStage"
+          FROM jobs job
+          JOIN organizations organization
+            ON organization.id = job.organization_id
+          JOIN job_cycles cycle
+            ON cycle.organization_id =
+              job.organization_id
+           AND cycle.job_id = job.id
+           AND cycle.cycle_number = (
+             SELECT MAX(candidate.cycle_number)
+             FROM job_cycles candidate
+             WHERE candidate.organization_id =
+               job.organization_id
+               AND candidate.job_id = job.id
+           )
+          WHERE job.id = $1
+            AND organization.slug = $2
+          FOR UPDATE OF job, cycle
+        `,
+        [
+          jobIdResult.data,
+          env.ORGANIZATION_SLUG,
+        ],
+      );
+
+      const lockedJob = jobResult.rows[0];
+
+      if (!lockedJob) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(404).json({
+          ok: false,
+          error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (lockedJob.archivedAt !== null) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "An archived Job cannot be cancelled. Unarchive it first.",
+        });
+        return;
+      }
+
+      if (lockedJob.lifecycleStatus === "cancelled") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error: "This Job is already cancelled.",
+        });
+        return;
+      }
+
+      if (lockedJob.cycleStage === "completed") {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "A completed Job cannot be cancelled. Archive it instead.",
+        });
+        return;
+      }
+
+      const cancelledVisitsResult =
+        await databaseClient.query<{
+          cancelledVisitCount: number;
+        }>(
+          `
+            WITH cancelled_visits AS (
+              UPDATE visits
+              SET
+                status = 'cancelled',
+                updated_at = now()
+              WHERE organization_id = $1
+                AND job_id = $2
+                AND status = 'scheduled'
+              RETURNING id
+            )
+            SELECT
+              COUNT(*)::integer AS "cancelledVisitCount"
+            FROM cancelled_visits
+          `,
+          [
+            lockedJob.organizationId,
+            jobIdResult.data,
+          ],
+        );
+
+      const cancelledVisitCount =
+        cancelledVisitsResult.rows[0]
+          ?.cancelledVisitCount ?? 0;
+
+      await databaseClient.query(
+        `
+          UPDATE jobs
+          SET
+            lifecycle_status = 'cancelled',
+            cancelled_at = now(),
+            cancellation_reason = $3,
+            updated_at = now()
+          WHERE organization_id = $1
+            AND id = $2
+        `,
+        [
+          lockedJob.organizationId,
+          jobIdResult.data,
+          inputResult.data.reason,
+        ],
+      );
+
+      await databaseClient.query(
+        `
+          INSERT INTO job_events (
+            organization_id,
+            job_id,
+            job_cycle_id,
+            event_type,
+            details
+          )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            'job_cancelled',
+            jsonb_build_object(
+              'reason',
+              $4::text,
+              'cancelledScheduledVisits',
+              $5::integer
+            )
+          )
+        `,
+        [
+          lockedJob.organizationId,
+          jobIdResult.data,
+          lockedJob.jobCycleId,
+          inputResult.data.reason,
+          cancelledVisitCount,
+        ],
+      );
+
+      const refreshedJobs = await loadJobs(
+        jobIdResult.data,
+        databaseClient,
+      );
+
+      const cancelledJob = refreshedJobs[0];
+
+      if (!cancelledJob) {
+        throw new Error(
+          "Unable to reload the cancelled Job.",
+        );
+      }
+
+      await databaseClient.query("COMMIT");
+
+      response.json({
+        ok: true,
+        job: cancelledJob,
+      });
+    } catch (error) {
+      await databaseClient.query("ROLLBACK");
+      console.error(error);
+
+      response.status(500).json({
+        ok: false,
+        error: "Unable to cancel the Job.",
+      });
+    } finally {
+      databaseClient.release();
+    }
+  },
+);
+
+jobsRouter.post(
+  "/:jobId/archive",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(
+      request.params.jobId,
+    );
+
+    if (!jobIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid job ID.",
+      });
+      return;
+    }
+
+    const inputResult = archiveJobSchema.safeParse(
+      request.body,
+    );
+
+    if (!inputResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid archive request.",
+        details: inputResult.error.flatten(),
+      });
+      return;
+    }
+
+    const databaseClient = await pool.connect();
+
+    try {
+      await databaseClient.query("BEGIN");
+
+      const jobResult = await databaseClient.query<{
+        organizationId: string;
+        lifecycleStatus: Job["lifecycleStatus"];
+        archivedAt: Date | null;
+        jobCycleId: string;
+        cycleStage: Job["currentCycle"]["stage"];
+      }>(
+        `
+          SELECT
+            job.organization_id AS "organizationId",
+            job.lifecycle_status AS "lifecycleStatus",
+            job.archived_at AS "archivedAt",
+            cycle.id AS "jobCycleId",
+            cycle.stage AS "cycleStage"
+          FROM jobs job
+          JOIN organizations organization
+            ON organization.id = job.organization_id
+          JOIN job_cycles cycle
+            ON cycle.organization_id =
+              job.organization_id
+           AND cycle.job_id = job.id
+           AND cycle.cycle_number = (
+             SELECT MAX(candidate.cycle_number)
+             FROM job_cycles candidate
+             WHERE candidate.organization_id =
+               job.organization_id
+               AND candidate.job_id = job.id
+           )
+          WHERE job.id = $1
+            AND organization.slug = $2
+          FOR UPDATE OF job, cycle
+        `,
+        [
+          jobIdResult.data,
+          env.ORGANIZATION_SLUG,
+        ],
+      );
+
+      const lockedJob = jobResult.rows[0];
+
+      if (!lockedJob) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(404).json({
+          ok: false,
+          error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (lockedJob.archivedAt !== null) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error: "This Job is already archived.",
+        });
+        return;
+      }
+
+      const canArchive =
+        lockedJob.lifecycleStatus === "cancelled" ||
+        lockedJob.cycleStage === "completed";
+
+      if (!canArchive) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Only completed or cancelled Jobs can be archived.",
+        });
+        return;
+      }
+
+      await databaseClient.query(
+        `
+          UPDATE jobs
+          SET
+            archived_at = now(),
+            updated_at = now()
+          WHERE organization_id = $1
+            AND id = $2
+        `,
+        [
+          lockedJob.organizationId,
+          jobIdResult.data,
+        ],
+      );
+
+      await databaseClient.query(
+        `
+          INSERT INTO job_events (
+            organization_id,
+            job_id,
+            job_cycle_id,
+            event_type,
+            details
+          )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            'job_archived',
+            '{}'::jsonb
+          )
+        `,
+        [
+          lockedJob.organizationId,
+          jobIdResult.data,
+          lockedJob.jobCycleId,
+        ],
+      );
+
+      const refreshedJobs = await loadJobs(
+        jobIdResult.data,
+        databaseClient,
+      );
+
+      const archivedJob = refreshedJobs[0];
+
+      if (!archivedJob) {
+        throw new Error(
+          "Unable to reload the archived Job.",
+        );
+      }
+
+      await databaseClient.query("COMMIT");
+
+      response.json({
+        ok: true,
+        job: archivedJob,
+      });
+    } catch (error) {
+      await databaseClient.query("ROLLBACK");
+      console.error(error);
+
+      response.status(500).json({
+        ok: false,
+        error: "Unable to archive the Job.",
+      });
+    } finally {
+      databaseClient.release();
+    }
+  },
+);
+
+jobsRouter.post(
+  "/:jobId/unarchive",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(
+      request.params.jobId,
+    );
+
+    if (!jobIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid job ID.",
+      });
+      return;
+    }
+
+    const inputResult = archiveJobSchema.safeParse(
+      request.body,
+    );
+
+    if (!inputResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid unarchive request.",
+        details: inputResult.error.flatten(),
+      });
+      return;
+    }
+
+    const databaseClient = await pool.connect();
+
+    try {
+      await databaseClient.query("BEGIN");
+
+      const jobResult = await databaseClient.query<{
+        organizationId: string;
+        archivedAt: Date | null;
+        jobCycleId: string;
+      }>(
+        `
+          SELECT
+            job.organization_id AS "organizationId",
+            job.archived_at AS "archivedAt",
+            cycle.id AS "jobCycleId"
+          FROM jobs job
+          JOIN organizations organization
+            ON organization.id = job.organization_id
+          JOIN job_cycles cycle
+            ON cycle.organization_id =
+              job.organization_id
+           AND cycle.job_id = job.id
+           AND cycle.cycle_number = (
+             SELECT MAX(candidate.cycle_number)
+             FROM job_cycles candidate
+             WHERE candidate.organization_id =
+               job.organization_id
+               AND candidate.job_id = job.id
+           )
+          WHERE job.id = $1
+            AND organization.slug = $2
+          FOR UPDATE OF job, cycle
+        `,
+        [
+          jobIdResult.data,
+          env.ORGANIZATION_SLUG,
+        ],
+      );
+
+      const lockedJob = jobResult.rows[0];
+
+      if (!lockedJob) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(404).json({
+          ok: false,
+          error: "Job was not found.",
+        });
+        return;
+      }
+
+      if (lockedJob.archivedAt === null) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error: "This Job is not archived.",
+        });
+        return;
+      }
+
+      await databaseClient.query(
+        `
+          UPDATE jobs
+          SET
+            archived_at = NULL,
+            updated_at = now()
+          WHERE organization_id = $1
+            AND id = $2
+        `,
+        [
+          lockedJob.organizationId,
+          jobIdResult.data,
+        ],
+      );
+
+      await databaseClient.query(
+        `
+          INSERT INTO job_events (
+            organization_id,
+            job_id,
+            job_cycle_id,
+            event_type,
+            details
+          )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            'job_unarchived',
+            '{}'::jsonb
+          )
+        `,
+        [
+          lockedJob.organizationId,
+          jobIdResult.data,
+          lockedJob.jobCycleId,
+        ],
+      );
+
+      const refreshedJobs = await loadJobs(
+        jobIdResult.data,
+        databaseClient,
+      );
+
+      const unarchivedJob = refreshedJobs[0];
+
+      if (!unarchivedJob) {
+        throw new Error(
+          "Unable to reload the unarchived Job.",
+        );
+      }
+
+      await databaseClient.query("COMMIT");
+
+      response.json({
+        ok: true,
+        job: unarchivedJob,
+      });
+    } catch (error) {
+      await databaseClient.query("ROLLBACK");
+      console.error(error);
+
+      response.status(500).json({
+        ok: false,
+        error: "Unable to unarchive the Job.",
       });
     } finally {
       databaseClient.release();

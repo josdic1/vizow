@@ -7,6 +7,11 @@ export const jobStageSchema = z.enum([
   "completed",
 ]);
 
+export const jobLifecycleStatusSchema = z.enum([
+  "active",
+  "cancelled",
+]);
+
 export const requestStatusSchema = z.enum([
   "open",
   "approved",
@@ -161,10 +166,29 @@ export const jobSchema = z.object({
   serviceCity: z.string().nullable(),
   serviceState: z.string().nullable(),
   servicePostalCode: z.string().nullable(),
+  lifecycleStatus: jobLifecycleStatusSchema,
+  cancelledAt: z.string().datetime().nullable(),
+  cancellationReason: z.string().nullable(),
+  archivedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   currentCycle: jobCycleSchema,
 });
+
+export const cancelJobSchema = z
+  .object({
+    reason: z
+      .string()
+      .trim()
+      .min(1, "Cancellation reason is required.")
+      .max(
+        1000,
+        "Cancellation reason cannot exceed 1000 characters.",
+      ),
+  })
+  .strict();
+
+export const archiveJobSchema = z.object({}).strict();
 
 export const closeJobCycleSchema = z.object({
   finalPrice: z
@@ -545,6 +569,9 @@ export const approveRequestResponseSchema = z.object({
 });
 
 export type JobStage = z.infer<typeof jobStageSchema>;
+export type JobLifecycleStatus = z.infer<
+  typeof jobLifecycleStatusSchema
+>;
 export type RequestStatus = z.infer<typeof requestStatusSchema>;
 export type CycleReason = z.infer<typeof cycleReasonSchema>;
 export type DisputeStatus = z.infer<typeof disputeStatusSchema>;
@@ -581,6 +608,12 @@ export type ClientRecordResponse = z.infer<
 export type CreateRequestInput = z.infer<typeof createRequestSchema>;
 export type CreateFieldNoteInput = z.infer<
   typeof createFieldNoteSchema
+>;
+export type CancelJobInput = z.infer<
+  typeof cancelJobSchema
+>;
+export type ArchiveJobInput = z.infer<
+  typeof archiveJobSchema
 >;
 export type CloseJobCycleInput = z.input<
   typeof closeJobCycleSchema

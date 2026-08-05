@@ -4,7 +4,6 @@ import {
   idSchema,
   jobSchema,
   requestSchema,
-  type ApproveRequestResponse,
   type Job,
   type Request,
 } from "@vizow/shared";
@@ -328,10 +327,11 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
   }
 
   const databaseClient = await pool.connect();
-  let successfulResponse: ApproveRequestResponse | null = null;
+  let transactionOpen = false;
 
   try {
     await databaseClient.query("BEGIN");
+    transactionOpen = true;
 
     const selectedRequestResult = await databaseClient.query<
       RequestDatabaseRow & { organizationId: string }
@@ -564,7 +564,7 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
       ],
     );
 
-    successfulResponse = approveRequestResponseSchema.parse({
+    const responsePayload = approveRequestResponseSchema.parse({
       ok: true,
       request: prepareRequest({
         ...approvedRequest,
@@ -578,8 +578,21 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
     });
 
     await databaseClient.query("COMMIT");
+    transactionOpen = false;
+
+    response.status(201).json(responsePayload);
   } catch (error) {
-    await databaseClient.query("ROLLBACK");
+    if (transactionOpen) {
+      await databaseClient
+        .query("ROLLBACK")
+        .catch((rollbackError) => {
+          console.error(
+            "Unable to roll back Request approval.",
+            rollbackError,
+          );
+        });
+    }
+
     console.error(error);
 
     response.status(500).json({
@@ -588,9 +601,5 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
     });
   } finally {
     databaseClient.release();
-  }
-
-  if (successfulResponse) {
-    response.status(201).json(successfulResponse);
   }
 });

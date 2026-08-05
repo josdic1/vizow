@@ -11,6 +11,7 @@ import {
   scopeRevisionsResponseSchema,
   visitResponseSchema,
   visitsResponseSchema,
+  type CancelJobInput,
   type CloseJobCycleInput,
   type CloseJobCycleWarning,
   type Closure,
@@ -41,8 +42,15 @@ export class CloseJobCycleWarningError extends Error {
   }
 }
 
-export async function fetchJobs(signal?: AbortSignal): Promise<Job[]> {
-  const response = await fetch("/api/jobs", {
+export async function fetchJobs(
+  signal?: AbortSignal,
+  includeArchived = false,
+): Promise<Job[]> {
+  const query = includeArchived
+    ? "?includeArchived=true"
+    : "";
+
+  const response = await fetch(`/api/jobs${query}`, {
     method: "GET",
     headers: {
       Accept: "application/json",
@@ -658,4 +666,103 @@ export async function updateVisitStatus(
   }
 
   return result.data.visit;
+}
+
+type JobLifecycleAction =
+  | "cancel"
+  | "archive"
+  | "unarchive";
+
+async function runJobLifecycleAction(
+  jobId: string,
+  action: JobLifecycleAction,
+  body: object,
+  signal?: AbortSignal,
+): Promise<Job> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/${action}`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal,
+    },
+  );
+
+  let payload: unknown;
+
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error(
+      `The ${action} Job API returned an unreadable response.`,
+    );
+  }
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to ${action} Job. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result = jobResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      `Invalid ${action} Job response:`,
+      result.error,
+    );
+
+    throw new Error(
+      `The ${action} Job API returned an invalid response.`,
+    );
+  }
+
+  return result.data.job;
+}
+
+export async function cancelJob(
+  jobId: string,
+  input: CancelJobInput,
+  signal?: AbortSignal,
+): Promise<Job> {
+  return runJobLifecycleAction(
+    jobId,
+    "cancel",
+    input,
+    signal,
+  );
+}
+
+export async function archiveJob(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<Job> {
+  return runJobLifecycleAction(
+    jobId,
+    "archive",
+    {},
+    signal,
+  );
+}
+
+export async function unarchiveJob(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<Job> {
+  return runJobLifecycleAction(
+    jobId,
+    "unarchive",
+    {},
+    signal,
+  );
 }
