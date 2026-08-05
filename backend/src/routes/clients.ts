@@ -100,6 +100,10 @@ type JobDatabaseRow = {
   serviceCity: string | null;
   serviceState: string | null;
   servicePostalCode: string | null;
+  lifecycleStatus: Job["lifecycleStatus"];
+  cancelledAt: Date | null;
+  cancellationReason: string | null;
+  archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   cycleId: string;
@@ -181,6 +185,10 @@ function prepareJob(row: JobDatabaseRow): Job {
     serviceCity: row.serviceCity,
     serviceState: row.serviceState,
     servicePostalCode: row.servicePostalCode,
+    lifecycleStatus: row.lifecycleStatus,
+    cancelledAt: row.cancelledAt?.toISOString() ?? null,
+    cancellationReason: row.cancellationReason,
+    archivedAt: row.archivedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     currentCycle: {
@@ -339,6 +347,10 @@ async function loadClientRecord(
           job.service_state AS "serviceState",
           job.service_postal_code
             AS "servicePostalCode",
+          job.lifecycle_status AS "lifecycleStatus",
+          job.cancelled_at AS "cancelledAt",
+          job.cancellation_reason AS "cancellationReason",
+          job.archived_at AS "archivedAt",
           job.created_at AS "createdAt",
           job.updated_at AS "updatedAt",
           cycle.job_cycle_id AS "cycleId",
