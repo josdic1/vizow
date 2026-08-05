@@ -71,6 +71,8 @@ export function ScopeRevisionControl({
     useState<string | null>(null);
 
   const isActive =
+    job.lifecycleStatus === "active" &&
+    job.archivedAt === null &&
     job.currentCycle.stage === "project";
   const isSaving = status === "saving";
 
@@ -85,7 +87,11 @@ export function ScopeRevisionControl({
   );
 
   useEffect(() => {
-    if (!isOpen || visitChoice !== "existing") {
+    if (
+      !isActive ||
+      !isOpen ||
+      visitChoice !== "existing"
+    ) {
       return;
     }
 
@@ -138,6 +144,7 @@ export function ScopeRevisionControl({
     };
   }, [
     isOpen,
+    isActive,
     job.currentCycle.id,
     job.id,
     visitChoice,
@@ -355,7 +362,7 @@ export function ScopeRevisionControl({
         </button>
       </div>
 
-      {isOpen && (
+      {isActive && isOpen && (
         <section className="field-note-panel">
           <form
             className="field-note-form"

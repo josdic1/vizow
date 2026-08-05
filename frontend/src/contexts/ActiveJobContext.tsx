@@ -148,8 +148,12 @@ export function ActiveJobProvider({
         }
 
         try {
-          const nextJobs = await fetchJobs(
-            controller.signal,
+          const nextJobs = (
+            await fetchJobs(controller.signal)
+          ).filter(
+            (job) =>
+              job.lifecycleStatus === "active" &&
+              job.archivedAt === null,
           );
 
           if (cancelled) {

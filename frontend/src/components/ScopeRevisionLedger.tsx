@@ -94,6 +94,11 @@ export function ScopeRevisionLedger({
   const [saveMessage, setSaveMessage] =
     useState<string | null>(null);
 
+  const isActive =
+    job.lifecycleStatus === "active" &&
+    job.archivedAt === null &&
+    job.currentCycle.stage === "project";
+
   const currentRevisions = useMemo(
     () =>
       revisions
@@ -168,6 +173,10 @@ export function ScopeRevisionLedger({
   }
 
   function beginEditing(revisionId: string): void {
+    if (!isActive) {
+      return;
+    }
+
     setEditingRevisionId(revisionId);
     setDecisionChoice("not_required");
     setExistingVisitId(
@@ -262,6 +271,7 @@ export function ScopeRevisionLedger({
     event.preventDefault();
 
     if (
+      !isActive ||
       !editingRevisionId ||
       saveStatus === "saving"
     ) {
@@ -404,7 +414,7 @@ export function ScopeRevisionLedger({
 
               {revision.visitRequirement ===
                 "undecided" &&
-                job.currentCycle.stage === "project" &&
+                isActive &&
                 !isEditing && (
                   <div className="field-note-actions">
                     <button
@@ -419,7 +429,7 @@ export function ScopeRevisionLedger({
                   </div>
                 )}
 
-              {isEditing && (
+              {isActive && isEditing && (
                 <form
                   className="field-note-form scope-decision-form"
                   onSubmit={handleSubmit}

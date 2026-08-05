@@ -106,6 +106,21 @@ export function FieldPage() {
     status === "ready" &&
     (!activeJob || isChangingJob);
 
+  const activeJobIsWritable =
+    activeJob !== null &&
+    activeJob.lifecycleStatus === "active" &&
+    activeJob.archivedAt === null &&
+    activeJob.currentCycle.stage === "project";
+
+  const activeJobHasCompletedCycle =
+    activeJob !== null &&
+    activeJob.lifecycleStatus === "active" &&
+    activeJob.archivedAt === null &&
+    activeJob.currentCycle.stage === "completed";
+
+  const showNoteEditor =
+    isWritingNote && activeJobIsWritable;
+
   function handleSelectJob(jobId: string): void {
     selectActiveJob(jobId);
     setIsChangingJob(false);
@@ -125,7 +140,7 @@ export function FieldPage() {
 
   function handleChoosePhoto(): void {
     if (
-      !activeJob ||
+      !activeJobIsWritable ||
       photoStatus === "uploading"
     ) {
       return;
@@ -144,7 +159,7 @@ export function FieldPage() {
 
     input.value = "";
 
-    if (!activeJob || !photo) {
+    if (!activeJob || !activeJobIsWritable || !photo) {
       return;
     }
 
@@ -175,7 +190,7 @@ export function FieldPage() {
   async function handleCloseCycle(): Promise<void> {
     if (
       !activeJob ||
-      activeJob.currentCycle.stage !== "project" ||
+      !activeJobIsWritable ||
       closeStatus === "closing"
     ) {
       return;
@@ -276,7 +291,7 @@ export function FieldPage() {
   async function handleGenerateVow(): Promise<void> {
     if (
       !activeJob ||
-      activeJob.currentCycle.stage !== "completed" ||
+      !activeJobHasCompletedCycle ||
       vowStatus === "generating"
     ) {
       return;
@@ -303,7 +318,7 @@ export function FieldPage() {
   async function handleReopenCycle(): Promise<void> {
     if (
       !activeJob ||
-      activeJob.currentCycle.stage !== "completed" ||
+      !activeJobHasCompletedCycle ||
       reopenStatus === "reopening"
     ) {
       return;
@@ -356,6 +371,7 @@ export function FieldPage() {
 
     if (
       !activeJob ||
+      !activeJobIsWritable ||
       noteStatus === "saving" ||
       noteText.trim().length === 0
     ) {
@@ -611,8 +627,7 @@ export function FieldPage() {
                   <select
                     disabled={
                       photoStatus === "uploading" ||
-                      activeJob.currentCycle.stage !==
-                        "project"
+                      !activeJobIsWritable
                     }
                     id="field-photo-stage"
                     value={photoStage}
@@ -659,8 +674,7 @@ export function FieldPage() {
                     className="field-action field-action-primary"
                     disabled={
                       photoStatus === "uploading" ||
-                      activeJob.currentCycle.stage !==
-                        "project"
+                      !activeJobIsWritable
                     }
                     type="button"
                     onClick={handleChoosePhoto}
@@ -682,8 +696,7 @@ export function FieldPage() {
                     aria-expanded={isWritingNote}
                     className="field-action"
                     disabled={
-                      activeJob.currentCycle.stage !==
-                        "project"
+                      !activeJobIsWritable
                     }
                     type="button"
                     onClick={() => {
@@ -727,8 +740,7 @@ export function FieldPage() {
                   <button
                     className="btn btn-primary"
                     disabled={
-                      activeJob.currentCycle.stage !==
-                        "project" ||
+                      !activeJobIsWritable ||
                       closeStatus === "closing"
                     }
                     type="button"
@@ -745,8 +757,7 @@ export function FieldPage() {
                   <button
                     className="btn btn-primary"
                     disabled={
-                      activeJob.currentCycle.stage !==
-                        "completed" ||
+                      !activeJobHasCompletedCycle ||
                       vowStatus === "generating" ||
                       vowStatus === "generated"
                     }
@@ -763,8 +774,7 @@ export function FieldPage() {
                   <button
                     className="btn btn-primary"
                     disabled={
-                      activeJob.currentCycle.stage !==
-                        "completed" ||
+                      !activeJobHasCompletedCycle ||
                       reopenStatus === "reopening" ||
                       reopenStatus === "reopened"
                     }
@@ -850,7 +860,7 @@ export function FieldPage() {
                   </div>
                 )}
 
-                {isWritingNote && (
+                {showNoteEditor && (
                   <section className="field-note-panel">
                     <form
                       className="field-note-form"
@@ -895,6 +905,7 @@ export function FieldPage() {
                           className="btn btn-primary"
                           disabled={
                             noteStatus === "saving" ||
+                            !activeJobIsWritable ||
                             noteText.trim().length === 0
                           }
                           type="submit"

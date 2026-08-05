@@ -266,7 +266,7 @@ export function VisitControl({
         </button>
       </div>
 
-      {isOpen && (
+      {isActive && isOpen && (
         <section className="field-note-panel">
           <form
             className="field-note-form"
