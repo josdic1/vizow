@@ -781,6 +781,7 @@ jobsRouter.patch(
         status: Visit["status"];
         lifecycleStatus: Job["lifecycleStatus"];
         archivedAt: Date | null;
+        currentCycleId: string;
         currentCycleStage: Job["currentCycle"]["stage"];
       }>(
         `
@@ -791,6 +792,7 @@ jobsRouter.patch(
             visit.status,
             job.lifecycle_status AS "lifecycleStatus",
             job.archived_at AS "archivedAt",
+            current_cycle.id AS "currentCycleId",
             current_cycle.stage AS "currentCycleStage"
           FROM visits visit
           JOIN jobs job
@@ -867,6 +869,20 @@ jobsRouter.patch(
           ok: false,
           error:
             "Visit status can only be updated during an active work cycle.",
+        });
+        return;
+      }
+
+      if (
+        existingVisit.jobCycleId !==
+        existingVisit.currentCycleId
+      ) {
+        await databaseClient.query("ROLLBACK");
+
+        response.status(409).json({
+          ok: false,
+          error:
+            "Only Visits in the current work cycle can be modified.",
         });
         return;
       }

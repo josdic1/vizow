@@ -36,9 +36,11 @@ const organizationId = "00000000-0000-4000-8000-000000000001";
 const jobId = "00000000-0000-4000-8000-000000000002";
 const cycleId = "00000000-0000-4000-8000-000000000003";
 const visitId = "00000000-0000-4000-8000-000000000004";
+const reopenedCycleId = "00000000-0000-4000-8000-000000000005";
 let lifecycleStatus: "active" | "cancelled";
 let archivedAt: Date | null;
 let currentCycleStage: "project" | "completed";
+let currentCycleId: string;
 
 beforeAll(async () => {
   process.env.DATABASE_URL =
@@ -56,6 +58,7 @@ beforeEach(() => {
   lifecycleStatus = "active";
   archivedAt = null;
   currentCycleStage = "project";
+  currentCycleId = cycleId;
   database.connect.mockClear();
   database.query.mockReset();
   database.release.mockClear();
@@ -74,6 +77,7 @@ beforeEach(() => {
           status: "scheduled",
           lifecycleStatus,
           archivedAt,
+          currentCycleId,
           currentCycleStage,
         }],
       };
@@ -142,6 +146,19 @@ describe("PATCH /api/jobs/:jobId/visits/:visitId/status writable Job guard", () 
     expect(response.status).toBe(409);
     expect(response.body.error).toBe(
       "Visit status can only be updated during an active work cycle.",
+    );
+    expectNoVisitUpdate();
+    expect(database.release).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a Visit from an older cycle after the Job is reopened", async () => {
+    currentCycleId = reopenedCycleId;
+
+    const response = await completeVisit();
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toBe(
+      "Only Visits in the current work cycle can be modified.",
     );
     expectNoVisitUpdate();
     expect(database.release).toHaveBeenCalledOnce();
