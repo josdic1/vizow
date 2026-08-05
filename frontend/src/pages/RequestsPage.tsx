@@ -16,6 +16,7 @@ import { createClient, fetchClients } from "../api/clients";
 import {
   approveRequest,
   createRequest,
+  declineRequest,
   fetchRequests,
 } from "../api/requests";
 import { AddressAutocomplete } from "../components/AddressAutocomplete";
@@ -31,23 +32,29 @@ type RequestsState =
     }
   | { status: "error"; message: string };
 
+type RequestMutationAction =
+  | "Create client"
+  | "Create request"
+  | "Approve request"
+  | "Decline request";
+
 type RequestMutationState =
   | { status: "idle" }
   | {
       status: "working";
-      action: "Create client" | "Create request" | "Approve request";
+      action: RequestMutationAction;
       object: string;
     }
   | {
       status: "success";
-      action: "Create client" | "Create request" | "Approve request";
+      action: RequestMutationAction;
       object: string;
       message: string;
       jobId?: string;
     }
   | {
       status: "error";
-      action: "Create client" | "Create request" | "Approve request";
+      action: RequestMutationAction;
       object: string;
       message: string;
     };
@@ -173,6 +180,10 @@ export function RequestsPage() {
   const [newClientDraft, setNewClientDraft] = useState<NewClientDraft>(
     () => ({ ...emptyNewClientDraft }),
   );
+  const [decliningRequestId, setDecliningRequestId] = useState<
+    string | null
+  >(null);
+  const [declineReason, setDeclineReason] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -201,6 +212,8 @@ export function RequestsPage() {
         setNewClientDraft({
           ...emptyNewClientDraft,
         });
+        setDecliningRequestId(null);
+        setDeclineReason("");
 
         if (initialClient) {
           setSelectedClientId(initialClient.id);
@@ -290,6 +303,7 @@ export function RequestsPage() {
         request.clientName,
         request.title,
         request.description,
+        request.declineReason,
         formatAddress(request),
         request.status,
       ]
@@ -578,6 +592,8 @@ export function RequestsPage() {
   }
 
   async function handleApproveRequest(request: WorkRequest) {
+    setDecliningRequestId(null);
+    setDeclineReason("");
     setMutation({
       status: "working",
       action: "Approve request",
@@ -620,6 +636,74 @@ export function RequestsPage() {
     }
   }
 
+  function openDeclineRequest(request: WorkRequest) {
+    setDecliningRequestId(request.id);
+    setDeclineReason("");
+    setMutation({ status: "idle" });
+  }
+
+  function closeDeclineRequest() {
+    setDecliningRequestId(null);
+    setDeclineReason("");
+  }
+
+  async function handleDeclineRequest(request: WorkRequest) {
+    const reason = declineReason.trim();
+
+    if (!reason) {
+      setMutation({
+        status: "error",
+        action: "Decline request",
+        object: request.title,
+        message: "A permanent decline reason is required.",
+      });
+      return;
+    }
+
+    setMutation({
+      status: "working",
+      action: "Decline request",
+      object: request.title,
+    });
+
+    try {
+      const declinedRequest = await declineRequest(request.id, {
+        reason,
+      });
+
+      setState((current) =>
+        current.status === "ready"
+          ? {
+              ...current,
+              requests: current.requests.map((existingRequest) =>
+                existingRequest.id === declinedRequest.id
+                  ? declinedRequest
+                  : existingRequest,
+              ),
+            }
+          : current,
+      );
+
+      closeDeclineRequest();
+      setMutation({
+        status: "success",
+        action: "Decline request",
+        object: declinedRequest.title,
+        message: `${declinedRequest.title} was declined. Its reason is permanently recorded.`,
+      });
+    } catch (error: unknown) {
+      setMutation({
+        status: "error",
+        action: "Decline request",
+        object: request.title,
+        message:
+          error instanceof Error
+            ? error.message
+            : "An unknown error occurred while declining the Request.",
+      });
+    }
+  }
+
   const mutationWorking = mutation.status === "working";
 
   const railObject =
@@ -644,6 +728,8 @@ export function RequestsPage() {
             : mutation.status === "success"
               ? mutation.action === "Create client"
                 ? "Client created"
+                : mutation.action === "Decline request"
+                  ? "Request declined"
                 : mutation.jobId
                   ? "Job created"
                   : "Request created"
@@ -1340,6 +1426,13 @@ export function RequestsPage() {
                                 {request.description ??
                                   "No description recorded."}
                               </span>
+                              {request.status === "declined" &&
+                                request.declineReason && (
+                                  <span className="request-decline-record">
+                                    <strong>Decline reason:</strong>{" "}
+                                    {request.declineReason}
+                                  </span>
+                                )}
                             </td>
 
                             <td data-label="Service address">
@@ -1362,21 +1455,98 @@ export function RequestsPage() {
                             <td data-label="Action">
                               <div className="request-actions">
                                 {request.status === "open" && (
-                                  <button
-                                    className="btn btn-primary"
-                                    type="button"
-                                    disabled={mutationWorking}
-                                    onClick={() =>
-                                      handleApproveRequest(request)
-                                    }
-                                  >
-                                    {mutation.status === "working" &&
-                                    mutation.action ===
-                                      "Approve request" &&
-                                    mutation.object === request.title
-                                      ? "Approving…"
-                                      : "Approve"}
-                                  </button>
+                                  <>
+                                    <div className="request-action-buttons">
+                                      <button
+                                        className="btn btn-primary"
+                                        type="button"
+                                        disabled={mutationWorking}
+                                        onClick={() =>
+                                          handleApproveRequest(request)
+                                        }
+                                      >
+                                        {mutation.status === "working" &&
+                                        mutation.action ===
+                                          "Approve request" &&
+                                        mutation.object === request.title
+                                          ? "Approving…"
+                                          : "Approve"}
+                                      </button>
+
+                                      <button
+                                        className="btn"
+                                        type="button"
+                                        aria-expanded={
+                                          decliningRequestId === request.id
+                                        }
+                                        disabled={mutationWorking}
+                                        onClick={() =>
+                                          openDeclineRequest(request)
+                                        }
+                                      >
+                                        Decline
+                                      </button>
+                                    </div>
+
+                                    {decliningRequestId === request.id && (
+                                      <form
+                                        className="request-decline-form"
+                                        onSubmit={(event) => {
+                                          event.preventDefault();
+                                          void handleDeclineRequest(request);
+                                        }}
+                                      >
+                                        <label
+                                          htmlFor={`decline-reason-${request.id}`}
+                                        >
+                                          Permanent decline reason
+                                        </label>
+
+                                        <textarea
+                                          autoFocus
+                                          className="textarea"
+                                          id={`decline-reason-${request.id}`}
+                                          maxLength={1000}
+                                          required
+                                          rows={3}
+                                          value={declineReason}
+                                          onChange={(event) =>
+                                            setDeclineReason(event.target.value)
+                                          }
+                                        />
+
+                                        <span className="request-decline-count">
+                                          {declineReason.length}/1000
+                                        </span>
+
+                                        <div className="request-action-buttons">
+                                          <button
+                                            className="btn btn-primary"
+                                            type="submit"
+                                            disabled={
+                                              mutationWorking ||
+                                              !declineReason.trim()
+                                            }
+                                          >
+                                            {mutation.status === "working" &&
+                                            mutation.action ===
+                                              "Decline request"
+                                              ? "Declining…"
+                                              : "Confirm Decline"}
+                                          </button>
+
+                                          <button
+                                            className="btn"
+                                            type="button"
+                                            disabled={mutationWorking}
+                                            onClick={closeDeclineRequest}
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      </form>
+                                    )}
+                                  </>
                                 )}
 
                                 {request.status === "approved" &&

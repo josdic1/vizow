@@ -1,8 +1,10 @@
 import {
   approveRequestResponseSchema,
+  declineRequestResponseSchema,
   requestResponseSchema,
   requestsResponseSchema,
   type CreateRequestInput,
+  type DeclineRequestInput,
   type Job,
   type Request,
 } from "@vizow/shared";
@@ -129,4 +131,40 @@ export async function approveRequest(
     request: result.data.request,
     job: result.data.job,
   };
+}
+
+export async function declineRequest(
+  requestId: string,
+  input: DeclineRequestInput,
+): Promise<Request> {
+  const response = await fetch(
+    `/api/requests/${encodeURIComponent(requestId)}/decline`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(
+        response,
+        `Failed to decline request. HTTP ${response.status}.`,
+      ),
+    );
+  }
+
+  const payload: unknown = await response.json();
+  const result = declineRequestResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error("Invalid Request decline response:", result.error);
+    throw new Error("The decline API returned an invalid response.");
+  }
+
+  return result.data.request;
 }

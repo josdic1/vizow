@@ -62,6 +62,51 @@
   flex-wrap: wrap;
 }
 
+.request-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.request-decline-form {
+  display: grid;
+  gap: var(--space-2);
+  width: min(26rem, 100%);
+  padding: var(--space-3);
+  border: var(--border-thin);
+  background: var(--color-paper-soft);
+}
+
+.request-decline-form label {
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.request-decline-form .textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.request-decline-count {
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.request-decline-record {
+  display: block;
+  margin-top: var(--space-2);
+  padding-left: var(--space-2);
+  border-left: 3px solid var(--color-ink);
+  color: var(--color-ink-soft);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
 .requests-table .btn {
   min-height: 2.35rem;
   padding: 0.65rem 0.8rem;
@@ -88,7 +133,9 @@
   }
 
   .request-result-notice .btn,
-  .request-actions .btn {
+  .request-actions .btn,
+  .request-action-buttons,
+  .request-action-buttons .btn {
     width: 100%;
   }
 
