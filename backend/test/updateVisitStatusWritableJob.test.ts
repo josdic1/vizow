@@ -1,4 +1,7 @@
-import type { Express } from "express";
+import {
+  response as expressResponse,
+  type Express,
+} from "express";
 import request from "supertest";
 import {
   beforeAll,
@@ -41,6 +44,7 @@ let lifecycleStatus: "active" | "cancelled";
 let archivedAt: Date | null;
 let currentCycleStage: "project" | "completed";
 let currentCycleId: string;
+let createdAt: Date;
 
 beforeAll(async () => {
   process.env.DATABASE_URL =
@@ -59,12 +63,17 @@ beforeEach(() => {
   archivedAt = null;
   currentCycleStage = "project";
   currentCycleId = cycleId;
+  createdAt = new Date("2026-08-05T14:00:00.000Z");
   database.connect.mockClear();
   database.query.mockReset();
   database.release.mockClear();
 
   database.query.mockImplementation(async (sql: string) => {
-    if (sql === "BEGIN" || sql === "ROLLBACK") {
+    if (
+      sql === "BEGIN" ||
+      sql === "COMMIT" ||
+      sql === "ROLLBACK"
+    ) {
       return { rows: [] };
     }
 
@@ -81,6 +90,29 @@ beforeEach(() => {
           currentCycleStage,
         }],
       };
+    }
+
+    if (sql.includes("UPDATE visits")) {
+      return {
+        rows: [{
+          id: visitId,
+          jobId,
+          jobCycleId: cycleId,
+          status: "completed",
+          scheduledStart: new Date("2026-08-06T13:00:00.000Z"),
+          scheduledEnd: null,
+          notes: null,
+          createdAt,
+          updatedAt: new Date("2026-08-05T14:15:00.000Z"),
+        }],
+      };
+    }
+
+    if (
+      sql.includes("INSERT INTO job_events") ||
+      sql.includes("UPDATE jobs")
+    ) {
+      return { rows: [] };
     }
 
     throw new Error(`Unexpected SQL in test: ${sql}`);
@@ -162,5 +194,86 @@ describe("PATCH /api/jobs/:jobId/visits/:visitId/status writable Job guard", () 
     );
     expectNoVisitUpdate();
     expect(database.release).toHaveBeenCalledOnce();
+  });
+});
+
+describe("PATCH /api/jobs/:jobId/visits/:visitId/status commit boundary", () => {
+  it("builds a valid response before committing", async () => {
+    const response = await completeVisit();
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      ok: true,
+      visit: {
+        id: visitId,
+        jobId,
+        jobCycleId: cycleId,
+        cycleNumber: 1,
+        status: "completed",
+        scheduledStart: "2026-08-06T13:00:00.000Z",
+        scheduledEnd: null,
+        notes: null,
+        linkedScopeRevisions: [],
+        createdAt: "2026-08-05T14:00:00.000Z",
+        updatedAt: "2026-08-05T14:15:00.000Z",
+      },
+    });
+
+    const sqlStatements = database.query.mock.calls.map(
+      ([sql]) => sql,
+    );
+
+    expect(sqlStatements).toContain("COMMIT");
+    expect(sqlStatements).not.toContain("ROLLBACK");
+  });
+
+  it("rolls back when response construction fails before commit", async () => {
+    createdAt = new Date("invalid");
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      const response = await completeVisit();
+
+      expect(response.status).toBe(500);
+
+      const sqlStatements = database.query.mock.calls.map(
+        ([sql]) => sql,
+      );
+
+      expect(sqlStatements).not.toContain("COMMIT");
+      expect(sqlStatements).toContain("ROLLBACK");
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it("does not issue a false rollback when response delivery fails after commit", async () => {
+    const responseJson = vi
+      .spyOn(expressResponse, "json")
+      .mockImplementationOnce(() => {
+        throw new Error("Simulated response delivery failure.");
+      });
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      const response = await completeVisit();
+
+      expect(response.status).toBe(500);
+
+      const sqlStatements = database.query.mock.calls.map(
+        ([sql]) => sql,
+      );
+
+      expect(sqlStatements).toContain("COMMIT");
+      expect(sqlStatements).not.toContain("ROLLBACK");
+      expect(database.release).toHaveBeenCalledOnce();
+    } finally {
+      responseJson.mockRestore();
+      consoleError.mockRestore();
+    }
   });
 });

@@ -779,6 +779,7 @@ jobsRouter.patch(
     }
 
     const databaseClient = await pool.connect();
+    let transactionCommitted = false;
 
     try {
       await databaseClient.query("BEGIN");
@@ -998,21 +999,28 @@ jobsRouter.patch(
       );
 
       const visit = prepareVisit(updatedVisit);
-
-      await databaseClient.query("COMMIT");
-
-      response.json({
+      const responsePayload = visitResponseSchema.parse({
         ok: true,
         visit,
       });
+
+      await databaseClient.query("COMMIT");
+      transactionCommitted = true;
+
+      response.json(responsePayload);
     } catch (error) {
-      await databaseClient.query("ROLLBACK");
+      if (!transactionCommitted) {
+        await databaseClient.query("ROLLBACK");
+      }
+
       console.error(error);
 
-      response.status(500).json({
-        ok: false,
-        error: "Unable to update Visit status.",
-      });
+      if (!response.headersSent) {
+        response.status(500).json({
+          ok: false,
+          error: "Unable to update Visit status.",
+        });
+      }
     } finally {
       databaseClient.release();
     }
