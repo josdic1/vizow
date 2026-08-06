@@ -1,6 +1,7 @@
 import {
   archiveJobSchema,
   cancelJobSchema,
+  closeJobCycleResponseSchema,
   closeJobCycleSchema,
   closeJobCycleWarningSchema,
   closureSchema,
@@ -2407,6 +2408,7 @@ jobsRouter.post(
     }
 
     const databaseClient = await pool.connect();
+    let transactionCommitted = false;
 
     try {
       await databaseClient.query("BEGIN");
@@ -2702,21 +2704,29 @@ jobsRouter.post(
         );
       }
 
-      await databaseClient.query("COMMIT");
-
-      response.status(201).json({
+      const responsePayload = closeJobCycleResponseSchema.parse({
         ok: true,
         closure: prepareClosure(createdClosure),
         job: updatedJob,
       });
+
+      await databaseClient.query("COMMIT");
+      transactionCommitted = true;
+
+      response.status(201).json(responsePayload);
     } catch (error) {
-      await databaseClient.query("ROLLBACK");
+      if (!transactionCommitted) {
+        await databaseClient.query("ROLLBACK");
+      }
+
       console.error(error);
 
-      response.status(500).json({
-        ok: false,
-        error: "Unable to close the work cycle.",
-      });
+      if (!response.headersSent) {
+        response.status(500).json({
+          ok: false,
+          error: "Unable to close the work cycle.",
+        });
+      }
     } finally {
       databaseClient.release();
     }
