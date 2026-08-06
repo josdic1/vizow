@@ -14,6 +14,7 @@ import {
   scopeRevisionSchema,
   updateScopeRevisionVisitPlanSchema,
   updateVisitStatusSchema,
+  visitResponseSchema,
   visitSchema,
   visitScopeRevisionSchema,
   type Closure,
@@ -534,6 +535,7 @@ jobsRouter.post(
     }
 
     const databaseClient = await pool.connect();
+    let transactionCommitted = false;
 
     try {
       await databaseClient.query("BEGIN");
@@ -717,21 +719,28 @@ jobsRouter.post(
       );
 
       const visit = prepareVisit(createdVisit);
-
-      await databaseClient.query("COMMIT");
-
-      response.status(201).json({
+      const responsePayload = visitResponseSchema.parse({
         ok: true,
         visit,
       });
+
+      await databaseClient.query("COMMIT");
+      transactionCommitted = true;
+
+      response.status(201).json(responsePayload);
     } catch (error) {
-      await databaseClient.query("ROLLBACK");
+      if (!transactionCommitted) {
+        await databaseClient.query("ROLLBACK");
+      }
+
       console.error(error);
 
-      response.status(500).json({
-        ok: false,
-        error: "Unable to schedule visit.",
-      });
+      if (!response.headersSent) {
+        response.status(500).json({
+          ok: false,
+          error: "Unable to schedule visit.",
+        });
+      }
     } finally {
       databaseClient.release();
     }
