@@ -11,6 +11,7 @@ import {
   fieldNoteResponseSchema,
   fieldNoteSchema,
   idSchema,
+  jobResponseSchema,
   jobSchema,
   reopenJobCycleSchema,
   reopenJobCycleResponseSchema,
@@ -3021,6 +3022,7 @@ jobsRouter.post(
     }
 
     const databaseClient = await pool.connect();
+    let transactionCommitted = false;
 
     try {
       await databaseClient.query("BEGIN");
@@ -3198,20 +3200,28 @@ jobsRouter.post(
         );
       }
 
-      await databaseClient.query("COMMIT");
-
-      response.json({
+      const responsePayload = jobResponseSchema.parse({
         ok: true,
         job: cancelledJob,
       });
+
+      await databaseClient.query("COMMIT");
+      transactionCommitted = true;
+
+      response.json(responsePayload);
     } catch (error) {
-      await databaseClient.query("ROLLBACK");
+      if (!transactionCommitted) {
+        await databaseClient.query("ROLLBACK");
+      }
+
       console.error(error);
 
-      response.status(500).json({
-        ok: false,
-        error: "Unable to cancel the Job.",
-      });
+      if (!response.headersSent) {
+        response.status(500).json({
+          ok: false,
+          error: "Unable to cancel the Job.",
+        });
+      }
     } finally {
       databaseClient.release();
     }
