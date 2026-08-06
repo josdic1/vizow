@@ -7,6 +7,7 @@ import {
   createFieldNoteSchema,
   createScopeRevisionSchema,
   createVisitSchema,
+  fieldNoteResponseSchema,
   fieldNoteSchema,
   idSchema,
   jobSchema,
@@ -1056,6 +1057,7 @@ jobsRouter.post(
     }
 
     const databaseClient = await pool.connect();
+    let transactionCommitted = false;
 
     try {
       await databaseClient.query("BEGIN");
@@ -1205,22 +1207,30 @@ jobsRouter.post(
         ],
       );
 
-      await databaseClient.query("COMMIT");
-
-      response.status(201).json({
+      const responsePayload = fieldNoteResponseSchema.parse({
         ok: true,
         fieldNote: prepareFieldNote(
           createdFieldNote,
         ),
       });
+
+      await databaseClient.query("COMMIT");
+      transactionCommitted = true;
+
+      response.status(201).json(responsePayload);
     } catch (error) {
-      await databaseClient.query("ROLLBACK");
+      if (!transactionCommitted) {
+        await databaseClient.query("ROLLBACK");
+      }
+
       console.error(error);
 
-      response.status(500).json({
-        ok: false,
-        error: "Unable to create field note.",
-      });
+      if (!response.headersSent) {
+        response.status(500).json({
+          ok: false,
+          error: "Unable to create field note.",
+        });
+      }
     } finally {
       databaseClient.release();
     }
