@@ -12,6 +12,7 @@ import {
   idSchema,
   jobSchema,
   reopenJobCycleSchema,
+  scopeRevisionResponseSchema,
   scopeRevisionSchema,
   updateScopeRevisionVisitPlanSchema,
   updateVisitStatusSchema,
@@ -1376,6 +1377,7 @@ jobsRouter.post(
     }
 
     const databaseClient = await pool.connect();
+    let transactionCommitted = false;
 
     try {
       await databaseClient.query("BEGIN");
@@ -1849,22 +1851,29 @@ jobsRouter.post(
       const visit = linkedVisitRow
         ? prepareVisit(linkedVisitRow)
         : null;
-
-      await databaseClient.query("COMMIT");
-
-      response.status(201).json({
+      const responsePayload = scopeRevisionResponseSchema.parse({
         ok: true,
         scopeRevision,
         visit,
       });
+
+      await databaseClient.query("COMMIT");
+      transactionCommitted = true;
+
+      response.status(201).json(responsePayload);
     } catch (error) {
-      await databaseClient.query("ROLLBACK");
+      if (!transactionCommitted) {
+        await databaseClient.query("ROLLBACK");
+      }
+
       console.error(error);
 
-      response.status(500).json({
-        ok: false,
-        error: "Unable to create scope revision.",
-      });
+      if (!response.headersSent) {
+        response.status(500).json({
+          ok: false,
+          error: "Unable to create scope revision.",
+        });
+      }
     } finally {
       databaseClient.release();
     }

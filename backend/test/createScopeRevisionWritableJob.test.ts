@@ -1,4 +1,7 @@
-import type { Express } from "express";
+import {
+  response as expressResponse,
+  type Express,
+} from "express";
 import request from "supertest";
 import {
   beforeAll,
@@ -35,9 +38,11 @@ let app: Express;
 const organizationId = "00000000-0000-4000-8000-000000000001";
 const jobId = "00000000-0000-4000-8000-000000000002";
 const cycleId = "00000000-0000-4000-8000-000000000003";
+const scopeRevisionId = "00000000-0000-4000-8000-000000000004";
 let lifecycleStatus: "active" | "cancelled";
 let archivedAt: Date | null;
 let stage: "project" | "completed";
+let createdAt: Date;
 
 beforeAll(async () => {
   process.env.DATABASE_URL =
@@ -55,12 +60,17 @@ beforeEach(() => {
   lifecycleStatus = "active";
   archivedAt = null;
   stage = "project";
+  createdAt = new Date("2026-08-05T14:00:00.000Z");
   database.connect.mockClear();
   database.query.mockReset();
   database.release.mockClear();
 
   database.query.mockImplementation(async (sql: string) => {
-    if (sql === "BEGIN" || sql === "ROLLBACK") {
+    if (
+      sql === "BEGIN" ||
+      sql === "COMMIT" ||
+      sql === "ROLLBACK"
+    ) {
       return { rows: [] };
     }
 
@@ -78,6 +88,34 @@ beforeEach(() => {
           stage,
         }],
       };
+    }
+
+    if (sql.includes("COALESCE(MAX(revision_number), 0) + 1")) {
+      return { rows: [{ revisionNumber: 1 }] };
+    }
+
+    if (sql.includes("INSERT INTO scope_revisions")) {
+      return {
+        rows: [{
+          id: scopeRevisionId,
+          jobId,
+          jobCycleId: cycleId,
+          revisionNumber: 1,
+          scopeText: "Replace the damaged roof decking.",
+          priceChange: "450",
+          reason: "Hidden water damage",
+          visitRequirement: "not_required",
+          linkedVisitIds: [],
+          createdAt,
+        }],
+      };
+    }
+
+    if (
+      sql.includes("INSERT INTO job_events") ||
+      sql.includes("UPDATE jobs")
+    ) {
+      return { rows: [] };
     }
 
     throw new Error(`Unexpected SQL in test: ${sql}`);
@@ -156,5 +194,86 @@ describe("POST /api/jobs/:jobId/scope-revisions writable Job guard", () => {
     });
     expectNoScopeRevisionWrite();
     expect(database.release).toHaveBeenCalledOnce();
+  });
+});
+
+describe("POST /api/jobs/:jobId/scope-revisions commit boundary", () => {
+  it("builds a valid response before committing", async () => {
+    const response = await createScopeRevision();
+
+    expect(response.status).toBe(201);
+    expect(response.body).toEqual({
+      ok: true,
+      scopeRevision: {
+        id: scopeRevisionId,
+        jobId,
+        jobCycleId: cycleId,
+        revisionNumber: 1,
+        scopeText: "Replace the damaged roof decking.",
+        priceChange: 450,
+        reason: "Hidden water damage",
+        visitRequirement: "not_required",
+        linkedVisitIds: [],
+        createdAt: "2026-08-05T14:00:00.000Z",
+      },
+      visit: null,
+    });
+
+    const sqlStatements = database.query.mock.calls.map(
+      ([sql]) => sql,
+    );
+
+    expect(sqlStatements).toContain("COMMIT");
+    expect(sqlStatements).not.toContain("ROLLBACK");
+  });
+
+  it("rolls back when response construction fails before commit", async () => {
+    createdAt = new Date("invalid");
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      const response = await createScopeRevision();
+
+      expect(response.status).toBe(500);
+
+      const sqlStatements = database.query.mock.calls.map(
+        ([sql]) => sql,
+      );
+
+      expect(sqlStatements).not.toContain("COMMIT");
+      expect(sqlStatements).toContain("ROLLBACK");
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it("does not issue a false rollback when response delivery fails after commit", async () => {
+    const responseJson = vi
+      .spyOn(expressResponse, "json")
+      .mockImplementationOnce(() => {
+        throw new Error("Simulated response delivery failure.");
+      });
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      const response = await createScopeRevision();
+
+      expect(response.status).toBe(500);
+
+      const sqlStatements = database.query.mock.calls.map(
+        ([sql]) => sql,
+      );
+
+      expect(sqlStatements).toContain("COMMIT");
+      expect(sqlStatements).not.toContain("ROLLBACK");
+      expect(database.release).toHaveBeenCalledOnce();
+    } finally {
+      responseJson.mockRestore();
+      consoleError.mockRestore();
+    }
   });
 });
