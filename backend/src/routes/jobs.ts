@@ -13,6 +13,7 @@ import {
   idSchema,
   jobSchema,
   reopenJobCycleSchema,
+  reopenJobCycleResponseSchema,
   scopeRevisionResponseSchema,
   scopeRevisionSchema,
   updateScopeRevisionVisitPlanSchema,
@@ -2762,6 +2763,7 @@ jobsRouter.post(
     }
 
     const databaseClient = await pool.connect();
+    let transactionCommitted = false;
 
     try {
       await databaseClient.query("BEGIN");
@@ -2962,20 +2964,28 @@ jobsRouter.post(
         );
       }
 
-      await databaseClient.query("COMMIT");
-
-      response.status(201).json({
+      const responsePayload = reopenJobCycleResponseSchema.parse({
         ok: true,
         job: reopenedJob,
       });
+
+      await databaseClient.query("COMMIT");
+      transactionCommitted = true;
+
+      response.status(201).json(responsePayload);
     } catch (error) {
-      await databaseClient.query("ROLLBACK");
+      if (!transactionCommitted) {
+        await databaseClient.query("ROLLBACK");
+      }
+
       console.error(error);
 
-      response.status(500).json({
-        ok: false,
-        error: "Unable to reopen the work cycle.",
-      });
+      if (!response.headersSent) {
+        response.status(500).json({
+          ok: false,
+          error: "Unable to reopen the work cycle.",
+        });
+      }
     } finally {
       databaseClient.release();
     }
