@@ -1,4 +1,5 @@
 import {
+  basicVowResponseSchema,
   basicVowSnapshotSchema,
   createBasicVowSchema,
   fieldNoteSchema,
@@ -144,6 +145,7 @@ jobVowsRouter.post(
     }
 
     const databaseClient = await pool.connect();
+    let transactionCommitted = false;
 
     try {
       await databaseClient.query("BEGIN");
@@ -260,13 +262,15 @@ jobVowsRouter.post(
 
       if (existingVow) {
         const preparedVow = prepareVow(existingVow);
-
-        await databaseClient.query("COMMIT");
-
-        response.json({
+        const responsePayload = basicVowResponseSchema.parse({
           ok: true,
           vow: preparedVow,
         });
+
+        await databaseClient.query("COMMIT");
+        transactionCommitted = true;
+
+        response.json(responsePayload);
         return;
       }
 
@@ -505,21 +509,28 @@ jobVowsRouter.post(
       );
 
       const preparedVow = prepareVow(createdVow);
-
-      await databaseClient.query("COMMIT");
-
-      response.status(201).json({
+      const responsePayload = basicVowResponseSchema.parse({
         ok: true,
         vow: preparedVow,
       });
+
+      await databaseClient.query("COMMIT");
+      transactionCommitted = true;
+
+      response.status(201).json(responsePayload);
     } catch (error) {
-      await databaseClient.query("ROLLBACK");
+      if (!transactionCommitted) {
+        await databaseClient.query("ROLLBACK");
+      }
+
       console.error(error);
 
-      response.status(500).json({
-        ok: false,
-        error: "Unable to generate the VOW.",
-      });
+      if (!response.headersSent) {
+        response.status(500).json({
+          ok: false,
+          error: "Unable to generate the VOW.",
+        });
+      }
     } finally {
       databaseClient.release();
     }
