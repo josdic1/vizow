@@ -1916,6 +1916,7 @@ jobsRouter.patch(
     }
 
     const databaseClient = await pool.connect();
+    let transactionCommitted = false;
 
     try {
       await databaseClient.query("BEGIN");
@@ -2345,24 +2346,32 @@ jobsRouter.patch(
         ],
       );
 
-      await databaseClient.query("COMMIT");
-
-      response.json({
+      const responsePayload = scopeRevisionResponseSchema.parse({
         ok: true,
         scopeRevision: prepareScopeRevision(scopeRevision),
         visit: linkedVisitRow
           ? prepareVisit(linkedVisitRow)
           : null,
       });
+
+      await databaseClient.query("COMMIT");
+      transactionCommitted = true;
+
+      response.json(responsePayload);
     } catch (error) {
-      await databaseClient.query("ROLLBACK");
+      if (!transactionCommitted) {
+        await databaseClient.query("ROLLBACK");
+      }
+
       console.error(error);
 
-      response.status(500).json({
-        ok: false,
-        error:
-          "Unable to update the Scope Revision Visit decision.",
-      });
+      if (!response.headersSent) {
+        response.status(500).json({
+          ok: false,
+          error:
+            "Unable to update the Scope Revision Visit decision.",
+        });
+      }
     } finally {
       databaseClient.release();
     }
