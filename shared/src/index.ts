@@ -566,6 +566,11 @@ export const basicVowResponseSchema = z.object({
   vow: vowSchema,
 });
 
+export const vowsResponseSchema = z.object({
+  ok: z.literal(true),
+  vows: z.array(vowSchema),
+});
+
 export const requestsResponseSchema = z.object({
   ok: z.literal(true),
   requests: z.array(requestSchema),
@@ -713,6 +718,9 @@ export type VisitResponse = z.infer<
 >;
 export type BasicVowResponse = z.infer<
   typeof basicVowResponseSchema
+>;
+export type VowsResponse = z.infer<
+  typeof vowsResponseSchema
 >;
 export type RequestsResponse = z.infer<typeof requestsResponseSchema>;
 export type RequestResponse = z.infer<typeof requestResponseSchema>;

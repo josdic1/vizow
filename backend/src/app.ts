@@ -10,6 +10,7 @@ import { jobPhotosRouter } from "./routes/jobPhotos.js";
 import { jobVowsRouter } from "./routes/jobVows.js";
 import { organizationRouter } from "./routes/organization.js";
 import { requestsRouter } from "./routes/requests.js";
+import { vowsRouter } from "./routes/vows.js";
 
 export const app = express();
 
@@ -61,3 +62,4 @@ app.use("/api/jobs", jobsRouter);
 app.use("/api/jobs", jobPhotosRouter);
 app.use("/api/jobs", jobVowsRouter);
 app.use("/api/requests", requestsRouter);
+app.use("/api/vows", vowsRouter);

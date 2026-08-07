@@ -11,7 +11,7 @@ import { Link,
   useParams,
   useSearchParams,
 } from "react-router";
-import type { Job } from "@vizow/shared";
+import type { Job, Vow } from "@vizow/shared";
 import { fetchClient } from "./api/clients";
 import {
   archiveJob,
@@ -25,6 +25,11 @@ import { useActiveJob } from "./contexts/ActiveJobContext";
 import { AppLayout } from "./layouts/AppLayout";
 import { FieldPage } from "./pages/FieldPage";
 import { RequestsPage } from "./pages/RequestsPage";
+import {
+  VowDetailPage,
+  VowsPage,
+} from "./pages/VowsPage";
+import { fetchVows } from "./api/vows";
 
 type JobsState =
   | { status: "loading" }
@@ -622,6 +627,38 @@ function JobDetailContent({
   >("idle");
   const [actionMessage, setActionMessage] =
     useState<string | null>(null);
+  const [vowsState, setVowsState] = useState<
+    | { status: "loading" }
+    | { status: "ready"; vows: Vow[] }
+    | { status: "error"; message: string }
+  >({ status: "loading" });
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchVows(controller.signal, job.id)
+      .then((vows) => {
+        setVowsState({ status: "ready", vows });
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setVowsState({
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to load this Job’s VOWs.",
+        });
+      });
+
+    return () => controller.abort();
+  }, [job.id]);
 
   const address = formatAddress(job);
   const stageClass =
@@ -928,6 +965,51 @@ function JobDetailContent({
       <section className="helper-card stack-lg">
         <div className="card-topline">
           <div className="stack">
+            <p className="eyebrow">Visual of Work</p>
+            <h2>VOW Snapshots</h2>
+          </div>
+
+          <Link className="btn" to="/vows">
+            VOW Library
+          </Link>
+        </div>
+
+        {vowsState.status === "loading" && (
+          <div className="notice">Loading VOWs…</div>
+        )}
+
+        {vowsState.status === "error" && (
+          <div className="notice notice-error" role="alert">
+            {vowsState.message}
+          </div>
+        )}
+
+        {vowsState.status === "ready" &&
+          vowsState.vows.length === 0 && (
+            <div className="card-drawer">
+              No VOW has been generated for this Job yet.
+            </div>
+          )}
+
+        {vowsState.status === "ready" &&
+          vowsState.vows.length > 0 && (
+            <div className="cluster">
+              {vowsState.vows.map((vow) => (
+                <Link
+                  className="btn btn-primary"
+                  key={vow.id}
+                  to={`/vows/${vow.id}`}
+                >
+                  View Cycle {vow.snapshot.cycle.cycleNumber} VOW
+                </Link>
+              ))}
+            </div>
+          )}
+      </section>
+
+      <section className="helper-card stack-lg">
+        <div className="card-topline">
+          <div className="stack">
             <p className="eyebrow">
               Current Work Cycle
             </p>
@@ -1114,6 +1196,7 @@ function JobDetailPage() {
 
           {state.status === "ready" && (
             <JobDetailContent
+              key={state.job.id}
               job={state.job}
               onJobUpdated={(job) => {
                 setState({ status: "ready", job });
@@ -1152,6 +1235,8 @@ function App() {
       <Route path="/field" element={<FieldPage />} />
       <Route path="/jobs" element={<JobsPage />} />
       <Route path="/jobs/:jobId" element={<JobDetailPage />} />
+      <Route path="/vows" element={<VowsPage />} />
+      <Route path="/vows/:vowId" element={<VowDetailPage />} />
       <Route path="*" element={<NotFoundPage />} />
           <Route path="/clients" element={<ClientsPage />} />
       <Route

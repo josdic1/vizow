@@ -1,13 +1,16 @@
 import type {
   Job,
   MediaStage,
+  Vow,
 } from "@vizow/shared";
 import {
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import { Link } from "react-router";
 
 import {
   CloseJobCycleWarningError,
@@ -17,6 +20,7 @@ import {
   reopenJobCycle,
   uploadJobPhoto,
 } from "../api/jobs";
+import { fetchVows } from "../api/vows";
 import { ScopeRevisionControl } from "../components/ScopeRevisionControl";
 import { ScopeRevisionLedger } from "../components/ScopeRevisionLedger";
 import { VisitControl } from "../components/VisitControl";
@@ -92,6 +96,8 @@ export function FieldPage() {
   >("idle");
   const [vowMessage, setVowMessage] =
     useState<string | null>(null);
+  const [availableVowResult, setAvailableVowResult] =
+    useState<{ jobId: string; vow: Vow | null } | null>(null);
 
   const [reopenStatus, setReopenStatus] = useState<
     "idle" | "reopening" | "reopened" | "error"
@@ -120,6 +126,51 @@ export function FieldPage() {
 
   const showNoteEditor =
     isWritingNote && activeJobIsWritable;
+
+  const availableVow =
+    activeJob &&
+    availableVowResult?.jobId === activeJob.id
+      ? availableVowResult.vow
+      : null;
+
+  useEffect(() => {
+    if (!activeJob) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    fetchVows(controller.signal, activeJob.id)
+      .then((vows) => {
+        const currentCycleVow = vows.find(
+          (vow) =>
+            vow.snapshot.cycle.id ===
+            activeJob.currentCycle.id,
+        );
+
+        setAvailableVowResult({
+          jobId: activeJob.id,
+          vow: currentCycleVow ?? null,
+        });
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setVowStatus("error");
+        setVowMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to check for an existing VOW.",
+        );
+      });
+
+    return () => controller.abort();
+  }, [activeJob]);
 
   function handleSelectJob(jobId: string): void {
     selectActiveJob(jobId);
@@ -303,6 +354,10 @@ export function FieldPage() {
     try {
       const vow = await createBasicVow(activeJob.id);
 
+      setAvailableVowResult({
+        jobId: activeJob.id,
+        vow,
+      });
       setVowStatus("generated");
       setVowMessage(`Draft VOW ready: ${vow.title}.`);
     } catch (caughtError: unknown) {
@@ -754,22 +809,28 @@ export function FieldPage() {
                         : "Close Work Cycle"}
                   </button>
 
-                  <button
-                    className="btn btn-primary"
-                    disabled={
-                      !activeJobHasCompletedCycle ||
-                      vowStatus === "generating" ||
-                      vowStatus === "generated"
-                    }
-                    type="button"
-                    onClick={handleGenerateVow}
-                  >
-                    {vowStatus === "generating"
-                      ? "Generating…"
-                      : vowStatus === "generated"
-                        ? "VOW Ready"
+                  {availableVow ? (
+                    <Link
+                      className="btn btn-primary"
+                      to={`/vows/${availableVow.id}`}
+                    >
+                      View Cycle {availableVow.snapshot.cycle.cycleNumber} VOW
+                    </Link>
+                  ) : (
+                    <button
+                      className="btn btn-primary"
+                      disabled={
+                        !activeJobHasCompletedCycle ||
+                        vowStatus === "generating"
+                      }
+                      type="button"
+                      onClick={handleGenerateVow}
+                    >
+                      {vowStatus === "generating"
+                        ? "Generating…"
                         : "Generate Basic VOW"}
-                  </button>
+                    </button>
+                  )}
 
                   <button
                     className="btn btn-primary"

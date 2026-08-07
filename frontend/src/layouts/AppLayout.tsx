@@ -69,7 +69,14 @@ export function AppLayout({
           </nav>
 
           <div className="header-actions">
-            <span className="badge">Visual of Work</span>
+            <NavLink
+              className={({ isActive }) =>
+                `site-nav-link${isActive ? " site-nav-link-active" : ""}`
+              }
+              to="/vows"
+            >
+              Visual of Work
+            </NavLink>
           </div>
         </header>
       </div>
