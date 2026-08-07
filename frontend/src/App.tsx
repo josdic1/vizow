@@ -5,7 +5,6 @@ import { useEffect,
   useMemo,
   useState } from "react";
 import { Link,
-  Navigate,
   Route,
   Routes,
   useParams,
@@ -24,6 +23,7 @@ import { AdminPageHeader } from "./components/AdminPageHeader";
 import { useActiveJob } from "./contexts/ActiveJobContext";
 import { AppLayout } from "./layouts/AppLayout";
 import { FieldPage } from "./pages/FieldPage";
+import { HomePage } from "./pages/HomePage";
 import { RequestsPage } from "./pages/RequestsPage";
 import {
   VowDetailPage,
@@ -1230,7 +1230,7 @@ function NotFoundPage() {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/requests" replace />} />
+      <Route path="/" element={<HomePage />} />
       <Route path="/requests" element={<RequestsPage />} />
       <Route path="/field" element={<FieldPage />} />
       <Route path="/jobs" element={<JobsPage />} />

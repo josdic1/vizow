@@ -176,7 +176,8 @@ export function RequestsPage() {
   const [addressDraft, setAddressDraft] = useState<RequestAddressDraft>(
     () => ({ ...emptyRequestAddress }),
   );
-  const [newClientOpen, setNewClientOpen] = useState(false);
+  const [newRequestOpen, setNewRequestOpen] = useState(false);
+const [newClientOpen, setNewClientOpen] = useState(false);
   const [newClientDraft, setNewClientDraft] = useState<NewClientDraft>(
     () => ({ ...emptyNewClientDraft }),
   );
@@ -578,6 +579,7 @@ export function RequestsPage() {
         object: createdRequest.title,
         message: `${createdRequest.title} was created as an open Request.`,
       });
+  setNewRequestOpen(false);
     } catch (error: unknown) {
       setMutation({
         status: "error",
@@ -851,6 +853,18 @@ export function RequestsPage() {
 
           {state.status === "ready" && (
             <>
+          <div className="requests-create-toggle">
+            <button
+              className="btn btn-primary"
+              type="button"
+              aria-expanded={newRequestOpen}
+              onClick={() => setNewRequestOpen((current) => !current)}
+            >
+              {newRequestOpen ? "Close" : "+ New Request"}
+            </button>
+          </div>
+
+          {newRequestOpen && (
               <section
                 className="requests-create-panel"
                 aria-labelledby="new-request-heading"
@@ -1307,6 +1321,7 @@ export function RequestsPage() {
                   </div>
                 </form>
               </section>
+          )}
 
               {state.clients.length === 0 && (
                 <div className="notice notice-error" role="alert">

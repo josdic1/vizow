@@ -16,8 +16,8 @@ export function AppLayout({
         <header className="site-header shell">
           <Link
             className="brand-lockup"
-            to="/requests"
-            aria-label="VIZOW Requests"
+            to="/"
+            aria-label="VIZOW Home"
           >
             <img
               className="brand-mark"
