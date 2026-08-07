@@ -1,6 +1,8 @@
 import {
   idSchema,
+  mediaListResponseSchema,
   mediaResponseSchema,
+  mediaSchema,
 } from "@vizow/shared";
 import {
   type NextFunction,
@@ -98,6 +100,74 @@ function acceptSinglePhoto(
     },
   );
 }
+
+jobPhotosRouter.get(
+  "/:jobId/photos",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(
+      request.params.jobId,
+    );
+
+    if (!jobIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid job ID.",
+      });
+      return;
+    }
+
+    try {
+      const result = await pool.query<MediaDatabaseRow>(
+        `
+          SELECT
+            media.id,
+            media.job_id AS "jobId",
+            media.job_cycle_id AS "jobCycleId",
+            media.url,
+            media.storage_key AS "storageKey",
+            media.mime_type AS "mimeType",
+            media.stage,
+            media.caption,
+            media.captured_at AS "capturedAt",
+            media.created_at AS "createdAt"
+          FROM media
+          JOIN organizations organization
+            ON organization.id = media.organization_id
+          WHERE organization.slug = $1
+            AND media.job_id = $2
+          ORDER BY
+            media.captured_at DESC NULLS LAST,
+            media.created_at DESC,
+            media.id
+        `,
+        [
+          env.ORGANIZATION_SLUG,
+          jobIdResult.data,
+        ],
+      );
+
+      const payload = mediaListResponseSchema.parse({
+        ok: true,
+        media: result.rows.map((row) =>
+          mediaSchema.parse({
+            ...row,
+            capturedAt:
+              row.capturedAt?.toISOString() ?? null,
+            createdAt: row.createdAt.toISOString(),
+          }),
+        ),
+      });
+
+      response.json(payload);
+    } catch (error) {
+      console.error(error);
+      response.status(500).json({
+        ok: false,
+        error: "Unable to load Job photos.",
+      });
+    }
+  },
+);
 
 jobPhotosRouter.post(
   "/:jobId/photos",

@@ -529,6 +529,11 @@ export const mediaResponseSchema = z.object({
   media: mediaSchema,
 });
 
+export const mediaListResponseSchema = z.object({
+  ok: z.literal(true),
+  media: z.array(mediaSchema),
+});
+
 export const closeJobCycleResponseSchema = z.object({
   ok: z.literal(true),
   closure: closureSchema,
@@ -694,6 +699,9 @@ export type FieldNoteResponse = z.infer<
 >;
 export type MediaResponse = z.infer<
   typeof mediaResponseSchema
+>;
+export type MediaListResponse = z.infer<
+  typeof mediaListResponseSchema
 >;
 export type CloseJobCycleResponse = z.infer<
   typeof closeJobCycleResponseSchema

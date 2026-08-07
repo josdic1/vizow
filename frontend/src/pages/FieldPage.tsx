@@ -21,6 +21,7 @@ import {
   uploadJobPhoto,
 } from "../api/jobs";
 import { fetchVows } from "../api/vows";
+import { JobMediaLibrary } from "../components/JobMediaLibrary";
 import { ScopeRevisionControl } from "../components/ScopeRevisionControl";
 import { ScopeRevisionLedger } from "../components/ScopeRevisionLedger";
 import { VisitControl } from "../components/VisitControl";
@@ -106,6 +107,8 @@ export function FieldPage() {
     useState<string | null>(null);
 
   const [visitRefreshVersion, setVisitRefreshVersion] =
+    useState(0);
+  const [mediaRefreshVersion, setMediaRefreshVersion] =
     useState(0);
 
   const showJobPicker =
@@ -224,6 +227,9 @@ export function FieldPage() {
         photoStage,
       );
 
+      setMediaRefreshVersion(
+        (current) => current + 1,
+      );
       setPhotoStatus("saved");
       setPhotoMessage(
         `${formatLabel(photoStage)} photo saved to ${activeJob.title}.`,
@@ -765,7 +771,12 @@ export function FieldPage() {
                   </button>
                 </section>
 
-                <ScopeRevisionControl
+                <JobMediaLibrary
+              jobId={activeJob.id}
+              refreshKey={mediaRefreshVersion}
+            />
+
+            <ScopeRevisionControl
                   key={`${activeJob.id}:${activeJob.currentCycle.id}:${activeJob.currentCycle.stage}`}
                   job={activeJob}
                   onVisitsChanged={() =>

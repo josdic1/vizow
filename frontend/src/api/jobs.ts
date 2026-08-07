@@ -5,6 +5,7 @@ import {
   fieldNoteResponseSchema,
   jobResponseSchema,
   jobsResponseSchema,
+  mediaListResponseSchema,
   mediaResponseSchema,
   reopenJobCycleResponseSchema,
   scopeRevisionResponseSchema,
@@ -200,6 +201,44 @@ export async function uploadJobPhoto(
 
     throw new Error(
       "The photo API returned an invalid response.",
+    );
+  }
+
+  return result.data.media;
+}
+
+export async function fetchJobPhotos(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<Media[]> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/photos`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+      signal,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load Job photos. HTTP ${response.status}.`,
+    );
+  }
+
+  const payload: unknown = await response.json();
+  const result = mediaListResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid Job photos response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The Job photos API returned an invalid response.",
     );
   }
 

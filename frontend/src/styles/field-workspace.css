@@ -583,3 +583,104 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+.field-media-library {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: var(--border-heavy);
+  border-left: 8px solid var(--color-orange);
+  background: var(--color-paper-soft);
+  box-shadow: var(--shadow-md);
+}
+
+.field-media-library-heading,
+.field-media-stage-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.field-media-library-heading h2,
+.field-media-stage-heading h3 {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+}
+
+.field-media-library-heading h2 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 0.9;
+}
+
+.field-media-library-heading > strong {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: var(--border-heavy);
+  background: var(--color-orange);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+}
+
+.field-media-stage {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.field-media-stage-heading {
+  padding-bottom: var(--space-2);
+  border-bottom: var(--border-thin);
+}
+
+.field-media-stage-heading h3 {
+  font-size: 1.5rem;
+}
+
+.field-media-stage-heading span {
+  font-weight: 950;
+}
+
+.field-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-3);
+}
+
+.field-media-card {
+  margin: 0;
+  border: var(--border-normal);
+  background: var(--color-paper);
+}
+
+.field-media-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.field-media-card figcaption {
+  padding: var(--space-2);
+  border-top: var(--border-thin);
+  font-weight: 700;
+}
+
+.field-media-empty {
+  padding: var(--space-4);
+  border: var(--border-thin);
+  background: var(--color-paper);
+  font-weight: 750;
+}
+
+@media (max-width: 760px) {
+  .field-media-library {
+    padding: var(--space-3);
+  }
+
+  .field-media-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
