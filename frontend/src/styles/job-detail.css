@@ -35,3 +35,254 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── JOURNEY ───────────────────────────────────── */
+
+.job-journey {
+  position: relative;
+  display: grid;
+  gap: 0;
+  padding: var(--space-2) 0;
+}
+
+.job-journey::before {
+  content: "";
+  position: absolute;
+  top: 24px;
+  bottom: 24px;
+  left: 21px;
+  width: 3px;
+  background: var(--color-ink);
+}
+
+.job-journey-event {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+  padding: 10px 0;
+}
+
+.job-journey-marker {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: var(--border-normal);
+  background: var(--color-orange);
+  box-shadow: 3px 3px 0 var(--color-ink);
+}
+
+.job-journey-marker span {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.job-journey-content {
+  min-width: 0;
+  padding: 10px 14px;
+  border: var(--border-normal);
+  background: var(--color-paper);
+}
+
+.job-journey-content strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.job-journey-content small {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-steel);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 700px) {
+  .job-journey-event {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .job-journey::before {
+    left: 18px;
+  }
+
+  .job-journey-marker {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+/* ── JOURNEY INTERACTIONS ─────────────────────── */
+
+.journey-topline {
+  align-items: center;
+}
+
+.journey-collapsed-note {
+  padding: 14px 16px;
+  border: var(--border-normal);
+  background: var(--color-paper);
+  color: var(--color-steel);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.job-journey-event {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.job-journey-event:hover .job-journey-content,
+.job-journey-event:focus-visible .job-journey-content {
+  background: var(--color-paper-soft);
+}
+
+.job-journey-event:focus-visible {
+  outline: 3px solid var(--color-orange);
+  outline-offset: 3px;
+}
+
+.journey-detail-panel {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: var(--space-5);
+
+  border: var(--border-heavy);
+  border-top: 8px solid var(--color-orange);
+  background: var(--color-paper-soft);
+  box-shadow: var(--shadow-lg);
+}
+
+.journey-detail-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-normal);
+}
+
+.journey-detail-heading h2,
+.journey-detail-heading p {
+  margin-bottom: 0;
+}
+
+.journey-detail-heading h2 {
+  margin-top: 3px;
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
+}
+
+.journey-detail-body {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+}
+
+.journey-detail-section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.journey-detail-section h3,
+.journey-detail-section p {
+  margin: 0;
+}
+
+.journey-detail-section small {
+  color: var(--color-steel);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.journey-detail-photo {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+  border: var(--border-normal);
+  background: var(--color-paper);
+}
+
+.journey-detail-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.journey-detail-meta > div {
+  padding: 10px 12px;
+  border: var(--border-normal);
+  background: var(--color-paper);
+}
+
+.journey-detail-meta dt {
+  color: var(--color-steel);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.journey-detail-meta dd {
+  margin: 4px 0 0;
+  font-weight: 800;
+}
+
+.journey-summary-panel {
+  width: min(720px, 100%);
+}
+
+.journey-ai-summary {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+}
+
+.journey-ai-summary > div {
+  white-space: pre-wrap;
+  line-height: 1.65;
+}
+
+.journey-ai-summary small {
+  color: var(--color-steel);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 700px) {
+  .journey-topline {
+    align-items: flex-start;
+  }
+
+  .journey-detail-panel {
+    padding: var(--space-4);
+  }
+
+  .journey-detail-heading {
+    flex-direction: column;
+  }
+
+  .journey-detail-meta {
+    grid-template-columns: 1fr;
+  }
+}

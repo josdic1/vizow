@@ -7,6 +7,7 @@ import {
   type DeclineRequestInput,
   type Job,
   type Request,
+  type ReviewRequestInput,
 } from "@vizow/shared";
 
 type ApprovedRequestResult = {
@@ -131,6 +132,38 @@ export async function approveRequest(
     request: result.data.request,
     job: result.data.job,
   };
+}
+
+export async function reviewRequest(
+  requestId: string,
+  input: ReviewRequestInput,
+): Promise<Request> {
+  const response = await fetch(
+    `/api/requests/${encodeURIComponent(requestId)}/review`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readApiError(response, "Unable to save the approved Request."),
+    );
+  }
+
+  const payload: unknown = await response.json();
+  const result = requestResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    throw new Error("The Request review API returned an invalid response.");
+  }
+
+  return result.data.request;
 }
 
 export async function declineRequest(

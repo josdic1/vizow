@@ -73,7 +73,7 @@ export function ScopeRevisionControl({
   const isActive =
     job.lifecycleStatus === "active" &&
     job.archivedAt === null &&
-    job.currentCycle.stage === "project";
+    job.currentCycle.stage === "open";
   const isSaving = status === "saving";
 
   const eligibleVisits = useMemo(
@@ -344,23 +344,28 @@ export function ScopeRevisionControl({
 
   return (
     <>
-      <div className="field-note-actions">
-        <button
-          aria-expanded={isOpen}
-          className="btn"
-          disabled={!isActive || isSaving}
-          type="button"
-          onClick={() => {
-            setIsOpen(true);
-            setStatus("idle");
-            setMessage(null);
-          }}
-        >
-          {isActive
-            ? "Add Scope Revision"
-            : "Scope Locked"}
-        </button>
-      </div>
+      {isActive && (
+        <div className="scope-revision-toolbar">
+          <span>Changes to the approved work</span>
+          <button
+            aria-expanded={isOpen}
+            className="btn"
+            disabled={isSaving}
+            type="button"
+            onClick={() => {
+              if (isOpen) {
+                closeForm();
+              } else {
+                setIsOpen(true);
+                setStatus("idle");
+                setMessage(null);
+              }
+            }}
+          >
+            {isOpen ? "Close" : "Add Scope Change"}
+          </button>
+        </div>
+      )}
 
       {isActive && isOpen && (
         <section className="field-note-panel">

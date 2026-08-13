@@ -4,6 +4,9 @@ import {
   closeJobCycleWarningResponseSchema,
   fieldNoteResponseSchema,
   jobResponseSchema,
+  jobJourneyResponseSchema,
+  jobJourneySummaryResponseSchema,
+  jobJourneyStoredSummaryResponseSchema,
   jobsResponseSchema,
   mediaListResponseSchema,
   mediaResponseSchema,
@@ -21,6 +24,7 @@ import {
   type CreateVisitInput,
   type FieldNote,
   type Job,
+  type JobJourneyEvent,
   type Media,
   type MediaStage,
   type ScopeRevision,
@@ -243,6 +247,156 @@ export async function fetchJobPhotos(
   }
 
   return result.data.media;
+}
+
+export async function fetchJobJourney(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<JobJourneyEvent[]> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/journey`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+      signal,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load Job journey. HTTP ${response.status}.`,
+    );
+  }
+
+  const payload: unknown = await response.json();
+  const result = jobJourneyResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid Job journey response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The Job journey API returned an invalid response.",
+    );
+  }
+
+  return result.data.events;
+}
+
+export async function fetchJobJourneySummary(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<{
+  summary: {
+    summary: string;
+    model: string;
+    eventCount: number;
+    latestEventAt: string | null;
+    generatedAt: string;
+  } | null;
+  stale: boolean;
+}> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/journey-summary`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load Journey summary. HTTP ${response.status}.`,
+    );
+  }
+
+  const result =
+    jobJourneyStoredSummaryResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid stored Journey summary response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The stored Journey summary API returned an invalid response.",
+    );
+  }
+
+  return {
+    summary: result.data.summary,
+    stale: result.data.stale,
+  };
+}
+
+export async function summarizeJobJourney(
+  jobId: string,
+  signal?: AbortSignal,
+): Promise<{
+  summary: string;
+  model: string;
+  eventCount: number;
+  latestEventAt: string | null;
+  generatedAt: string;
+  stale: boolean;
+}> {
+  const response = await fetch(
+    `/api/jobs/${encodeURIComponent(jobId)}/journey-summary`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+      signal,
+    },
+  );
+
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : `Failed to summarize Job journey. HTTP ${response.status}.`;
+
+    throw new Error(message);
+  }
+
+  const result =
+    jobJourneySummaryResponseSchema.safeParse(payload);
+
+  if (!result.success) {
+    console.error(
+      "Invalid Job journey summary response:",
+      result.error,
+    );
+
+    throw new Error(
+      "The Journey summary API returned an invalid response.",
+    );
+  }
+
+  return {
+    summary: result.data.summary,
+    model: result.data.model,
+    eventCount: result.data.eventCount,
+    latestEventAt: result.data.latestEventAt,
+    generatedAt: result.data.generatedAt,
+    stale: result.data.stale,
+  };
 }
 
 export async function closeJobCycle(

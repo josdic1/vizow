@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIZOW Contractor - Field Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;650;700;850;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>window.lucide = window.lucide || { createIcons: function(){} };</script>
+<style>
+/* --- BASE & BRUTALIST FRAMEWORK --- */
+* { box-sizing: border-box; }
+
+html, body {
+  min-height: 100%;
+  margin: 0;
+  background-color: var(--color-paper);
+  background-image:
+    linear-gradient(rgba(42, 27, 20, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42, 27, 20, 0.055) 1px, transparent 1px),
+    linear-gradient(rgba(42, 27, 20, 0.032) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(42, 27, 20, 0.032) 2px, transparent 2px);
+  background-position: -1px -1px;
+  background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+  background-attachment: fixed;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+::selection { background: var(--color-orange); color: var(--color-paper); }
+button, input, select, textarea { font: inherit; outline: none; cursor: pointer; }
+
+:root {
+  --color-paper: #e8dfc7; --color-paper-soft: #f3ecd9; --color-ink: #2a1b14;
+  --color-ink-soft: #4b3a30; --color-orange: #e66723; --color-danger: #9f2a1f;
+  --color-success: #2f5d3a;
+
+  --font-display: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, sans-serif;
+
+  --border-heavy: 3px solid var(--color-ink);
+  --border-normal: 2px solid var(--color-ink);
+  --border-thin: 1px solid var(--color-ink);
+
+  --shadow-sm: 4px 4px 0 var(--color-ink);
+  --shadow-md: 6px 6px 0 var(--color-ink);
+  --shadow-lg: 8px 8px 0 var(--color-ink);
+}
+
+/* --- TYPOGRAPHY --- */
+.eyebrow { margin: 0; color: var(--color-orange); font-size: 0.78rem; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; }
+.title { margin: 0; font-family: var(--font-display); font-size: clamp(2.5rem, 7vw, 4.5rem); line-height: 0.85; text-transform: uppercase; }
+.subtitle { margin: 0.5rem 0 0 0; color: var(--color-ink-soft); font-size: 1.05rem; font-weight: 650; }
+
+/* --- INPUTS & BUTTONS --- */
+.input, .textarea {
+  width: 100%; border: var(--border-normal); background: var(--color-paper-soft);
+  color: var(--color-ink); padding: 0.75rem 1rem; transition: border-color 0.2s;
+}
+.textarea { min-height: 100px; resize: vertical; font-weight: 650; line-height: 1.5; }
+.input:focus, .textarea:focus { border-color: var(--color-orange); box-shadow: 0 0 0 3px rgba(230, 103, 35, 0.22); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 3rem; border: var(--border-heavy); background: var(--color-paper);
+  color: var(--color-ink); padding: 0.85rem 1rem; font-weight: 950; text-transform: uppercase;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: var(--shadow-sm); }
+.btn-primary { background: var(--color-orange); color: var(--color-ink); }
+.btn-success { background: var(--color-success); color: var(--color-paper-soft); }
+.btn-danger { background: var(--color-danger); color: var(--color-paper-soft); }
+.btn:disabled { cursor: not-allowed; opacity: 0.55; box-shadow: none; transform: none; }
+
+/* Pulsing Action Standard */
+@keyframes elegantPulse {
+  0% { box-shadow: 0 0 0 0 rgba(230, 103, 35, 0.7); }
+  70% { box-shadow: 0 0 0 12px rgba(230, 103, 35, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(230, 103, 35, 0); }
+}
+.needs-click:not(:disabled) { animation: elegantPulse 1.5s infinite; border-color: var(--color-orange); z-index: 10; }
+
+/* --- LAYOUTS --- */
+.field-workspace { display: grid; gap: 1rem; width: min(100%, 48rem); margin: 2rem auto; padding: 0 1rem; }
+.vz-stage { display: none; border: var(--border-heavy); background: var(--color-paper-soft); padding: 1.5rem; box-shadow: var(--shadow-md); }
+.vz-stage.active { display: block; animation: slideUpFade 0.3s ease-out forwards; }
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stage-header { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: var(--border-heavy); }
+
+/* --- COMPONENTS --- */
+.job-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 1rem; border: var(--border-heavy); background: var(--color-paper);
+  transition: all 0.2s; cursor: pointer; margin-bottom: 1rem;
+}
+.job-card:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-sm); }
+.job-card h3 { margin: 0; font-family: var(--font-display); font-size: 1.8rem; text-transform: uppercase; }
+.job-card p { margin: 0; font-size: 0.8rem; font-weight: 900; color: var(--color-orange); text-transform: uppercase; }
+
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+.info-box { border: var(--border-normal); background: var(--color-paper); padding: 1rem; }
+.info-box label { display: block; font-size: 0.7rem; font-weight: 900; color: var(--color-orange); text-transform: uppercase; margin-bottom: 0.25rem; }
+.info-box div { font-weight: 850; font-size: 1.1rem; }
+
+.photo-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.photo-slot { aspect-ratio: 1; border: var(--border-heavy); background: var(--color-paper); color: var(--color-ink); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+
+.direct-img { width: 100%; height: 100%; object-fit: cover; display: none; }
+
+.photo-slot.camera { background: var(--color-paper); color: var(--color-ink); cursor: pointer; transition: all 0.2s; }
+.photo-slot.camera:hover { border-color: var(--color-orange); }
+.photo-slot.captured .direct-img { display: block; }
+.photo-slot.captured .icon-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(42, 27, 20, 0.4); z-index: 2; }
+
+/* Calendar Details */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 1rem 0; }
+.btn-calendar { font-family: var(--font-display); font-size: 1.5rem; padding: 0.5rem; aspect-ratio: 1; margin:0; transition: transform 0.1s, box-shadow 0.1s;}
+.btn-calendar:hover:not(.cal-full) { transform: translate(-2px, -2px); box-shadow: var(--shadow-sm); }
+.cal-open { background: var(--color-paper); border-color: var(--color-ink); color: var(--color-ink); }
+.cal-full { background: var(--color-danger); color: var(--color-paper-soft); border-color: var(--color-ink); opacity: 0.8; }
+.cal-selected { background: var(--color-paper-soft) !important; color: var(--color-ink) !important; border-color: var(--color-ink) !important; transform: translate(-4px, -4px) !important; box-shadow: 6px 6px 0 var(--color-ink) !important; border-width: 3px; z-index: 2; }
+
+/* Messaging Draft UI */
+.draft-panel { display: none; border: var(--border-heavy); background: var(--color-paper); padding: 1.5rem; margin-top: 1rem; box-shadow: inset 0 0 20px rgba(0,0,0,0.05); }
+.checkbox-group { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
+.checkbox-row { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.95rem; cursor: pointer; }
+.checkbox-row input[type="checkbox"] { width: 1.25rem; height: 1.25rem; accent-color: var(--color-orange); }
+
+/* Work Animation Bar */
+.work-progress-container { width: 100%; height: 3rem; border: var(--border-heavy); background: var(--color-paper); margin: 2rem 0; position: relative; overflow: hidden; }
+.work-progress-bar { width: 0%; height: 100%; background: var(--color-orange); transition: width 0.1s linear; }
+.work-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--color-ink); }
+
+/* Progress Header Line */
+.global-progress { height: 8px; background: var(--color-paper); border: var(--border-heavy); width: min(100%, 48rem); margin: 0 auto 1rem auto; display: none; }
+.global-progress-fill { height: 100%; background: var(--color-orange); transition: width 0.4s ease; width: 10%; border-right: var(--border-heavy); }
+
+/* Time Transition Specifics */
+.time-transition-card { text-align: center; padding: 4rem 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--color-paper); border: var(--border-heavy); box-shadow: var(--shadow-lg); margin: 2rem; }
+.flip-date { font-family: var(--font-display); font-size: clamp(3rem, 10vw, 6.5rem); color: var(--color-ink); margin: 1rem 0; text-transform: uppercase; line-height: 1; }
+
+/* VOW Presentation Specifics (CAD Title Block Style) */
+.title-block { display: grid; grid-template-columns: repeat(4, 1fr); border: var(--border-heavy); background: var(--color-paper); margin-bottom: 1.5rem; }
+.tb-cell { border: var(--border-thin); padding: 0.5rem 0.75rem; display: flex; flex-direction: column; justify-content: center; }
+.tb-label { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; color: var(--color-orange); margin-bottom: 2px; }
+.tb-value { font-size: 0.9rem; font-weight: 850; color: var(--color-ink); line-height: 1.2; }
+.tb-span-2 { grid-column: span 2; }
+.tb-span-4 { grid-column: span 4; }
+
+.vow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; border: var(--border-heavy); background: var(--color-paper); padding: 1rem; }
+.vow-img-wrapper { border: var(--border-heavy); overflow: hidden; background: var(--color-paper); display: flex; align-items: center; justify-content: center; }
+.vow-img-main { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vow-img-sub { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+@media (max-width: 760px) {
+  .vow-grid { grid-template-columns: 1fr; }
+  .title-block { grid-template-columns: 1fr 1fr; }
+  .tb-span-4 { grid-column: span 2; }
+}
+</style>
+</head>
+<body>
+
+<div class="global-progress" id="progress-bar"><div class="global-progress-fill" id="progress-fill"></div></div>
+
+<div class="field-workspace">
+
+  <!-- STAGE 1: JOB BOARD -->
+  <div id="stage-1" class="vz-stage active">
+    <div class="stage-header">
+      <p class="eyebrow">Incoming Feed</p>
+      <h1 class="title">Job Board</h1>
+    </div>
+    <div class="job-card needs-click" onclick="nextStage(2)">
+      <div>
+        <p>New Request • Just Now</p>
+        <h3>Jamie Whitfield</h3>
+        <div style="font-weight: 650; font-size: 0.9rem; margin-top: 4px;">Leaky Roof / Ceiling - 482 Maple St.</div>
+      </div>
+      <i data-lucide="chevron-right" style="width: 32px; height: 32px;"></i>
+    </div>
+    <div class="job-card">
+      <div>
+        <p style="color: var(--color-ink-soft);">Resolved • 2 Hrs Ago</p>
+        <h3>Marcus Chen</h3>
+        <div style="font-weight: 650; font-size: 0.9rem; margin-top: 4px;">Sump Pump Failure</div>
+      </div>
+      <i data-lucide="check-circle" style="width: 32px; height: 32px; color: var(--color-success);"></i>
+    </div>
+  </div>
+
+  <!-- STAGE 2: REVIEW REQUEST -->
+  <div id="stage-2" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 2 / 10</p>
+      <h1 class="title">Review Request</h1>
+    </div>
+    <div class="info-grid">
+      <div class="info-box">
+        <label>Client</label>
+        <div>Jamie Whitfield</div>
+      </div>
+      <div class="info-box">
+        <label>Location</label>
+        <div>482 Maple Street</div>
+      </div>
+      <div class="info-box" style="grid-column: 1 / -1;">
+        <label>Description</label>
+        <div>Brown water stain spreading across drywall ceiling seam.</div>
+      </div>
+    </div>
+    <p class="eyebrow" style="margin-bottom: 0.5rem;">Client Photos</p>
+    <div class="photo-strip">
+      <div class="photo-slot captured"><img src="/sample-projects/ceiling-water-damage/A-1.png" class="direct-img" alt="Client Photo 1" style="display: block;"></div>
+      <div class="photo-slot captured"><img src="/sample-projects/ceiling-water-damage/A-2.png" class="direct-img" alt="Client Photo 2" style="display: block;"></div>
+      <div class="photo-slot captured"><img src="/sample-projects/ceiling-water-damage/A-3.png" class="direct-img" alt="Client Photo 3" style="display: block;"></div>
+    </div>
+    <button class="btn btn-primary needs-click" style="width: 100%;" onclick="nextStage(3)">Process Ticket <i data-lucide="arrow-right"></i></button>
+  </div>
+
+  <!-- STAGE 3: APPROVE OR DECLINE -->
+  <div id="stage-3" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 3 / 10</p>
+      <h1 class="title">Triage</h1>
+      <p class="subtitle">Does this fit our scope and schedule?</p>
+    </div>
+    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+      <button class="btn" style="flex: 1;" onclick="resetSimulator()">Decline <i data-lucide="x"></i></button>
+      <button class="btn btn-success needs-click" style="flex: 2;" onclick="nextStage(4)">Approve Job <i data-lucide="check"></i></button>
+    </div>
+  </div>
+
+  <!-- STAGE 4: CONFIRM DATE -->
+  <div id="stage-4" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 4 / 10</p>
+      <h1 class="title">Confirm Schedule</h1>
+    </div>
+
+    <div class="info-box" style="border-color: var(--color-orange); border-width: 3px; margin-bottom: 1rem;">
+      <label>Client Requested</label>
+      <div>August 12</div>
+    </div>
+
+    <p class="eyebrow">Your Availability</p>
+    <div class="calendar-grid" id="vz-cal-grid"></div>
+
+    <button class="btn btn-primary" id="btn-lock-date" disabled style="width: 100%; margin-top: 1rem;" onclick="playTimeTransition()">
+      Lock In Date <i data-lucide="calendar-check"></i>
+    </button>
+
+    <div class="draft-panel" id="draft-panel">
+      <h3 style="margin-top:0; font-family:var(--font-display); text-transform:uppercase; font-size:1.8rem; color:var(--color-danger);">Date Unavailable</h3>
+      <p style="font-weight: 650; font-size:0.95rem;">Drafting a message to Jamie Whitfield to find a new time.</p>
+
+      <textarea class="textarea" style="margin-bottom:1rem; font-size:0.9rem;" readonly>Hi Jamie, unfortunately August 12 is booked solid. I'd still love to get this fixed for you. Please let me know if any of these alternate dates work:</textarea>
+
+      <p class="eyebrow">AI Auto-Matched Suggestions (After-Hours Excluded)</p>
+      <div class="checkbox-group">
+        <label class="checkbox-row"><input type="checkbox" class="ai-date" value="August 14" checked onchange="evalCheckboxes()"> August 14 (Morning)</label>
+        <label class="checkbox-row"><input type="checkbox" class="ai-date" value="August 15" checked onchange="evalCheckboxes()"> August 15 (Afternoon)</label>
+        <label class="checkbox-row"><input type="checkbox" class="ai-date" value="August 16" checked onchange="evalCheckboxes()"> August 16 (Morning)</label>
+      </div>
+
+      <div style="border-top: var(--border-thin); padding-top: 1rem; margin-top: 1rem;">
+        <label class="checkbox-row"><input type="checkbox" id="custom-date-check" onchange="evalCheckboxes()"> I'll choose my own date</label>
+        <input type="text" class="input" id="custom-date-input" placeholder="Enter date..." style="display:none; margin-top: 0.5rem; border-color: var(--color-orange);">
+      </div>
+
+      <button class="btn btn-primary needs-click" id="btn-send-draft" style="width: 100%; margin-top: 1.5rem;" onclick="playTimeTransition()">
+        Send Message & Update <i data-lucide="send"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- STAGE 4.5: TIME LAPSE TRANSITION -->
+  <div id="stage-transition" class="vz-stage" style="background: transparent; border: none; box-shadow: none;">
+    <div class="time-transition-card">
+      <div id="time-icon-container" style="height: 80px; display: flex; align-items: center; justify-content: center;">
+        <i data-lucide="sun" id="time-icon" style="width: 64px; height: 64px; color: var(--color-orange);"></i>
+      </div>
+      <div class="flip-date" id="transition-date">August 4</div>
+      <p class="eyebrow" style="color: var(--color-ink-soft); margin-top: 1rem; letter-spacing: 0.2em;">Fast Forwarding to Job Day...</p>
+    </div>
+  </div>
+
+  <!-- STAGE 5: HEAD TO JOB -->
+  <div id="stage-5" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow" id="s5-date">Stage 5 / 10 • August 12</p>
+      <h1 class="title" id="s5-job-title">FIELD DISPATCH</h1>
+      <p class="subtitle" id="s5-client" style="font-weight: 900; color: var(--color-ink); margin-top: 0;">Jamie Whitfield - 482 Maple St.</p>
+    </div>
+
+    <div style="text-align: center; padding: 3rem 0 2rem 0;">
+      <i data-lucide="truck" style="width: 100px; height: 100px; color: var(--color-ink); margin-bottom: 2rem;"></i>
+      <div style="padding: 0.5rem; background: var(--color-paper-soft); border: var(--border-heavy); max-width: 400px; margin: 0 auto;">
+        <button class="btn btn-primary needs-click" style="width: 100%; font-size: 1.2rem; min-height: 3.5rem;" onclick="nextStage(6)">
+          START VISIT <i data-lucide="play" style="margin-left:4px;"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 6: BEFORE PHOTOS -->
+  <div id="stage-6" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 6 / 10</p>
+      <h1 class="title">Before Photos</h1>
+      <p class="subtitle" id="before-sub">Document existing damage (0/3).</p>
+    </div>
+    <div class="photo-strip">
+      <div class="photo-slot camera needs-click" id="b-slot-1" onclick="snapPhoto('b', 1, '/sample-projects/ceiling-water-damage/A-1.png')">
+        <i data-lucide="camera" class="cam-icon"></i>
+        <img src="" class="direct-img" alt="Before 1">
+        <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
+      </div>
+      <div class="photo-slot camera" id="b-slot-2" onclick="snapPhoto('b', 2, '/sample-projects/ceiling-water-damage/B-1.png')">
+        <i data-lucide="camera" class="cam-icon"></i>
+        <img src="" class="direct-img" alt="Before 2">
+        <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
+      </div>
+      <div class="photo-slot camera" id="b-slot-3" onclick="snapPhoto('b', 3, '/sample-projects/ceiling-water-damage/B-2.png')">
+        <i data-lucide="camera" class="cam-icon"></i>
+        <img src="" class="direct-img" alt="Before 3">
+        <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="btn-stage-6" disabled style="width: 100%;" onclick="nextStage(7)">Begin Work <i data-lucide="hammer"></i></button>
+  </div>
+
+  <!-- STAGE 7: DO THE WORK -->
+  <div id="stage-7" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 7 / 10</p>
+      <h1 class="title">In Progress</h1>
+    </div>
+    <div class="work-progress-container needs-click" onclick="simulateWork()">
+      <div class="work-progress-bar" id="work-bar"></div>
+      <div class="work-icon"><i data-lucide="wrench" id="work-icon"></i> <span id="work-text" style="font-weight: 900; margin-left: 8px;">CLICK TO WORK</span></div>
+    </div>
+    <button class="btn btn-primary" id="btn-stage-7" disabled style="width: 100%;" onclick="nextStage(8)">Work Complete <i data-lucide="check-square"></i></button>
+  </div>
+
+  <!-- STAGE 8: AFTER PHOTOS & NOTE -->
+  <div id="stage-8" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 8 / 10</p>
+      <h1 class="title">After Photos</h1>
+      <p class="subtitle" id="after-sub">Document completed repair (0/3).</p>
+    </div>
+    <div class="photo-strip">
+      <div class="photo-slot camera needs-click" id="a-slot-1" onclick="snapPhoto('a', 1, '/sample-projects/ceiling-water-damage/D-1.png')">
+        <i data-lucide="camera" class="cam-icon"></i>
+        <img src="" class="direct-img" alt="After 1">
+        <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
+      </div>
+      <div class="photo-slot camera" id="a-slot-2" onclick="snapPhoto('a', 2, '/sample-projects/ceiling-water-damage/D-2.png')">
+        <i data-lucide="camera" class="cam-icon"></i>
+        <img src="" class="direct-img" alt="After 2">
+        <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
+      </div>
+      <div class="photo-slot camera" id="a-slot-3" onclick="snapPhoto('a', 3, '/sample-projects/ceiling-water-damage/D-3.png')">
+        <i data-lucide="camera" class="cam-icon"></i>
+        <img src="" class="direct-img" alt="After 3">
+        <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
+      </div>
+    </div>
+    <div style="margin-bottom: 1.5rem;">
+      <label class="eyebrow" style="display:block; margin-bottom: 0.5rem;">Field Notes</label>
+      <textarea class="textarea" id="field-notes-input" placeholder="Describe the fix...">Removed damaged drywall section (approx 4x4ft). Identified and sealed leak at roof flashing. Replaced insulation, installed new moisture-resistant drywall board. Taped, mudded, and sanded smooth. Ready for paint.</textarea>
+    </div>
+    <button class="btn btn-primary" id="btn-stage-8" disabled style="width: 100%;" onclick="nextStage(9)">Prepare Invoice <i data-lucide="file-text"></i></button>
+  </div>
+
+  <!-- STAGE 9: CLOSE THE JOB -->
+  <div id="stage-9" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 9 / 10</p>
+      <h1 class="title">Close Job</h1>
+    </div>
+    <div class="info-box" style="margin-bottom: 1.5rem;">
+      <label>Final Price ($)</label>
+      <input type="number" id="final-price-input" class="input" value="2500" placeholder="0.00" oninput="document.getElementById('btn-stage-9').disabled = !this.value;">
+    </div>
+    <button class="btn btn-success needs-click" id="btn-stage-9" style="width: 100%; font-size: 1.2rem;" onclick="nextStage(10)">CLOSE JOB <i data-lucide="lock"></i></button>
+  </div>
+
+  <!-- STAGE 10: VISUAL OUTPUT WORKFLOW (VOW) CAD STYLE -->
+  <div id="stage-10" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 10 / 10</p>
+      <h1 class="title">Visual Output</h1>
+      <p class="subtitle">Shareable customer presentation.</p>
+    </div>
+
+    <!-- Title Block UI -->
+    <div class="title-block">
+      <div class="tb-cell tb-span-2" style="border-right: var(--border-heavy);">
+        <span class="tb-label">Customer Name</span>
+        <span class="tb-value" id="vow-client-name">Jamie Whitfield</span>
+      </div>
+      <div class="tb-cell" style="border-right: var(--border-heavy);">
+        <span class="tb-label">Identification No</span>
+        <span class="tb-value">#VZ-9482</span>
+      </div>
+      <div class="tb-cell">
+        <span class="tb-label">Doc Status</span>
+        <span class="tb-value" style="color: var(--color-success);">Closed / Billed</span>
+      </div>
+
+      <div class="tb-cell tb-span-2" style="border-top: var(--border-heavy); border-right: var(--border-heavy);">
+        <span class="tb-label">Location</span>
+        <span class="tb-value" id="vow-client-addr">482 Maple Street</span>
+      </div>
+      <div class="tb-cell tb-span-2" style="border-top: var(--border-heavy);">
+        <span class="tb-label">Service Type</span>
+        <span class="tb-value" id="vow-job-type">Leaky Roof / Ceiling</span>
+      </div>
+
+      <div class="tb-cell tb-span-4" style="border-top: var(--border-heavy); padding-top: 0.75rem; padding-bottom: 0.75rem;">
+        <span class="tb-label">Technician Field Notes</span>
+        <span class="tb-value" id="vow-notes" style="font-weight: 650;"></span>
+      </div>
+
+      <div class="tb-cell tb-span-2" style="border-top: var(--border-heavy); border-right: var(--border-heavy);">
+        <span class="tb-label">Materials & Specifications</span>
+        <span class="tb-value" style="font-weight: 650;">Polyurethane Sealant, 4x4 Gypsum, Fiberglass Insulation R-13</span>
+      </div>
+      <div class="tb-cell tb-span-2" style="border-top: var(--border-heavy); background: var(--color-paper-soft);">
+        <span class="tb-label">Total Invoice Value</span>
+        <span class="tb-value" id="vow-price" style="font-family: var(--font-display); font-size: 1.8rem;">$2500.00</span>
+      </div>
+    </div>
+
+    <!-- Proof Photos -->
+    <div class="vow-grid">
+      <div>
+        <p class="eyebrow" style="margin-bottom: 0.5rem; text-align: center;">Documented Condition (Before)</p>
+        <div class="vow-img-wrapper" style="aspect-ratio: 4/3;"><img id="vow-b1" class="vow-img-main" src="" alt="Main Before"></div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+          <div class="vow-img-wrapper" style="width: 50%; aspect-ratio: 4/3;"><img id="vow-b2" class="vow-img-sub" src="" alt="Sub Before 1"></div>
+          <div class="vow-img-wrapper" style="width: 50%; aspect-ratio: 4/3;"><img id="vow-b3" class="vow-img-sub" src="" alt="Sub Before 2"></div>
+        </div>
+      </div>
+
+      <div>
+        <p class="eyebrow" style="margin-bottom: 0.5rem; color: var(--color-success); text-align: center;">Verified Resolution (After)</p>
+        <div class="vow-img-wrapper" style="aspect-ratio: 4/3;"><img id="vow-a1" class="vow-img-main" src="" alt="Final After"></div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+          <div class="vow-img-wrapper" style="width: 50%; aspect-ratio: 4/3;"><img id="vow-a2" class="vow-img-sub" src="" alt="Sub After 1"></div>
+          <div class="vow-img-wrapper" style="width: 50%; aspect-ratio: 4/3;"><img id="vow-a3" class="vow-img-sub" src="" alt="Sub After 2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Final Action loops back -->
+    <div style="margin-top: 1.5rem;">
+      <button class="btn btn-primary needs-click" style="width: 100%;" onclick="resetSimulator()">
+        Send to Client & Return to Board <i data-lucide="share-2"></i>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+lucide.createIcons();
+let currentStep = 1;
+let selectedConfirmedDate = "August 12";
+
+const DB = {
+  roof: { title: "Leaky Roof / Ceiling", name: "Jamie Whitfield", addr: "482 Maple Street" },
+  basement: { title: "Flooded Basement", name: "Marcus Chen", addr: "17 Brookline Ave" },
+  outlet: { title: "Electrical Outlet", name: "Priya Patel", addr: "930 Cedar Court" }
+};
+let currentJob = "roof";
+
+const IMG_PATHS = {
+  '/sample-projects/ceiling-water-damage/A-1.png': '/sample-projects/ceiling-water-damage/A-1.png',
+  '/sample-projects/ceiling-water-damage/A-2.png': '/sample-projects/ceiling-water-damage/A-2.png',
+  '/sample-projects/ceiling-water-damage/A-3.png': '/sample-projects/ceiling-water-damage/A-3.png',
+  '/sample-projects/ceiling-water-damage/A-1.png': '/sample-projects/ceiling-water-damage/A-1.png',
+  '/sample-projects/ceiling-water-damage/B-1.png': '/sample-projects/ceiling-water-damage/B-1.png',
+  '/sample-projects/ceiling-water-damage/B-2.png': '/sample-projects/ceiling-water-damage/B-2.png',
+  '/sample-projects/ceiling-water-damage/D-1.png': '/sample-projects/ceiling-water-damage/D-1.png',
+  '/sample-projects/ceiling-water-damage/D-2.png': '/sample-projects/ceiling-water-damage/D-2.png',
+  '/sample-projects/ceiling-water-damage/D-3.png': '/sample-projects/ceiling-water-damage/D-3.png'
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('client-img-1').src = IMG_PATHS['/sample-projects/ceiling-water-damage/A-1.png'];
+  document.getElementById('client-img-2').src = IMG_PATHS['/sample-projects/ceiling-water-damage/A-2.png'];
+  document.getElementById('client-img-3').src = IMG_PATHS['/sample-projects/ceiling-water-damage/A-3.png'];
+});
+
+function nextStage(stage) {
+  document.querySelectorAll('.vz-stage').forEach(el => el.classList.remove('active'));
+  document.getElementById(`stage-${stage}`).classList.add('active');
+
+  if (stage === 4) vzBuildMiniCalendar();
+  if (stage === 10) populateVOW();
+
+  const prog = document.getElementById('progress-bar');
+  if(stage === 1 || stage === 10 || stage === 4.5) {
+    prog.style.display = 'none';
+  } else {
+    prog.style.display = 'block';
+    document.getElementById('progress-fill').style.width = `${(stage / 10) * 100}%`;
+  }
+}
+
+function populateVOW() {
+  document.getElementById('vow-b1').src = document.querySelector('#b-slot-1 img').src;
+  document.getElementById('vow-b2').src = document.querySelector('#b-slot-2 img').src;
+  document.getElementById('vow-b3').src = document.querySelector('#b-slot-3 img').src;
+
+  document.getElementById('vow-a1').src = document.querySelector('#a-slot-3 img').src;
+  document.getElementById('vow-a2').src = document.querySelector('#a-slot-1 img').src;
+  document.getElementById('vow-a3').src = document.querySelector('#a-slot-2 img').src;
+
+  document.getElementById('vow-client-name').textContent = DB[currentJob].name;
+  document.getElementById('vow-client-addr').textContent = DB[currentJob].addr;
+  document.getElementById('vow-job-type').textContent = DB[currentJob].title;
+
+  let notes = document.getElementById('field-notes-input').value;
+  if (!notes.trim()) notes = "No field notes provided.";
+  document.getElementById('vow-notes').textContent = notes;
+
+  const price = document.getElementById('final-price-input').value || "0.00";
+  document.getElementById('vow-price').textContent = `$${parseFloat(price).toFixed(2)}`;
+}
+
+function vzBuildMiniCalendar() {
+  const grid = document.getElementById("vz-cal-grid");
+  grid.innerHTML = "";
+
+  for(let i=7; i<=20; i++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = i;
+
+    if(i === 12) {
+      btn.className = "btn btn-calendar cal-full";
+      btn.onclick = (e) => triggerReschedule(e, i);
+    } else {
+      btn.className = "btn btn-calendar cal-open";
+      btn.onclick = (e) => selectValidDate(e, i);
+    }
+    grid.appendChild(btn);
+  }
+}
+
+function selectValidDate(event, dayNum) {
+  document.querySelectorAll(".btn-calendar").forEach(d => d.classList.remove("cal-selected"));
+  event.currentTarget.classList.add("cal-selected");
+
+  selectedConfirmedDate = `August ${dayNum}`;
+
+  document.getElementById("draft-panel").style.display = "none";
+  const btnLock = document.getElementById("btn-lock-date");
+  btnLock.style.display = "flex";
+  btnLock.disabled = false;
+  btnLock.classList.add("needs-click");
+}
+
+function triggerReschedule(event, dayNum) {
+  document.querySelectorAll(".btn-calendar").forEach(d => d.classList.remove("cal-selected"));
+  event.currentTarget.classList.add("cal-selected");
+
+  document.getElementById("btn-lock-date").style.display = "none";
+  const draftPanel = document.getElementById("draft-panel");
+  draftPanel.style.display = "block";
+
+  document.querySelectorAll(".ai-date").forEach(cb => cb.checked = true);
+  document.getElementById("custom-date-check").checked = false;
+  evalCheckboxes();
+}
+
+function evalCheckboxes() {
+  const aiChecks = Array.from(document.querySelectorAll(".ai-date"));
+  const anyAiChecked = aiChecks.some(cb => cb.checked);
+  const customCheck = document.getElementById("custom-date-check");
+  const customInput = document.getElementById("custom-date-input");
+
+  if (!anyAiChecked && !customCheck.checked) {
+    customCheck.checked = true;
+  }
+
+  if (customCheck.checked) {
+    customInput.style.display = "block";
+    if (!customInput.value) {
+        customInput.value = "August 11";
+    }
+    customInput.focus();
+  } else {
+    customInput.style.display = "none";
+  }
+}
+
+function playTimeTransition() {
+  const customCheck = document.getElementById("custom-date-check");
+  const customInput = document.getElementById("custom-date-input");
+
+  if (document.getElementById("draft-panel").style.display === "block" && customCheck.checked && customInput.value.trim() !== "") {
+    selectedConfirmedDate = customInput.value.trim();
+  } else if (document.getElementById("draft-panel").style.display === "block") {
+    selectedConfirmedDate = "August 14";
+  }
+
+  document.getElementById("s5-date").textContent = `Stage 5 / 10 • ${selectedConfirmedDate}`;
+  document.getElementById("s5-client").textContent = `${DB[currentJob].name} - ${DB[currentJob].addr}`;
+
+  document.querySelectorAll('.vz-stage').forEach(el => el.classList.remove('active'));
+  document.getElementById('stage-transition').classList.add('active');
+  document.getElementById('progress-bar').style.display = 'none';
+
+  let currentDay = 4;
+  let parsed = parseInt(selectedConfirmedDate.replace(/[^0-9]/g, ''));
+  let targetDay = isNaN(parsed) ? 11 : parsed;
+  if (targetDay <= currentDay || targetDay > 31) {
+      targetDay = currentDay + 7;
+  }
+
+  const dateEl = document.getElementById('transition-date');
+  const iconEl = document.getElementById('time-icon');
+  dateEl.textContent = `August ${currentDay}`;
+
+  let interval = setInterval(() => {
+    currentDay++;
+    dateEl.textContent = `August ${currentDay}`;
+
+    if (currentDay % 2 === 0) {
+       iconEl.setAttribute('data-lucide', 'moon');
+       iconEl.style.color = 'var(--color-ink-soft)';
+    } else {
+       iconEl.setAttribute('data-lucide', 'sun');
+       iconEl.style.color = 'var(--color-orange)';
+    }
+    lucide.createIcons();
+
+    if (currentDay >= targetDay) {
+       clearInterval(interval);
+       setTimeout(() => {
+         nextStage(5);
+       }, 800);
+    }
+  }, 250);
+}
+
+let beforeSnaps = 0;
+let afterSnaps = 0;
+
+function snapPhoto(type, num, pathKey) {
+  const slot = document.getElementById(`${type}-slot-${num}`);
+  if(slot.classList.contains('captured')) return;
+
+  slot.classList.add('captured');
+  slot.classList.remove('needs-click');
+
+  slot.querySelector('.cam-icon').style.display = 'none';
+  const img = slot.querySelector('img');
+  img.src = IMG_PATHS[pathKey];
+  slot.querySelector('.icon-overlay').style.display = 'flex';
+
+  if(type === 'b') {
+    beforeSnaps++;
+    document.getElementById('before-sub').textContent = `Document existing damage (${beforeSnaps}/3).`;
+    if(beforeSnaps < 3) {
+      document.getElementById(`b-slot-${beforeSnaps + 1}`).classList.add('needs-click');
+    } else {
+      const btn = document.getElementById('btn-stage-6');
+      btn.disabled = false;
+      btn.classList.add('needs-click');
+    }
+  } else {
+    afterSnaps++;
+    document.getElementById('after-sub').textContent = `Document completed repair (${afterSnaps}/3).`;
+    if(afterSnaps < 3) {
+      document.getElementById(`a-slot-${afterSnaps + 1}`).classList.add('needs-click');
+    } else {
+      const btn = document.getElementById('btn-stage-8');
+      btn.disabled = false;
+      btn.classList.add('needs-click');
+    }
+  }
+}
+
+let workInterval;
+function simulateWork() {
+  const container = document.querySelector('.work-progress-container');
+  const bar = document.getElementById('work-bar');
+  const icon = document.getElementById('work-icon');
+  const text = document.getElementById('work-text');
+
+  if(container.classList.contains('working') || container.classList.contains('done')) return;
+
+  container.classList.add('working');
+  container.classList.remove('needs-click');
+  text.textContent = 'WORKING...';
+
+  let progress = 0;
+  workInterval = setInterval(() => {
+    progress += 2;
+    bar.style.width = `${progress}%`;
+    icon.style.transform = `rotate(${progress * 5}deg)`;
+
+    if(progress >= 100) {
+      clearInterval(workInterval);
+      container.classList.remove('working');
+      container.classList.add('done');
+      bar.style.background = 'var(--color-success)';
+      text.textContent = 'REPAIR COMPLETE';
+      text.style.color = 'var(--color-paper-soft)';
+      icon.style.color = 'var(--color-paper-soft)';
+      icon.setAttribute('data-lucide', 'check');
+      lucide.createIcons();
+
+      const btn = document.getElementById('btn-stage-7');
+      btn.disabled = false;
+      btn.classList.add('needs-click');
+    }
+  }, 50);
+}
+
+function resetSimulator() {
+  beforeSnaps = 0;
+  afterSnaps = 0;
+
+  ['b-slot-1', 'b-slot-2', 'b-slot-3', 'a-slot-1', 'a-slot-2', 'a-slot-3'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('captured');
+    el.querySelector('.cam-icon').style.display = 'block';
+    el.querySelector('img').src = '';
+    el.querySelector('.icon-overlay').style.display = 'none';
+  });
+
+  document.getElementById('b-slot-1').classList.add('needs-click');
+  document.getElementById('b-slot-2').classList.remove('needs-click');
+  document.getElementById('b-slot-3').classList.remove('needs-click');
+  document.getElementById('a-slot-1').classList.add('needs-click');
+  document.getElementById('a-slot-2').classList.remove('needs-click');
+  document.getElementById('a-slot-3').classList.remove('needs-click');
+
+  document.getElementById('before-sub').textContent = `Document existing damage (0/3).`;
+  document.getElementById('after-sub').textContent = `Document completed repair (0/3).`;
+
+  const workContainer = document.querySelector('.work-progress-container');
+  workContainer.classList.remove('working', 'done');
+  workContainer.classList.add('needs-click');
+  document.getElementById('work-bar').style.width = '0%';
+  document.getElementById('work-bar').style.background = 'var(--color-orange)';
+  document.getElementById('work-text').textContent = 'CLICK TO WORK';
+  document.getElementById('work-text').style.color = '';
+  const icon = document.getElementById('work-icon');
+  icon.setAttribute('data-lucide', 'wrench');
+  icon.style.color = '';
+  icon.style.transform = '';
+
+  ['btn-stage-6', 'btn-stage-7', 'btn-stage-8'].forEach(id => {
+    const btn = document.getElementById(id);
+    btn.disabled = true;
+    btn.classList.remove('needs-click');
+  });
+
+  document.getElementById("final-price-input").value = '2500';
+  const btn9 = document.getElementById('btn-stage-9');
+  btn9.disabled = false;
+  btn9.classList.add('needs-click');
+
+  document.getElementById('field-notes-input').value = 'Removed damaged drywall section (approx 4x4ft). Identified and sealed leak at roof flashing. Replaced insulation, installed new moisture-resistant drywall board. Taped, mudded, and sanded smooth. Ready for paint.';
+
+  document.getElementById("draft-panel").style.display = "none";
+  document.getElementById("btn-lock-date").style.display = "flex";
+  document.getElementById("btn-lock-date").disabled = true;
+  document.getElementById("btn-lock-date").classList.remove("needs-click");
+  document.getElementById("custom-date-input").value = "";
+
+  lucide.createIcons();
+  nextStage(1);
+}
+</script>
+</body>
+</html>

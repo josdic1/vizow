@@ -110,3 +110,45 @@
     top: auto;
   }
 }
+
+/* Work-centered rail: what / who / state / next. */
+.context-rail--semantic {
+  position: relative;
+  top: auto;
+  border-top: 0;
+  border-bottom-width: 2px;
+}
+
+.context-rail--semantic .context-rail__steps {
+  grid-template-columns: 1.55fr 0.95fr 0.9fr 1.1fr;
+}
+
+.context-rail--semantic .context-rail__item {
+  min-height: 58px;
+  padding: 10px 16px;
+}
+
+.context-rail--semantic .context-rail__label {
+  margin-bottom: 5px;
+  font-size: 8px;
+  letter-spacing: 0.16em;
+}
+
+.context-rail--semantic .context-rail__value {
+  font-size: 14px;
+  line-height: 1.15;
+}
+
+.context-rail--semantic .context-rail__item:nth-child(3) .context-rail__value {
+  color: var(--color-success);
+}
+
+.context-rail--semantic .context-rail__item:nth-child(4) .context-rail__value {
+  color: var(--color-orange);
+}
+
+@media (max-width: 900px) {
+  .context-rail--semantic .context-rail__steps {
+    grid-template-columns: 1fr 1fr;
+  }
+}

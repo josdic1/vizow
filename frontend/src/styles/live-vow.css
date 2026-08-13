@@ -1,0 +1,753 @@
+.live-vow-page {
+  --vow-paper: #f3ecd9;
+  --vow-ink: #2a1b14;
+  --vow-soft: #6b6258;
+  --vow-rule: #bcae90;
+  --vow-orange: #e66723;
+}
+
+.live-vow-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 22px 0 72px;
+}
+
+.live-vow-controls {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 22px;
+  padding: 16px 18px;
+  border: 2px solid var(--vow-ink);
+  background: var(--color-paper);
+  box-shadow: 4px 4px 0 var(--vow-ink);
+}
+
+.live-vow-controls .eyebrow { margin-bottom: 9px; }
+.live-vow-view-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.live-vow-view-tabs button {
+  padding: 8px 10px;
+  border: 1px solid var(--vow-ink);
+  background: transparent;
+  color: var(--vow-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.live-vow-view-tabs button.is-active { background: var(--vow-ink); color: var(--vow-paper); }
+.live-vow-control-actions { display: flex; gap: 8px; white-space: nowrap; }
+
+.live-vow-document {
+  border: 3px solid var(--vow-ink);
+  background: var(--vow-paper);
+  box-shadow: 8px 8px 0 var(--vow-ink);
+}
+
+.live-vow-header {
+  position: relative;
+  padding: 0 150px 28px 34px;
+  border-bottom: 3px solid var(--vow-ink);
+}
+
+.live-vow-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 -150px 28px -34px;
+  padding: 20px 34px;
+  background: var(--vow-ink);
+  color: var(--vow-paper);
+}
+.live-vow-brand strong { font-family: var(--font-display); font-size: 24px; letter-spacing: .03em; }
+.live-vow-brand span { color: var(--vow-orange); font-size: 10px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+.live-vow-header h1 { margin: 7px 0 10px; font-family: var(--font-display); font-size: clamp(40px, 6vw, 70px); line-height: .9; text-transform: uppercase; }
+.live-vow-header-copy > p:last-child { margin: 0; color: var(--vow-soft); }
+.live-vow-status-stamp {
+  position: absolute;
+  top: 76px;
+  right: 28px;
+  display: grid;
+  width: 108px;
+  height: 108px;
+  place-content: center;
+  border: 3px solid var(--vow-ink);
+  border-radius: 50%;
+  transform: rotate(-7deg);
+  text-align: center;
+  text-transform: uppercase;
+}
+.live-vow-status-stamp strong { color: var(--vow-orange); font-size: 12px; letter-spacing: .08em; }
+.live-vow-status-stamp span { margin-top: 4px; font-size: 9px; font-weight: 900; letter-spacing: .08em; }
+
+.live-vow-meta { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 3px solid var(--vow-ink); }
+.live-vow-meta > div { padding: 15px 18px; border-right: 1px solid var(--vow-ink); }
+.live-vow-meta > div:last-child { border-right: 0; }
+.live-vow-meta span,
+.live-vow-invoice-summary span { display: block; margin-bottom: 5px; color: var(--vow-soft); font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.live-vow-meta strong { font-size: 14px; }
+.live-vow-meta > div:last-child strong { color: var(--vow-orange); }
+
+.live-vow-section,
+.live-vow-before-after { padding: 30px 34px; border-bottom: 3px solid var(--vow-ink); }
+.live-vow-section:last-child { border-bottom: 0; }
+.live-vow-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+.live-vow-section-heading h2,
+.live-vow-marketing-copy h2,
+.live-vow-one-sheet h2,
+.live-vow-work-sample h2 { margin: 4px 0 0; font-family: var(--font-display); font-size: 30px; line-height: .95; text-transform: uppercase; }
+.live-vow-section-heading > span { color: var(--vow-soft); font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+
+.live-vow-compare { display: grid; grid-template-columns: 1fr 1fr; border: 2px solid var(--vow-ink); }
+.live-vow-compare figure { position: relative; min-width: 0; margin: 0; aspect-ratio: 4 / 3; overflow: hidden; }
+.live-vow-compare figure + figure { border-left: 2px solid var(--vow-ink); }
+.live-vow-compare img { width: 100%; height: 100%; object-fit: cover; }
+.live-vow-compare figcaption { position: absolute; left: 10px; bottom: 10px; padding: 5px 9px; background: var(--vow-ink); color: var(--vow-paper); font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.live-vow-compare figure:last-child figcaption { background: var(--vow-orange); color: var(--vow-ink); }
+.live-vow-image-empty { display: grid; width: 100%; height: 100%; place-items: center; background: #dfd4ba; color: var(--vow-soft); font-size: 11px; font-weight: 900; text-transform: uppercase; }
+
+.live-vow-timeline { position: relative; padding-left: 24px; }
+.live-vow-timeline::before { content: ""; position: absolute; top: 6px; bottom: 6px; left: 5px; width: 2px; background: var(--vow-ink); }
+.live-vow-timeline-event { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; padding: 0 0 22px; }
+.live-vow-timeline-event:last-child { padding-bottom: 0; }
+.live-vow-timeline-dot { position: absolute; top: 4px; left: -24px; width: 12px; height: 12px; border: 1px solid var(--vow-ink); background: var(--vow-orange); }
+.live-vow-timeline-when { margin: 0 0 4px; color: var(--vow-soft); font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.live-vow-timeline-copy h3 { margin: 0 0 5px; font-size: 15px; }
+.live-vow-timeline-copy > p:last-child { margin: 0; max-width: 72ch; line-height: 1.5; }
+.live-vow-timeline-event > img { width: 78px; height: 78px; border: 2px solid var(--vow-ink); object-fit: cover; }
+
+.live-vow-ledger { display: grid; gap: 9px; }
+.live-vow-ledger-row { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; gap: 16px; align-items: start; padding: 13px; border: 1px solid var(--vow-ink); background: var(--color-paper); }
+.live-vow-ledger-number { color: var(--vow-orange); font-family: var(--font-display); font-size: 26px; line-height: 1; }
+.live-vow-ledger-number span { display: block; margin-top: 4px; color: var(--vow-soft); font-family: var(--font-body); font-size: 8px; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+.live-vow-ledger-row p { margin: 5px 0 0; color: var(--vow-soft); font-size: 12px; }
+.live-vow-ledger-row > b { white-space: nowrap; font-size: 12px; }
+
+.live-vow-visit-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.live-vow-visit-list article { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; padding: 13px; border: 1px solid var(--vow-ink); background: var(--color-paper); }
+.live-vow-visit-list article > span,
+.live-vow-visit-list article > b { font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.live-vow-visit-list article > b { color: var(--vow-orange); }
+.live-vow-visit-list article > p { grid-column: 1 / -1; margin: 0; color: var(--vow-soft); font-size: 12px; }
+
+.live-vow-photo-stage + .live-vow-photo-stage { margin-top: 24px; }
+.live-vow-photo-stage > h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 9px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.live-vow-photo-stage > h3 span { color: var(--vow-orange); }
+.live-vow-photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.live-vow-photo-grid figure { margin: 0; border: 2px solid var(--vow-ink); background: var(--color-paper); overflow: hidden; }
+.live-vow-photo-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+.live-vow-photo-grid figcaption { display: grid; gap: 2px; padding: 8px; border-top: 1px solid var(--vow-ink); }
+.live-vow-photo-grid figcaption strong { color: var(--vow-orange); font-size: 9px; letter-spacing: .09em; text-transform: uppercase; }
+.live-vow-photo-grid figcaption span,
+.live-vow-photo-grid figcaption small { color: var(--vow-soft); font-size: 9px; }
+.live-vow-empty { margin: 0; color: var(--vow-soft); font-size: 12px; }
+
+.live-vow-invoice-summary { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 3px solid var(--vow-ink); }
+.live-vow-invoice-summary > div { padding: 24px 34px; }
+.live-vow-invoice-summary > div + div { border-left: 1px solid var(--vow-ink); }
+.live-vow-invoice-summary strong { font-size: 20px; }
+.live-vow-invoice-summary p { margin: 6px 0 0; line-height: 1.5; }
+.live-vow-invoice-table { border: 2px solid var(--vow-ink); }
+.live-vow-invoice-table > div { display: grid; grid-template-columns: minmax(0, 1fr) 180px; }
+.live-vow-invoice-table > div + div { border-top: 1px solid var(--vow-ink); }
+.live-vow-invoice-table span,
+.live-vow-invoice-table strong { padding: 12px 14px; }
+.live-vow-invoice-table span + span,
+.live-vow-invoice-table strong + strong { border-left: 1px solid var(--vow-ink); text-align: right; }
+.live-vow-invoice-table .head { background: var(--vow-ink); color: var(--vow-paper); font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.live-vow-invoice-table .total { background: var(--color-paper); font-size: 18px; }
+.live-vow-invoice-table .total strong:last-child { color: var(--vow-orange); }
+.live-vow-data-note { margin: 14px 0 0; color: var(--vow-soft); font-size: 11px; }
+
+.live-vow-marketing-copy { text-align: center; }
+.live-vow-marketing-copy > p:not(.eyebrow) { max-width: 68ch; margin: 12px auto 0; line-height: 1.6; }
+.live-vow-stat-strip { display: grid; grid-template-columns: repeat(3, 1fr); max-width: 660px; margin: 22px auto 0; border: 1px solid var(--vow-ink); }
+.live-vow-stat-strip > div { padding: 12px; }
+.live-vow-stat-strip > div + div { border-left: 1px solid var(--vow-ink); }
+.live-vow-stat-strip span { display: block; color: var(--vow-soft); font-size: 8px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.live-vow-stat-strip strong { display: block; margin-top: 4px; color: var(--vow-orange); font-family: var(--font-display); font-size: 24px; text-transform: uppercase; }
+.live-vow-marketing > .live-vow-photo-grid,
+.live-vow-work-sample > .live-vow-photo-grid { padding: 30px 34px; }
+
+.live-vow-one-sheet-grid { display: grid; grid-template-columns: .9fr 1.1fr; }
+.live-vow-one-sheet-grid > div { padding: 30px 34px; }
+.live-vow-one-sheet-grid > .live-vow-before-after { padding: 30px 34px; border-left: 1px solid var(--vow-ink); border-bottom: 0; }
+.live-vow-one-sheet-grid dl { margin: 24px 0 0; }
+.live-vow-one-sheet-grid dl div { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--vow-rule); }
+.live-vow-one-sheet-grid dt { color: var(--vow-soft); font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.live-vow-one-sheet-grid dd { margin: 0; font-weight: 800; }
+
+.live-vow-social-card { position: relative; width: min(680px, 100%); aspect-ratio: 1; margin: 0 auto; border: 3px solid var(--vow-ink); background: var(--vow-ink); box-shadow: 8px 8px 0 var(--vow-ink); overflow: hidden; }
+.live-vow-social-images { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
+.live-vow-social-images img { width: 100%; height: 100%; object-fit: cover; }
+.live-vow-social-images::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 45%, rgba(0,0,0,.55)); }
+.live-vow-social-top { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; align-items: center; }
+.live-vow-social-top strong,
+.live-vow-social-top span { padding: 7px 10px; border: 2px solid var(--vow-paper); background: var(--vow-ink); color: var(--vow-paper); font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.live-vow-social-top span { background: var(--vow-orange); color: var(--vow-ink); }
+.live-vow-social-bottom { position: absolute; right: 20px; bottom: 20px; left: 20px; padding: 18px; border: 3px solid var(--vow-ink); background: var(--vow-paper); }
+.live-vow-social-bottom h2 { margin: 5px 0 12px; font-family: var(--font-display); font-size: clamp(34px, 7vw, 58px); line-height: .88; text-transform: uppercase; }
+.live-vow-social-bottom > div { display: flex; gap: 14px; font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.live-vow-public-location { color: var(--vow-orange); font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+
+@media (max-width: 780px) {
+  .live-vow-shell { width: min(100% - 18px, 1180px); }
+  .live-vow-controls { align-items: stretch; flex-direction: column; }
+  .live-vow-control-actions { justify-content: flex-end; }
+  .live-vow-header { padding-right: 34px; }
+  .live-vow-brand { margin-right: -34px; }
+  .live-vow-status-stamp { position: static; width: auto; height: auto; margin-top: 18px; padding: 10px; border-radius: 0; transform: none; }
+  .live-vow-meta { grid-template-columns: 1fr 1fr; }
+  .live-vow-meta > div { border-bottom: 1px solid var(--vow-ink); }
+  .live-vow-compare,
+  .live-vow-invoice-summary,
+  .live-vow-one-sheet-grid { grid-template-columns: 1fr; }
+  .live-vow-compare figure + figure,
+  .live-vow-invoice-summary > div + div,
+  .live-vow-one-sheet-grid > .live-vow-before-after { border-left: 0; border-top: 2px solid var(--vow-ink); }
+  .live-vow-visit-list,
+  .live-vow-photo-grid { grid-template-columns: 1fr 1fr; }
+  .live-vow-ledger-row { grid-template-columns: 64px minmax(0, 1fr); }
+  .live-vow-ledger-row > b { grid-column: 2; }
+}
+
+@media print {
+  .app-header,
+  .context-rail,
+  .no-print { display: none !important; }
+  body { background: white !important; }
+  .live-vow-page { padding: 0 !important; }
+  .live-vow-shell { width: 100%; margin: 0; padding: 0; }
+  .live-vow-document,
+  .live-vow-social-card { border-color: #222; box-shadow: none; }
+  .live-vow-section,
+  .live-vow-before-after,
+  .live-vow-photo-grid figure,
+  .live-vow-timeline-event { break-inside: avoid; }
+}
+
+/* VOW is immutable. Generated copy is a temporary working view. */
+.live-vow-create-note {
+  margin: -4px 0 10px;
+  color: var(--vow-soft);
+  font-size: 11px;
+}
+
+.live-vow-control-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.live-vow-control-actions svg,
+.live-vow-copy-actions svg {
+  width: 15px;
+  height: 15px;
+}
+
+.live-vow-copy-output {
+  width: min(820px, 100%);
+  margin: 0 auto;
+  padding: 28px;
+  border: 3px solid var(--vow-ink);
+  background: var(--vow-paper);
+  box-shadow: 8px 8px 0 var(--vow-ink);
+}
+
+.live-vow-copy-output > header {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--vow-ink);
+}
+
+.live-vow-copy-output > header h2 {
+  margin: 4px 0 5px;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: .92;
+  text-transform: uppercase;
+}
+
+.live-vow-copy-output > header p:last-child {
+  margin: 0;
+  color: var(--vow-soft);
+  font-size: 12px;
+}
+
+.live-vow-copy-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--vow-ink);
+  background: var(--vow-orange);
+}
+
+.live-vow-copy-icon svg { width: 20px; height: 20px; stroke-width: 2.4; }
+
+.live-vow-copy-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.live-vow-copy-field > span {
+  color: var(--vow-soft);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.live-vow-copy-field input,
+.live-vow-copy-field textarea {
+  width: 100%;
+  border: 2px solid var(--vow-ink);
+  background: var(--color-paper);
+  color: var(--vow-ink);
+  padding: 11px 12px;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.live-vow-copy-field input:focus,
+.live-vow-copy-field textarea:focus {
+  outline: 2px solid var(--vow-orange);
+  outline-offset: 2px;
+}
+
+.live-vow-copy-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.live-vow-copy-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.live-vow-social-output {
+  display: grid;
+  grid-template-columns: minmax(0, 680px) minmax(300px, 420px);
+  gap: 26px;
+  align-items: start;
+  justify-content: center;
+}
+
+.live-vow-social-output .live-vow-copy-output {
+  width: 100%;
+  margin: 0;
+}
+
+@media (max-width: 980px) {
+  .live-vow-social-output { grid-template-columns: 1fr; }
+  .live-vow-social-output .live-vow-social-card,
+  .live-vow-social-output .live-vow-copy-output { margin: 0 auto; }
+}
+
+@media (max-width: 620px) {
+  .live-vow-copy-output { padding: 20px; }
+  .live-vow-copy-output > header { grid-template-columns: 1fr; }
+}
+
+.live-vow-photo-labels {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ---------- purpose-built PDF / print layout ---------- */
+@page {
+  size: Letter portrait;
+  margin: 0.42in;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .app-header,
+  .context-rail,
+  .no-print,
+  .live-vow-controls {
+    display: none !important;
+  }
+
+  .live-vow-page,
+  .live-vow-shell {
+    width: auto !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .live-vow-document {
+    width: 100% !important;
+    margin: 0 !important;
+    border: 1.25pt solid #2a1b14 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    color: #2a1b14 !important;
+    font-size: 9pt !important;
+  }
+
+  .live-vow-header {
+    min-height: 0 !important;
+    padding: 0.14in 1.03in 0.16in 0.16in !important;
+    border-bottom: 1.25pt solid #2a1b14 !important;
+    background: #fff !important;
+  }
+
+  .live-vow-brand {
+    margin: 0 0 0.13in !important;
+    padding: 0 !important;
+    background: transparent !important;
+    color: #2a1b14 !important;
+  }
+
+  .live-vow-brand strong {
+    font-size: 15pt !important;
+  }
+
+  .live-vow-brand span {
+    color: #e66723 !important;
+    font-size: 6.5pt !important;
+  }
+
+  .live-vow-header .eyebrow {
+    margin: 0 0 0.035in !important;
+    font-size: 6.5pt !important;
+  }
+
+  .live-vow-header h1 {
+    margin: 0 0 0.045in !important;
+    font-size: 26pt !important;
+    line-height: 0.9 !important;
+  }
+
+  .live-vow-header-copy > p:last-child {
+    margin: 0 !important;
+    font-size: 8pt !important;
+  }
+
+  .live-vow-status-stamp {
+    top: 0.34in !important;
+    right: 0.16in !important;
+    width: 0.72in !important;
+    height: 0.72in !important;
+    border-width: 1.5pt !important;
+    transform: none !important;
+  }
+
+  .live-vow-status-stamp strong {
+    font-size: 7pt !important;
+  }
+
+  .live-vow-status-stamp span {
+    font-size: 5.5pt !important;
+  }
+
+  .live-vow-meta {
+    grid-template-columns: repeat(5, 1fr) !important;
+    border-bottom: 1.25pt solid #2a1b14 !important;
+  }
+
+  .live-vow-meta > div {
+    padding: 0.1in 0.11in !important;
+  }
+
+  .live-vow-meta span,
+  .live-vow-invoice-summary span {
+    margin-bottom: 0.025in !important;
+    font-size: 5.7pt !important;
+  }
+
+  .live-vow-meta strong {
+    font-size: 8pt !important;
+  }
+
+  .live-vow-section,
+  .live-vow-before-after {
+    padding: 0.16in !important;
+    border-bottom: 1.25pt solid #2a1b14 !important;
+  }
+
+  .live-vow-section-heading {
+    margin-bottom: 0.1in !important;
+  }
+
+  .live-vow-section-heading h2,
+  .live-vow-marketing-copy h2,
+  .live-vow-one-sheet h2,
+  .live-vow-work-sample h2 {
+    font-size: 18pt !important;
+  }
+
+  .live-vow-section-heading > span {
+    font-size: 6pt !important;
+  }
+
+  .live-vow-compare {
+    grid-template-columns: 1fr 1fr !important;
+    border-width: 1pt !important;
+  }
+
+  .live-vow-compare figure {
+    height: 2.15in !important;
+    min-height: 0 !important;
+    aspect-ratio: auto !important;
+    break-inside: avoid !important;
+  }
+
+  .live-vow-compare figure + figure {
+    border-left-width: 1pt !important;
+    border-top: 0 !important;
+  }
+
+  .live-vow-compare figcaption {
+    left: 0.07in !important;
+    bottom: 0.07in !important;
+    padding: 0.035in 0.065in !important;
+    font-size: 6pt !important;
+  }
+
+  .live-vow-marketing-copy {
+    padding-top: 0.14in !important;
+    padding-bottom: 0.14in !important;
+  }
+
+  .live-vow-marketing-copy > p:not(.eyebrow) {
+    margin-top: 0.06in !important;
+    font-size: 8.5pt !important;
+    line-height: 1.35 !important;
+  }
+
+  .live-vow-stat-strip {
+    margin-top: 0.1in !important;
+  }
+
+  .live-vow-stat-strip > div {
+    padding: 0.07in !important;
+  }
+
+  .live-vow-stat-strip span {
+    font-size: 5.5pt !important;
+  }
+
+  .live-vow-stat-strip strong {
+    margin-top: 0.015in !important;
+    font-size: 14pt !important;
+  }
+
+  .live-vow-marketing > .live-vow-photo-grid,
+  .live-vow-work-sample > .live-vow-photo-grid {
+    padding: 0.16in !important;
+  }
+
+  .live-vow-photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.07in !important;
+  }
+
+  .live-vow-photo-grid figure {
+    border-width: 1pt !important;
+    break-inside: avoid !important;
+  }
+
+  .live-vow-photo-grid img {
+    height: 1.68in !important;
+    aspect-ratio: auto !important;
+    object-fit: cover !important;
+  }
+
+  .live-vow-photo-grid figcaption {
+    padding: 0.055in !important;
+  }
+
+  .live-vow-photo-grid figcaption strong,
+  .live-vow-photo-grid figcaption span,
+  .live-vow-photo-grid figcaption small {
+    font-size: 5.8pt !important;
+  }
+
+  .live-vow-one-sheet-grid {
+    grid-template-columns: 0.9fr 1.1fr !important;
+    break-inside: avoid !important;
+  }
+
+  .live-vow-one-sheet-grid > div,
+  .live-vow-one-sheet-grid > .live-vow-before-after {
+    padding: 0.16in !important;
+  }
+
+  .live-vow-one-sheet-grid > .live-vow-before-after {
+    border-left: 1pt solid #2a1b14 !important;
+    border-top: 0 !important;
+    border-bottom: 0 !important;
+  }
+
+  .live-vow-one-sheet-grid .live-vow-compare figure {
+    height: 2.15in !important;
+  }
+
+  .live-vow-one-sheet-grid dl {
+    margin-top: 0.12in !important;
+  }
+
+  .live-vow-one-sheet-grid dl div {
+    grid-template-columns: 0.75in 1fr !important;
+    gap: 0.08in !important;
+    padding: 0.045in 0 !important;
+  }
+
+  .live-vow-one-sheet-grid dt {
+    font-size: 5.5pt !important;
+  }
+
+  .live-vow-one-sheet-grid dd {
+    font-size: 7.5pt !important;
+  }
+
+  .live-vow-work-sample > .live-vow-section:first-of-type {
+    padding-top: 0.14in !important;
+    padding-bottom: 0.14in !important;
+  }
+
+  .live-vow-work-sample > .live-vow-section:first-of-type p {
+    margin-top: 0.05in !important;
+    margin-bottom: 0 !important;
+    line-height: 1.35 !important;
+  }
+
+  .live-vow-work-sample > .live-vow-before-after,
+  .live-vow-marketing > .live-vow-before-after {
+    break-inside: avoid !important;
+  }
+
+  .live-vow-work-sample > .live-vow-photo-grid,
+  .live-vow-marketing > .live-vow-photo-grid {
+    break-before: page !important;
+  }
+
+  .live-vow-timeline {
+    padding-left: 0.16in !important;
+  }
+
+  .live-vow-timeline-event {
+    gap: 0.1in !important;
+    padding-bottom: 0.1in !important;
+    break-inside: avoid !important;
+  }
+
+  .live-vow-timeline-event > img {
+    width: 0.62in !important;
+    height: 0.62in !important;
+    border-width: 1pt !important;
+  }
+
+  .live-vow-timeline-copy h3 {
+    font-size: 9pt !important;
+  }
+
+  .live-vow-timeline-copy > p:last-child,
+  .live-vow-ledger-row p,
+  .live-vow-visit-list article > p {
+    font-size: 7.5pt !important;
+    line-height: 1.35 !important;
+  }
+
+  .live-vow-ledger-row,
+  .live-vow-visit-list article {
+    padding: 0.075in !important;
+    break-inside: avoid !important;
+  }
+
+  .live-vow-invoice-summary {
+    grid-template-columns: 1fr 1fr !important;
+    border-bottom-width: 1.25pt !important;
+  }
+
+  .live-vow-invoice-summary > div {
+    padding: 0.14in 0.16in !important;
+  }
+
+  .live-vow-invoice-summary > div + div {
+    border-left: 1pt solid #2a1b14 !important;
+    border-top: 0 !important;
+  }
+
+  .live-vow-invoice-summary strong {
+    font-size: 11pt !important;
+  }
+
+  .live-vow-invoice-table {
+    border-width: 1pt !important;
+  }
+
+  .live-vow-invoice-table span,
+  .live-vow-invoice-table strong {
+    padding: 0.075in 0.08in !important;
+    font-size: 7.5pt !important;
+  }
+
+  .live-vow-invoice-table .total {
+    font-size: 11pt !important;
+  }
+
+  /* Never let screen-only square social layouts contaminate document printing. */
+  .live-vow-social-output {
+    display: block !important;
+  }
+
+  .live-vow-social-card {
+    width: 6.4in !important;
+    height: 6.4in !important;
+    margin: 0 auto !important;
+    border-width: 1pt !important;
+    box-shadow: none !important;
+    break-inside: avoid !important;
+  }
+
+  .live-vow-social-output .live-vow-copy-output {
+    margin-top: 0.18in !important;
+  }
+
+  .live-vow-copy-output {
+    width: 100% !important;
+    padding: 0.16in !important;
+    border-width: 1pt !important;
+    box-shadow: none !important;
+    break-inside: avoid !important;
+  }
+
+  .live-vow-copy-output textarea,
+  .live-vow-copy-output input {
+    border-width: 1pt !important;
+    font-size: 8pt !important;
+  }
+}

@@ -1,30 +1,28 @@
 import type { ComponentProps, ReactNode } from "react";
 import { Link, NavLink } from "react-router";
+import { AdminSampleDataMenu } from "../components/AdminSampleDataMenu";
 import { ContextRail } from "../components/ContextRail";
+import { MediaNavMenu } from "../components/MediaNavMenu";
+import { SectionRail, type SectionRailItem } from "../components/SectionRail";
 
 type AppLayoutProps = ComponentProps<typeof ContextRail> & {
   children: ReactNode;
+  sections?: SectionRailItem[];
+  sectionLabel?: string;
 };
 
 export function AppLayout({
   children,
+  sections = [],
+  sectionLabel = "On this page",
   ...contextRailProps
 }: AppLayoutProps) {
   return (
     <main>
       <div className="app-header">
         <header className="site-header shell">
-          <Link
-            className="brand-lockup"
-            to="/"
-            aria-label="VIZOW Home"
-          >
-            <img
-              className="brand-mark"
-              src="/icons/vizow-icon.svg"
-              alt=""
-            />
-
+          <Link className="brand-lockup" to="/" aria-label="VIZOW Home">
+            <img className="brand-mark" src="/icons/vizow-icon.svg" alt="" />
             <span className="brand-copy">
               <strong>VIZOW</strong>
             </span>
@@ -35,20 +33,10 @@ export function AppLayout({
               className={({ isActive }) =>
                 `site-nav-link${isActive ? " site-nav-link-active" : ""}`
               }
-              to="/requests"
+              to="/inbox"
             >
-              Requests
+              Inbox
             </NavLink>
-
-            <NavLink
-              className={({ isActive }) =>
-                `site-nav-link${isActive ? " site-nav-link-active" : ""}`
-              }
-              to="/field"
-            >
-              Field
-            </NavLink>
-
             <NavLink
               className={({ isActive }) =>
                 `site-nav-link${isActive ? " site-nav-link-active" : ""}`
@@ -57,7 +45,14 @@ export function AppLayout({
             >
               Jobs
             </NavLink>
-
+            <NavLink
+              className={({ isActive }) =>
+                `site-nav-link${isActive ? " site-nav-link-active" : ""}`
+              }
+              to="/calendar"
+            >
+              Calendar
+            </NavLink>
             <NavLink
               className={({ isActive }) =>
                 `site-nav-link${isActive ? " site-nav-link-active" : ""}`
@@ -66,23 +61,27 @@ export function AppLayout({
             >
               Clients
             </NavLink>
+            <MediaNavMenu />
           </nav>
 
           <div className="header-actions">
             <NavLink
               className={({ isActive }) =>
-                `site-nav-link${isActive ? " site-nav-link-active" : ""}`
+                `site-nav-link demo-nav-link${isActive ? " site-nav-link-active" : ""}`
               }
-              to="/vows"
+              to="/demo"
             >
-              Visual of Work
+              Demo
             </NavLink>
+            <AdminSampleDataMenu />
           </div>
         </header>
       </div>
 
       <ContextRail {...contextRailProps} />
 
+      <span className="section-rail-top-anchor" id="page-top" />
+      <SectionRail items={sections} label={sectionLabel} />
       {children}
     </main>
   );

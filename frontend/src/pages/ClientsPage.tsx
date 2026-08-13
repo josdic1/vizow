@@ -364,13 +364,14 @@ export function ClientsPage() {
             ? "error"
             : "success"
       }
+      sections={[{ id: "clients-list", label: "Clients" }]}
     >
       <div className="page">
         <div className="admin-page clients-page">
           <AdminPageHeader
             eyebrow="Visual of Work"
             title="Clients"
-            description="Manage Client records, service Properties, Requests, Jobs, and retained history."
+            description="Manage Client records, service Properties, Jobs, and retained history."
             meta={
               state.status === "ready" ? (
                 <>
@@ -705,7 +706,7 @@ export function ClientsPage() {
           )}
 
           {state.status === "ready" && (
-            <section className="clients-list">
+            <section className="clients-list" id="clients-list">
               {visibleClients.length === 0 ? (
                 <div className="clients-empty">
                   No {filter} Clients match this search.

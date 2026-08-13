@@ -84,7 +84,7 @@ export function JobMediaLibrary({
           <h2>Job Photos</h2>
         </div>
 
-        <strong>{media.length}</strong>
+        <strong>{media.length} {media.length === 1 ? "photo" : "photos"}</strong>
       </div>
 
       {state.status === "loading" && (
@@ -117,7 +117,7 @@ export function JobMediaLibrary({
             >
               <div className="field-media-stage-heading">
                 <h3>{formatLabel(stage)}</h3>
-                <span>{items.length}</span>
+                <span>{items.length} {items.length === 1 ? "photo" : "photos"}</span>
               </div>
 
               <div className="field-media-grid">

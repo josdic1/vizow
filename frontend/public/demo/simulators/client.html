@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIZOW Client - Request Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;650;700;850;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>window.lucide = window.lucide || { createIcons: function(){} };</script>
+<style>
+/* --- BASE & BRUTALIST FRAMEWORK --- */
+* { box-sizing: border-box; }
+
+html, body {
+  min-height: 100%;
+  margin: 0;
+  background-color: var(--color-paper);
+  background-image:
+    linear-gradient(rgba(42, 27, 20, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42, 27, 20, 0.055) 1px, transparent 1px),
+    linear-gradient(rgba(42, 27, 20, 0.032) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(42, 27, 20, 0.032) 2px, transparent 2px);
+  background-position: -1px -1px;
+  background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+  background-attachment: fixed;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+::selection { background: var(--color-orange); color: var(--color-paper); }
+button, input, select, textarea { font: inherit; outline: none; cursor: pointer; }
+
+:root {
+  --color-paper: #e8dfc7; --color-paper-soft: #f3ecd9; --color-ink: #2a1b14;
+  --color-ink-soft: #4b3a30; --color-orange: #e66723; --color-danger: #9f2a1f;
+  --color-success: #2f5d3a;
+
+  --font-display: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, sans-serif;
+
+  --border-heavy: 3px solid var(--color-ink);
+  --border-normal: 2px solid var(--color-ink);
+  --border-thin: 1px solid var(--color-ink);
+
+  --shadow-sm: 4px 4px 0 var(--color-ink);
+  --shadow-md: 6px 6px 0 var(--color-ink);
+  --shadow-lg: 8px 8px 0 var(--color-ink);
+}
+
+/* --- TYPOGRAPHY --- */
+.eyebrow { margin: 0; color: var(--color-orange); font-size: 0.78rem; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; }
+.title { margin: 0; font-family: var(--font-display); font-size: clamp(2.5rem, 7vw, 4.5rem); line-height: 0.85; text-transform: uppercase; }
+.subtitle { margin: 0.5rem 0 0 0; color: var(--color-ink-soft); font-size: 1.05rem; font-weight: 650; }
+
+/* --- INPUTS & BUTTONS --- */
+.input, .textarea {
+  width: 100%; border: var(--border-normal); background: var(--color-paper-soft);
+  color: var(--color-ink); padding: 0.75rem 1rem; transition: border-color 0.2s;
+}
+.textarea { min-height: 100px; resize: vertical; font-weight: 650; line-height: 1.5; }
+.input:focus, .textarea:focus { border-color: var(--color-orange); box-shadow: 0 0 0 3px rgba(230, 103, 35, 0.22); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 3rem; border: var(--border-heavy); background: var(--color-paper);
+  color: var(--color-ink); padding: 0.85rem 1rem; font-weight: 950; text-transform: uppercase;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: var(--shadow-sm); }
+.btn-primary { background: var(--color-orange); color: var(--color-ink); }
+.btn-success { background: var(--color-success); color: var(--color-paper-soft); }
+.btn-danger { background: var(--color-danger); color: var(--color-paper-soft); }
+.btn:disabled { cursor: not-allowed; opacity: 0.55; box-shadow: none; transform: none; }
+
+/* Pulsing Action Standard */
+@keyframes elegantPulse {
+  0% { box-shadow: 0 0 0 0 rgba(230, 103, 35, 0.7); }
+  70% { box-shadow: 0 0 0 12px rgba(230, 103, 35, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(230, 103, 35, 0); }
+}
+.needs-click:not(:disabled) { animation: elegantPulse 1.5s infinite; border-color: var(--color-orange); z-index: 10; }
+
+/* --- LAYOUTS --- */
+.field-workspace { display: grid; gap: 1rem; width: min(100%, 48rem); margin: 2rem auto; padding: 0 1rem; }
+.vz-stage { display: none; border: var(--border-heavy); background: var(--color-paper-soft); padding: 1.5rem; box-shadow: var(--shadow-md); }
+.vz-stage.active { display: block; animation: slideUpFade 0.3s ease-out forwards; }
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stage-header { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: var(--border-heavy); }
+
+/* --- COMPONENTS --- */
+.job-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 1rem; border: var(--border-heavy); background: var(--color-paper);
+  transition: all 0.2s; cursor: pointer; margin-bottom: 1rem;
+}
+.job-card:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-sm); }
+.job-card h3 { margin: 0; font-family: var(--font-display); font-size: 1.8rem; text-transform: uppercase; }
+.job-card p { margin: 0; font-size: 0.8rem; font-weight: 900; color: var(--color-orange); text-transform: uppercase; }
+
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+.info-box { border: var(--border-normal); background: var(--color-paper); padding: 1rem; }
+.info-box label { display: block; font-size: 0.7rem; font-weight: 900; color: var(--color-orange); text-transform: uppercase; margin-bottom: 0.25rem; }
+.info-box div { font-weight: 850; font-size: 1.1rem; }
+
+.photo-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.photo-slot { aspect-ratio: 1; border: var(--border-heavy); background: var(--color-paper); color: var(--color-ink); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+
+.direct-img { width: 100%; height: 100%; object-fit: cover; display: none; }
+
+.photo-slot.camera { background: var(--color-paper); color: var(--color-ink); cursor: pointer; transition: all 0.2s; }
+.photo-slot.camera:hover { border-color: var(--color-orange); }
+.photo-slot.captured .direct-img { display: block; }
+.photo-slot.captured .icon-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(42, 27, 20, 0.4); z-index: 2; }
+
+/* Calendar Details */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 1rem 0; }
+.btn-calendar { font-family: var(--font-display); font-size: 1.5rem; padding: 0.5rem; aspect-ratio: 1; margin:0; transition: transform 0.1s, box-shadow 0.1s;}
+.btn-calendar:hover:not(.cal-full) { transform: translate(-2px, -2px); box-shadow: var(--shadow-sm); }
+.cal-open { background: var(--color-paper); border-color: var(--color-ink); color: var(--color-ink); }
+.cal-full { background: var(--color-danger); color: var(--color-paper-soft); border-color: var(--color-ink); opacity: 0.9; }
+.cal-selected { background: var(--color-paper-soft) !important; color: var(--color-ink) !important; border-color: var(--color-ink) !important; transform: translate(-4px, -4px) !important; box-shadow: 6px 6px 0 var(--color-ink) !important; border-width: 3px; z-index: 2; }
+
+/* Progress Header Line */
+.global-progress { height: 8px; background: var(--color-paper); border: var(--border-heavy); width: min(100%, 48rem); margin: 0 auto 1rem auto; display: none; }
+.global-progress-fill { height: 100%; background: var(--color-orange); transition: width 0.4s ease; width: 10%; border-right: var(--border-heavy); }
+
+/* VOW Presentation Specifics (CAD Title Block Style) */
+.title-block { display: grid; grid-template-columns: repeat(4, 1fr); border: var(--border-heavy); background: var(--color-paper); margin-bottom: 1.5rem; }
+.tb-cell { border: var(--border-thin); padding: 0.5rem 0.75rem; display: flex; flex-direction: column; justify-content: center; }
+.tb-label { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; color: var(--color-orange); margin-bottom: 2px; }
+.tb-value { font-size: 0.9rem; font-weight: 850; color: var(--color-ink); line-height: 1.2; }
+.tb-span-2 { grid-column: span 2; }
+.tb-span-4 { grid-column: span 4; }
+
+@media (max-width: 760px) {
+  .title-block { grid-template-columns: 1fr 1fr; }
+  .tb-span-4 { grid-column: span 2; }
+}
+</style>
+</head>
+<body>
+
+<div class="global-progress" id="progress-bar"><div class="global-progress-fill" id="progress-fill"></div></div>
+
+<div class="field-workspace">
+
+  <!-- STAGE 1: TITLE / ROLE SELECT -->
+  <div id="stage-1" class="vz-stage active">
+    <div class="stage-header">
+      <p class="eyebrow">Request Quest</p>
+      <h1 class="title">VIZOW Client</h1>
+      <p class="subtitle">Experience how a repair request moves instantly from client to record — zero phone tag.</p>
+    </div>
+    <div style="text-align: center; padding: 2rem 0;">
+      <i data-lucide="compass" style="width: 80px; height: 80px; color: var(--color-orange); margin-bottom: 1.5rem;"></i>
+      <button class="btn btn-primary needs-click" style="width: 100%; font-size: 1.2rem; min-height: 3.5rem;" onclick="nextStage(2)">
+        START CLIENT DEMO <i data-lucide="arrow-right" style="margin-left:4px;"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- STAGE 2: PICK YOUR PROBLEM -->
+  <div id="stage-2" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 2 / 8</p>
+      <h1 class="title">Pick Your Problem</h1>
+      <p class="subtitle">Select a job type to simulate a real repair submission.</p>
+    </div>
+    <div class="job-card needs-click" onclick="selectProblem('roof', 'Leaky Roof / Ceiling', 'Brown water stain spreading across drywall ceiling seam near the chimney.')">
+      <div>
+        <p>Job Type 01</p>
+        <h3>Leaky Roof / Ceiling</h3>
+        <div style="font-weight: 650; font-size: 0.9rem; margin-top: 4px;">Water intrusion & ceiling damage</div>
+      </div>
+      <i data-lucide="chevron-right" style="width: 32px; height: 32px;"></i>
+    </div>
+    <div class="job-card" onclick="selectProblem('basement', 'Flooded Basement', 'Sump pump failure resulting in 2 inches of standing water in utility room.')">
+      <div>
+        <p>Job Type 02</p>
+        <h3>Flooded Basement</h3>
+        <div style="font-weight: 650; font-size: 0.9rem; margin-top: 4px;">Drainage & water backup</div>
+      </div>
+      <i data-lucide="chevron-right" style="width: 32px; height: 32px;"></i>
+    </div>
+    <div class="job-card" onclick="selectProblem('outlet', 'Outlet Replacement', 'Sparking wall outlet in kitchen refusing to hold plugs securely.')">
+      <div>
+        <p>Job Type 03</p>
+        <h3>Outlet Replacement</h3>
+        <div style="font-weight: 650; font-size: 0.9rem; margin-top: 4px;">Electrical hazard / wiring</div>
+      </div>
+      <i data-lucide="chevron-right" style="width: 32px; height: 32px;"></i>
+    </div>
+  </div>
+
+  <!-- STAGE 3: FILL OUT MY INFO -->
+  <div id="stage-3" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 3 / 8</p>
+      <h1 class="title">Your Info</h1>
+      <p class="subtitle">Tied to a verified profile instantly — no anonymous tickets.</p>
+    </div>
+    <div class="info-grid">
+      <div class="info-box">
+        <label>Client Name</label>
+        <div id="info-name">Jamie Whitfield</div>
+      </div>
+      <div class="info-box">
+        <label>Service Address</label>
+        <div id="info-addr">482 Maple Street</div>
+      </div>
+    </div>
+    <button class="btn btn-primary needs-click" style="width: 100%;" onclick="nextStage(4)">Confirm Info & Continue <i data-lucide="arrow-right"></i></button>
+  </div>
+
+  <!-- STAGE 4: ADD DESCRIPTION -->
+  <div id="stage-4" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 4 / 8</p>
+      <h1 class="title">Description</h1>
+      <p class="subtitle">Auto-filled in your own words to form the job's permanent record.</p>
+    </div>
+    <div style="margin-bottom: 1.5rem;">
+      <label class="eyebrow" style="display:block; margin-bottom: 0.5rem;">Problem Description</label>
+      <textarea class="textarea" id="client-desc-input"></textarea>
+    </div>
+    <button class="btn btn-primary needs-click" style="width: 100%;" onclick="nextStage(5)">Lock Description <i data-lucide="arrow-right"></i></button>
+  </div>
+
+  <!-- STAGE 5: TAKE A PICTURE -->
+  <div id="stage-5" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 5 / 8</p>
+      <h1 class="title">Photo Evidence</h1>
+      <p class="subtitle" id="client-photo-sub">Capture visual proof before scheduling (0/3).</p>
+    </div>
+    <div class="photo-strip">
+      <div class="photo-slot camera needs-click" id="cp-slot-1" onclick="snapClientPhoto(1)">
+        <i data-lucide="camera" class="cam-icon"></i>
+        <img src="" class="direct-img" alt="Client Proof 1">
+        <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
+      </div>
+      <div class="photo-slot camera" id="cp-slot-2" onclick="snapClientPhoto(2)">
+        <i data-lucide="camera" class="cam-icon"></i>
+        <img src="" class="direct-img" alt="Client Proof 2">
+        <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
+      </div>
+      <div class="photo-slot camera" id="cp-slot-3" onclick="snapClientPhoto(3)">
+        <i data-lucide="camera" class="cam-icon"></i>
+        <img src="" class="direct-img" alt="Client Proof 3">
+        <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="btn-client-photos" disabled style="width: 100%;" onclick="nextStage(6)">Attach Photos & Continue <i data-lucide="arrow-right"></i></button>
+  </div>
+
+  <!-- STAGE 6: CHOOSE DATE -->
+  <div id="stage-6" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 6 / 8</p>
+      <h1 class="title">Choose Date</h1>
+      <p class="subtitle">Select your preferred day. Full calendars set expectations honestly without blocking requests.</p>
+    </div>
+    <div class="calendar-grid" id="client-cal-grid"></div>
+    <div id="cal-hint-box" class="info-box" style="margin-top: 1rem; display:none; border-color: var(--color-orange);">
+      <label id="cal-hint-label">Status</label>
+      <div id="cal-hint-text" style="font-size: 0.95rem; font-weight: 700;"></div>
+    </div>
+    <button class="btn btn-primary" id="btn-client-date" disabled style="width: 100%; margin-top: 1rem;" onclick="nextStage(7)">
+      Select Date <i data-lucide="calendar-check"></i>
+    </button>
+  </div>
+
+  <!-- STAGE 7: SEND REQUEST -->
+  <div id="stage-7" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 7 / 8</p>
+      <h1 class="title">Send Request</h1>
+      <p class="subtitle">Review your complete packet before dispatching.</p>
+    </div>
+
+    <div class="title-block">
+      <div class="tb-cell tb-span-2" style="border-right: var(--border-heavy);">
+        <span class="tb-label">Client Name</span>
+        <span class="tb-value" id="summary-name">Jamie Whitfield</span>
+      </div>
+      <div class="tb-cell tb-span-2">
+        <span class="tb-label">Requested Date</span>
+        <span class="tb-value" id="summary-date">August 12</span>
+      </div>
+      <div class="tb-cell tb-span-4" style="border-top: var(--border-heavy);">
+        <span class="tb-label">Service Address</span>
+        <span class="tb-value" id="summary-addr">482 Maple Street</span>
+      </div>
+      <div class="tb-cell tb-span-4" style="border-top: var(--border-heavy); padding-top: 0.75rem; padding-bottom: 0.75rem;">
+        <span class="tb-label">Description</span>
+        <span class="tb-value" id="summary-desc" style="font-weight: 650;"></span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary needs-click" style="width: 100%; font-size: 1.2rem;" onclick="nextStage(8)">
+      SEND REQUEST NOW <i data-lucide="send"></i>
+    </button>
+  </div>
+
+  <!-- STAGE 8: CONFIRMATION -->
+  <div id="stage-8" class="vz-stage">
+    <div class="stage-header">
+      <p class="eyebrow">Stage 8 / 8</p>
+      <h1 class="title">Confirmation</h1>
+      <p class="subtitle">Closing the loop instantly.</p>
+    </div>
+    <div style="text-align: center; padding: 2rem 0;">
+      <i data-lucide="check-circle-2" style="width: 96px; height: 96px; color: var(--color-success); margin-bottom: 1.5rem;"></i>
+      <h3 style="font-family: var(--font-display); font-size: 2rem; text-transform: uppercase; margin: 0 0 0.5rem 0;">Request Sent!</h3>
+      <p style="font-weight: 700; color: var(--color-ink-soft); margin-bottom: 2rem;">We'll get back to you ASAP. No phone tag required.</p>
+      <button class="btn btn-primary needs-click" style="width: 100%; font-size: 1.1rem;" onclick="resetClientSimulator()">
+        Run Demo Again <i data-lucide="rotate-cw"></i>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+lucide.createIcons();
+
+let clientData = {
+  key: 'roof',
+  title: 'Leaky Roof / Ceiling',
+  name: 'Jamie Whitfield',
+  addr: '482 Maple Street',
+  desc: 'Brown water stain spreading across drywall ceiling seam near the chimney.',
+  date: 'August 12',
+  photos: ['', '', '']
+};
+
+const CLIENT_IMAGES = {
+  roof: [
+    '/sample-projects/ceiling-water-damage/A-1.png',
+    '/sample-projects/ceiling-water-damage/A-2.png',
+    '/sample-projects/ceiling-water-damage/A-3.png'
+  ],
+  basement: [
+    '/sample-projects/sump-pump-problem/A-1.png',
+    '/sample-projects/sump-pump-problem/A-2.png',
+    '/sample-projects/sump-pump-problem/A-3.png'
+  ],
+  outlet: [
+    '/sample-projects/dead-kitchen-outlet/A-1.png',
+    '/sample-projects/dead-kitchen-outlet/A-2.png',
+    '/sample-projects/dead-kitchen-outlet/A-3.png'
+  ]
+};
+
+let clientSnaps = 0;
+
+function selectProblem(key, title, desc) {
+  clientData.key = key;
+  clientData.title = title;
+  clientData.desc = desc;
+
+  if(key === 'basement') {
+    clientData.name = 'Marcus Chen';
+    clientData.addr = '17 Brookline Ave';
+  } else if(key === 'outlet') {
+    clientData.name = 'Priya Patel';
+    clientData.addr = '930 Cedar Court';
+  } else {
+    clientData.name = 'Jamie Whitfield';
+    clientData.addr = '482 Maple Street';
+  }
+
+  document.getElementById('info-name').textContent = clientData.name;
+  document.getElementById('info-addr').textContent = clientData.addr;
+  document.getElementById('client-desc-input').value = clientData.desc;
+
+  nextStage(3);
+}
+
+function nextStage(stage) {
+  document.querySelectorAll('.vz-stage').forEach(el => el.classList.remove('active'));
+  document.getElementById(`stage-${stage}`).classList.add('active');
+
+  if (stage === 6) buildClientCalendar();
+  if (stage === 7) populateSummary();
+
+  const prog = document.getElementById('progress-bar');
+  if(stage === 1 || stage === 8) {
+    prog.style.display = 'none';
+  } else {
+    prog.style.display = 'block';
+    document.getElementById('progress-fill').style.width = `${(stage / 8) * 100}%`;
+  }
+}
+
+function snapClientPhoto(num) {
+  const slot = document.getElementById(`cp-slot-${num}`);
+  if(slot.classList.contains('captured')) return;
+
+  slot.classList.add('captured');
+  slot.classList.remove('needs-click');
+  slot.querySelector('.cam-icon').style.display = 'none';
+
+  const imgPath = CLIENT_IMAGES[clientData.key][num - 1];
+  slot.querySelector('img').src = imgPath;
+  slot.querySelector('.icon-overlay').style.display = 'flex';
+  clientData.photos[num - 1] = imgPath;
+
+  clientSnaps++;
+  document.getElementById('client-photo-sub').textContent = `Capture visual proof before scheduling (${clientSnaps}/3).`;
+
+  if(clientSnaps < 3) {
+    document.getElementById(`cp-slot-${clientSnaps + 1}`).classList.add('needs-click');
+  } else {
+    const btn = document.getElementById('btn-client-photos');
+    btn.disabled = false;
+    btn.classList.add('needs-click');
+  }
+}
+
+function buildClientCalendar() {
+  const grid = document.getElementById("client-cal-grid");
+  grid.innerHTML = "";
+
+  for(let i=7; i<=20; i++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = i;
+
+    if(i === 12) {
+      btn.className = "btn btn-calendar cal-full";
+      btn.onclick = (e) => selectClientDate(e, i, true);
+    } else {
+      btn.className = "btn btn-calendar cal-open";
+      btn.onclick = (e) => selectClientDate(e, i, false);
+    }
+    grid.appendChild(btn);
+  }
+}
+
+function selectClientDate(event, dayNum, isBooked) {
+  document.querySelectorAll(".btn-calendar").forEach(d => d.classList.remove("cal-selected"));
+  event.currentTarget.classList.add("cal-selected");
+
+  clientData.date = `August ${dayNum}`;
+
+  const hintBox = document.getElementById("cal-hint-box");
+  const hintLabel = document.getElementById("cal-hint-label");
+  const hintText = document.getElementById("cal-hint-text");
+  hintBox.style.display = "block";
+
+  if(isBooked) {
+    hintLabel.textContent = "Status: Booked Day";
+    hintText.textContent = "This day is unavailable. Send request anyway (every request is read and responded to promptly).";
+  } else {
+    hintLabel.textContent = "Status: Open Day";
+    hintText.textContent = "Held awaiting approval. Click below to proceed.";
+  }
+
+  const btn = document.getElementById("btn-client-date");
+  btn.disabled = false;
+  btn.classList.add("needs-click");
+}
+
+function populateSummary() {
+  document.getElementById('summary-name').textContent = clientData.name;
+  document.getElementById('summary-date').textContent = clientData.date;
+  document.getElementById('summary-addr').textContent = clientData.addr;
+  document.getElementById('summary-desc').textContent = document.getElementById('client-desc-input').value;
+}
+
+function resetClientSimulator() {
+  clientSnaps = 0;
+  clientData = {
+    key: 'roof',
+    title: 'Leaky Roof / Ceiling',
+    name: 'Jamie Whitfield',
+    addr: '482 Maple Street',
+    desc: 'Brown water stain spreading across drywall ceiling seam near the chimney.',
+    date: 'August 12',
+    photos: ['', '', '']
+  };
+
+  ['cp-slot-1', 'cp-slot-2', 'cp-slot-3'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('captured');
+    el.querySelector('.cam-icon').style.display = 'block';
+    el.querySelector('img').src = '';
+    el.querySelector('.icon-overlay').style.display = 'none';
+  });
+
+  document.getElementById('cp-slot-1').classList.add('needs-click');
+  document.getElementById('cp-slot-2').classList.remove('needs-click');
+  document.getElementById('cp-slot-3').classList.remove('needs-click');
+  document.getElementById('client-photo-sub').textContent = `Capture visual proof before scheduling (0/3).`;
+
+  const btnPhotos = document.getElementById('btn-client-photos');
+  btnPhotos.disabled = true;
+  btnPhotos.classList.remove('needs-click');
+
+  document.getElementById('cal-hint-box').style.display = 'none';
+  const btnDate = document.getElementById('btn-client-date');
+  btnDate.disabled = true;
+  btnDate.classList.remove('needs-click');
+
+  lucide.createIcons();
+  nextStage(1);
+}
+</script>
+</body>
+</html>

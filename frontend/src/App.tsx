@@ -10,21 +10,40 @@ import { Link,
   useParams,
   useSearchParams,
 } from "react-router";
-import type { Job, Vow } from "@vizow/shared";
+import type {
+  Job,
+  JobJourneyEvent,
+  PersistedJourneySummary,
+  Vow,
+} from "@vizow/shared";
 import { fetchClient } from "./api/clients";
 import {
   archiveJob,
   cancelJob,
   fetchJob,
+  fetchJobJourney,
+  fetchJobJourneySummary,
   fetchJobs,
+  summarizeJobJourney,
   unarchiveJob,
 } from "./api/jobs";
 import { AdminPageHeader } from "./components/AdminPageHeader";
 import { useActiveJob } from "./contexts/ActiveJobContext";
 import { AppLayout } from "./layouts/AppLayout";
-import { FieldPage } from "./pages/FieldPage";
-import { HomePage } from "./pages/HomePage";
-import { RequestsPage } from "./pages/RequestsPage";
+import { Today } from "./pages/Today";
+import { CalendarPage } from "./pages/CalendarPage";
+import { MediaLibraryPage } from "./pages/MediaLibraryPage";
+import { DemoPage } from "./pages/DemoPage";
+import { ReportingPage } from "./pages/ReportingPage";
+import { BusinessDataPage } from "./pages/BusinessDataPage";
+import { DemoProvider } from "./demo/DemoProvider";
+import { FieldModePage } from "./pages/FieldModePage";
+import { NailedItPage } from "./pages/NailedItPage";
+import { InboxPage } from "./pages/RequestsPage";
+import { JobPage } from "./pages/JobPage";
+import { JobVowPage } from "./pages/JobVowPage";
+import { PublicRequestPage } from "./pages/PublicRequestPage";
+import { PublicCalendarPage } from "./pages/PublicCalendarPage";
 import {
   VowDetailPage,
   VowsPage,
@@ -45,6 +64,59 @@ function formatLabel(value: string): string {
   return value
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function asJourneyRecord(
+  value: unknown,
+): Record<string, unknown> | null {
+  return typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function journeyText(
+  record: Record<string, unknown> | null,
+  key: string,
+): string | null {
+  const value = record?.[key];
+
+  return typeof value === "string" && value.trim()
+    ? value
+    : null;
+}
+
+function journeyValue(
+  record: Record<string, unknown> | null,
+  key: string,
+): string | null {
+  const value = record?.[key];
+
+  if (typeof value === "string") {
+    return value.trim() || null;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return null;
+}
+
+function formatJourneyDate(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
 }
 
 function formatAddress(job: Job): string | null {
@@ -69,13 +141,12 @@ function JobsPage() {
     searchParams.get("clientId") ?? "";
 
   const [state, setState] = useState<JobsState>({ status: "loading" });
-  const [stageFilter, setStageFilter] = useState("ALL");
+  const [jobStatusFilter, setJobStatusFilter] = useState<
+    "ACTIVE" | "COMPLETED" | "CANCELLED" | "ARCHIVED" | "ALL"
+  >("ACTIVE");
   const [searchTerm, setSearchTerm] = useState("");
-  const [archiveFilter, setArchiveFilter] = useState<
-    "CURRENT" | "ARCHIVED"
-  >("CURRENT");
   const [sortKey, setSortKey] = useState<
-    "client" | "job" | "address" | "stage" | "cycle"
+    "client" | "job" | "address" | "status" | "cycle"
   >("client");
   const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC");
 
@@ -113,18 +184,44 @@ function JobsPage() {
       )
     : jobs;
 
-  const currentJobCount = scopedJobs.filter(
-    (job) => job.archivedAt === null,
+  function getJobDisplayStatus(
+    job: Job,
+  ): "ACTIVE" | "COMPLETED" | "CANCELLED" | "ARCHIVED" {
+    if (job.archivedAt !== null) {
+      return "ARCHIVED";
+    }
+
+    if (job.lifecycleStatus === "cancelled") {
+      return "CANCELLED";
+    }
+
+    if (job.currentCycle.stage === "completed") {
+      return "COMPLETED";
+    }
+
+    return "ACTIVE";
+  }
+
+  const activeJobCount = scopedJobs.filter(
+    (job) => getJobDisplayStatus(job) === "ACTIVE",
+  ).length;
+
+  const completedJobCount = scopedJobs.filter(
+    (job) => getJobDisplayStatus(job) === "COMPLETED",
+  ).length;
+
+  const cancelledJobCount = scopedJobs.filter(
+    (job) => getJobDisplayStatus(job) === "CANCELLED",
   ).length;
 
   const archivedJobCount = scopedJobs.filter(
-    (job) => job.archivedAt !== null,
+    (job) => getJobDisplayStatus(job) === "ARCHIVED",
   ).length;
 
-  const viewJobs = scopedJobs.filter((job) =>
-    archiveFilter === "ARCHIVED"
-      ? job.archivedAt !== null
-      : job.archivedAt === null,
+  const viewJobs = scopedJobs.filter(
+    (job) =>
+      jobStatusFilter === "ALL" ||
+      getJobDisplayStatus(job) === jobStatusFilter,
   );
 
   const [scopedClientName, setScopedClientName] =
@@ -163,41 +260,14 @@ function JobsPage() {
     scopedClientName ?? "Client";
 
   useEffect(() => {
-    setArchiveFilter("CURRENT");
-    setStageFilter("ALL");
+    setJobStatusFilter("ACTIVE");
     setSearchTerm("");
   }, [scopedClientId]);
-
-  useEffect(() => {
-    setStageFilter("ALL");
-    setSearchTerm("");
-  }, [archiveFilter]);
-
-  const stages = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          viewJobs.map(
-            (job) => job.currentCycle.stage,
-          ),
-        ),
-      ).sort(
-        (first, second) => first.localeCompare(second),
-      ),
-    [viewJobs],
-  );
 
   const visibleJobs = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     const nextJobs = viewJobs.filter((job) => {
-      if (
-        stageFilter !== "ALL" &&
-        job.currentCycle.stage !== stageFilter
-      ) {
-        return false;
-      }
-
       if (!normalizedSearch) {
         return true;
       }
@@ -231,9 +301,9 @@ function JobsPage() {
       } else if (sortKey === "address") {
         firstValue = formatAddress(first) ?? "";
         secondValue = formatAddress(second) ?? "";
-      } else if (sortKey === "stage") {
-        firstValue = first.currentCycle.stage;
-        secondValue = second.currentCycle.stage;
+      } else if (sortKey === "status") {
+        firstValue = getJobDisplayStatus(first);
+        secondValue = getJobDisplayStatus(second);
       } else {
         firstValue = first.currentCycle.cycleNumber;
         secondValue = second.currentCycle.cycleNumber;
@@ -253,7 +323,6 @@ function JobsPage() {
     searchTerm,
     sortDirection,
     sortKey,
-    stageFilter,
   ]);
 
   function handleSort(nextSortKey: typeof sortKey) {
@@ -307,6 +376,10 @@ function JobsPage() {
             ? "error"
             : "success"
       }
+      sections={[
+        { id: "jobs-filters", label: "Filters" },
+        { id: "jobs-list", label: "Jobs" },
+      ]}
     >
       <div className="page">
         <div className="admin-page jobs-page">
@@ -320,17 +393,15 @@ function JobsPage() {
             description={
               scopedClientId
                 ? `Jobs belonging to ${scopedClientLabel}.`
-                : "Review each job’s current stage, service address, and active work cycle."
+                : "Review each Job’s status, service address, and current work cycle."
             }
             meta={
               state.status === "ready" ? (
                 <>
-                  <span>
-                    {currentJobCount} current
-                  </span>
-                  <span>
-                    {archivedJobCount} archived
-                  </span>
+                  <span>{activeJobCount} active</span>
+                  <span>{completedJobCount} completed</span>
+                  <span>{cancelledJobCount} cancelled</span>
+                  <span>{archivedJobCount} archived</span>
                 </>
               ) : undefined
             }
@@ -372,78 +443,42 @@ function JobsPage() {
           )}
 
           {state.status === "ready" && (
-            <div className="admin-toolbar jobs-toolbar">
+            <div className="admin-toolbar jobs-toolbar" id="jobs-filters">
               <div
                 className="admin-filter-tabs"
-                aria-label="Job archive filter"
+                aria-label="Job status filter"
               >
-                <button
-                  aria-pressed={archiveFilter === "CURRENT"}
-                  className={
-                    archiveFilter === "CURRENT"
-                      ? "is-active"
-                      : undefined
-                  }
-                  type="button"
-                  onClick={() => setArchiveFilter("CURRENT")}
-                >
-                  <span>Current</span>
-                  <strong>{currentJobCount}</strong>
-                </button>
-
-                <button
-                  aria-pressed={archiveFilter === "ARCHIVED"}
-                  className={
-                    archiveFilter === "ARCHIVED"
-                      ? "is-active"
-                      : undefined
-                  }
-                  type="button"
-                  onClick={() => setArchiveFilter("ARCHIVED")}
-                >
-                  <span>Archived</span>
-                  <strong>{archivedJobCount}</strong>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {state.status === "ready" && (
-            <div className="admin-toolbar jobs-toolbar">
-              <div
-                className="admin-filter-tabs"
-                aria-label="Job stage filter"
-              >
-                <button
-                  aria-pressed={stageFilter === "ALL"}
-                  className={stageFilter === "ALL" ? "is-active" : undefined}
-                  type="button"
-                  onClick={() => setStageFilter("ALL")}
-                >
-                  <span>All</span>
-                  <strong>{viewJobs.length}</strong>
-                </button>
-
-                {stages.map((stage) => {
-                  const count = viewJobs.filter(
-                    (job) => job.currentCycle.stage === stage,
-                  ).length;
-
-                  return (
-                    <button
-                      aria-pressed={stageFilter === stage}
-                      className={
-                        stageFilter === stage ? "is-active" : undefined
-                      }
-                      key={stage}
-                      type="button"
-                      onClick={() => setStageFilter(stage)}
-                    >
-                      <span>{formatLabel(stage)}</span>
-                      <strong>{count}</strong>
-                    </button>
-                  );
-                })}
+                {[
+                  ["ACTIVE", "Active", activeJobCount],
+                  ["COMPLETED", "Completed", completedJobCount],
+                  ["CANCELLED", "Cancelled", cancelledJobCount],
+                  ["ARCHIVED", "Archived", archivedJobCount],
+                  ["ALL", "All", scopedJobs.length],
+                ].map(([value, label, count]) => (
+                  <button
+                    aria-pressed={jobStatusFilter === value}
+                    className={
+                      jobStatusFilter === value
+                        ? "is-active"
+                        : undefined
+                    }
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setJobStatusFilter(
+                        value as
+                          | "ACTIVE"
+                          | "COMPLETED"
+                          | "CANCELLED"
+                          | "ARCHIVED"
+                          | "ALL",
+                      );
+                    }}
+                  >
+                    <span>{label}</span>
+                    <strong>{count}</strong>
+                  </button>
+                ))}
               </div>
 
               <div className="admin-toolbar-end">
@@ -473,7 +508,7 @@ function JobsPage() {
 
           {state.status === "ready" && visibleJobs.length > 0 && (
             <div className="admin-table-wrap">
-              <table className="admin-table jobs-table">
+              <table className="admin-table jobs-table" id="jobs-list">
                 <thead>
                   <tr>
                     <th>
@@ -506,9 +541,9 @@ function JobsPage() {
                     <th>
                       <button
                         type="button"
-                        onClick={() => handleSort("stage")}
+                        onClick={() => handleSort("status")}
                       >
-                        Stage{getSortLabel("stage")}
+                        Status{getSortLabel("status")}
                       </button>
                     </th>
 
@@ -528,8 +563,10 @@ function JobsPage() {
                 <tbody>
                   {visibleJobs.map((job) => {
                     const address = formatAddress(job);
+                    const displayStatus =
+                      getJobDisplayStatus(job);
                     const stageClass =
-                      `admin-status-chip project-status-${job.currentCycle.stage.toLowerCase()}`;
+                      `admin-status-chip project-status-${displayStatus.toLowerCase()}`;
 
                     return (
                       <tr key={job.id}>
@@ -540,13 +577,9 @@ function JobsPage() {
                         <td data-label="Job">
                           <Link to={`/jobs/${job.id}`}>{job.title}</Link>
                           <small>
-                            {formatLabel(job.currentCycle.reason)}
+                            Cycle {job.currentCycle.cycleNumber}
                             {" · "}
-                            {job.archivedAt
-                              ? "Archived"
-                              : job.lifecycleStatus === "cancelled"
-                                ? "Cancelled"
-                                : "Active"}
+                            {formatLabel(job.currentCycle.reason)}
                           </small>
                         </td>
 
@@ -554,9 +587,9 @@ function JobsPage() {
                           {address ?? "—"}
                         </td>
 
-                        <td data-label="Stage">
+                        <td data-label="Status">
                           <span className={stageClass}>
-                            {formatLabel(job.currentCycle.stage)}
+                            {formatLabel(displayStatus)}
                           </span>
                         </td>
 
@@ -578,17 +611,15 @@ function JobsPage() {
           {state.status === "ready" && visibleJobs.length === 0 && (
             <div className="admin-empty-state admin-empty-state-large">
               <strong>
-                {archiveFilter === "ARCHIVED"
-                  ? "No archived Jobs match this view."
-                  : "No current Jobs match this view."}
+                No Jobs match this view.
               </strong>
               <span>
-                Choose another stage or clear the search.
+                Choose another status or clear the search.
               </span>
               <button
                 type="button"
                 onClick={() => {
-                  setStageFilter("ALL");
+                  setJobStatusFilter("ALL");
                   setSearchTerm("");
                 }}
               >
@@ -633,6 +664,41 @@ function JobDetailContent({
     | { status: "error"; message: string }
   >({ status: "loading" });
 
+
+  const [journeyState, setJourneyState] = useState<
+    | { status: "loading" }
+    | { status: "ready"; events: JobJourneyEvent[] }
+    | { status: "error"; message: string }
+  >({ status: "loading" });
+
+  const [journeyExpanded, setJourneyExpanded] = useState(false);
+
+  const [selectedJourneyEvent, setSelectedJourneyEvent] =
+    useState<JobJourneyEvent | null>(null);
+
+  const [journeySummaryState, setJourneySummaryState] = useState<
+    | { status: "idle" }
+    | { status: "loading" }
+    | { status: "ready"; summary: string; model: string }
+    | { status: "error"; message: string }
+  >({ status: "idle" });
+
+  const [journeySummaryModalOpen, setJourneySummaryModalOpen] =
+    useState(false);
+
+  const [
+    storedJourneySummaryState,
+    setStoredJourneySummaryState,
+  ] = useState<
+    | { status: "loading" }
+    | {
+        status: "ready";
+        summary: PersistedJourneySummary | null;
+        stale: boolean;
+      }
+    | { status: "error"; message: string }
+  >({ status: "loading" });
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -660,6 +726,67 @@ function JobDetailContent({
     return () => controller.abort();
   }, [job.id]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchJobJourney(job.id, controller.signal)
+      .then((events) => {
+        setJourneyState({ status: "ready", events });
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setJourneyState({
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to load this Job’s journey.",
+        });
+      });
+
+    return () => controller.abort();
+  }, [job.id]);
+
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchJobJourneySummary(job.id, controller.signal)
+      .then((result) => {
+        setStoredJourneySummaryState({
+          status: "ready",
+          summary: result.summary,
+          stale: result.stale,
+        });
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setStoredJourneySummaryState({
+          status: "error",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to load the saved Journey summary.",
+        });
+      });
+
+    return () => controller.abort();
+  }, [job.id]);
+
+
+
   const address = formatAddress(job);
   const stageClass =
     `admin-status-chip project-status-${job.currentCycle.stage.toLowerCase()}`;
@@ -671,7 +798,7 @@ function JobDetailContent({
   const canOpenField =
     !isArchived &&
     !isCancelled &&
-    job.currentCycle.stage === "project";
+    job.currentCycle.stage === "open";
 
   const canCancel = canOpenField;
 
@@ -791,6 +918,45 @@ function JobDetailContent({
     }
   }
 
+  async function handleJourneySummary(): Promise<void> {
+    if (journeySummaryState.status === "loading") {
+      return;
+    }
+
+    setJourneySummaryModalOpen(true);
+    setJourneySummaryState({ status: "loading" });
+
+    try {
+      const result = await summarizeJobJourney(job.id);
+
+      setJourneySummaryState({
+        status: "ready",
+        summary: result.summary,
+        model: result.model,
+      });
+
+      setStoredJourneySummaryState({
+        status: "ready",
+        summary: {
+          summary: result.summary,
+          model: result.model,
+          eventCount: result.eventCount,
+          latestEventAt: result.latestEventAt,
+          generatedAt: result.generatedAt,
+        },
+        stale: false,
+      });
+    } catch (error: unknown) {
+      setJourneySummaryState({
+        status: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to generate the Journey summary.",
+      });
+    }
+  }
+
   return (
     <>
       <AdminPageHeader
@@ -822,17 +988,19 @@ function JobDetailContent({
         meta={
           <>
             <span>
-              Stage:{" "}
-              {formatLabel(job.currentCycle.stage)}
-            </span>
-            <span>
-              Status:{" "}
+              Job:{" "}
               {isArchived
                 ? "Archived"
-                : formatLabel(job.lifecycleStatus)}
+                : isCancelled
+                  ? "Cancelled"
+                  : "Active"}
             </span>
             <span>
               Cycle {job.currentCycle.cycleNumber}
+              {" · "}
+              {job.currentCycle.stage === "completed"
+                ? "Completed"
+                : "Open"}
             </span>
           </>
         }
@@ -1008,6 +1176,518 @@ function JobDetailContent({
       </section>
 
       <section className="helper-card stack-lg">
+        <div className="card-topline journey-topline">
+          <div className="stack">
+            <p className="eyebrow">Job History</p>
+            <h2>Journey</h2>
+          </div>
+
+          <div className="cluster">
+            {journeyState.status === "ready" && (
+              <span className="vow-count">
+                {journeyState.events.length}
+              </span>
+            )}
+
+            {journeyState.status === "ready" &&
+              journeyState.events.length > 0 && (
+                <>
+                  <button
+                    className="btn"
+                    type="button"
+                    disabled={
+                      journeySummaryState.status === "loading"
+                    }
+                    onClick={handleJourneySummary}
+                  >
+                    {journeySummaryState.status === "loading"
+                      ? "Summarizing…"
+                      : storedJourneySummaryState.status === "ready" &&
+                          storedJourneySummaryState.summary
+                        ? "Refresh Summary"
+                        : "AI Summary"}
+                  </button>
+
+                  <button
+                    className="btn"
+                    type="button"
+                    onClick={() =>
+                      setJourneyExpanded((expanded) => !expanded)
+                    }
+                    aria-expanded={journeyExpanded}
+                  >
+                    {journeyExpanded ? "Collapse" : "Expand"}
+                  </button>
+                </>
+              )}
+          </div>
+        </div>
+
+        {storedJourneySummaryState.status === "ready" &&
+          storedJourneySummaryState.summary && (
+            <div className="journey-saved-summary">
+              <div className="journey-saved-summary-heading">
+                <div>
+                  <p className="eyebrow">AI Work Summary</p>
+                  <small>
+                    Generated{" "}
+                    {formatJourneyDate(
+                      storedJourneySummaryState.summary.generatedAt,
+                    )}
+                  </small>
+                </div>
+
+                {storedJourneySummaryState.stale && (
+                  <span className="admin-status-chip">
+                    Update available
+                  </span>
+                )}
+              </div>
+
+              <div className="journey-saved-summary-copy">
+                {storedJourneySummaryState.summary.summary}
+              </div>
+
+              <small>
+                Local model:{" "}
+                {storedJourneySummaryState.summary.model}
+              </small>
+            </div>
+          )}
+
+        {storedJourneySummaryState.status === "error" && (
+          <div className="notice notice-error" role="alert">
+            {storedJourneySummaryState.message}
+          </div>
+        )}
+
+        {journeyState.status === "loading" && (
+          <div className="notice">Loading Journey…</div>
+        )}
+
+        {journeyState.status === "error" && (
+          <div className="notice notice-error" role="alert">
+            {journeyState.message}
+          </div>
+        )}
+
+        {journeyState.status === "ready" &&
+          journeyState.events.length === 0 && (
+            <div className="card-drawer">
+              No Journey events have been recorded yet.
+            </div>
+          )}
+
+        {journeyState.status === "ready" &&
+          journeyState.events.length > 0 &&
+          !journeyExpanded && (
+            <div className="journey-collapsed-note">
+              {journeyState.events.length} recorded steps. Expand
+              the Journey to review individual events.
+            </div>
+          )}
+
+        {journeyState.status === "ready" &&
+          journeyState.events.length > 0 &&
+          journeyExpanded && (
+            <div className="job-journey">
+              {journeyState.events.map((event, index) => (
+                <button
+                  className="job-journey-event"
+                  type="button"
+                  key={event.id}
+                  onClick={() => setSelectedJourneyEvent(event)}
+                >
+                  <span className="job-journey-marker">
+                    <span>{index + 1}</span>
+                  </span>
+
+                  <span className="job-journey-content">
+                    <strong>
+                      {formatLabel(event.eventType)}
+                    </strong>
+                    <small>
+                      {formatJourneyDate(event.createdAt)}
+                    </small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+        {selectedJourneyEvent && (
+          <div
+            className="modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.currentTarget === event.target) {
+                setSelectedJourneyEvent(null);
+              }
+            }}
+          >
+            <section
+              className="journey-detail-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="journey-detail-title"
+            >
+              <div className="journey-detail-heading">
+                <div>
+                  <p className="eyebrow">Journey Step</p>
+                  <h2 id="journey-detail-title">
+                    {formatLabel(
+                      selectedJourneyEvent.eventType,
+                    )}
+                  </h2>
+                  <p>
+                    {formatJourneyDate(
+                      selectedJourneyEvent.createdAt,
+                    )}
+                  </p>
+                </div>
+
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() =>
+                    setSelectedJourneyEvent(null)
+                  }
+                >
+                  Close
+                </button>
+              </div>
+
+              {(() => {
+                const details = selectedJourneyEvent.details;
+                const fieldNote = asJourneyRecord(
+                  details.fieldNote,
+                );
+                const photo = asJourneyRecord(details.photo);
+                const visit = asJourneyRecord(details.visit);
+                const scopeRevision = asJourneyRecord(
+                  details.scopeRevision,
+                );
+                const closure = asJourneyRecord(
+                  details.closure,
+                );
+                const vow = asJourneyRecord(details.vow);
+
+                const photoUrl = journeyText(photo, "url");
+                const vowId = journeyText(details, "vowId");
+
+                const supplemental = Object.entries(details)
+                  .filter(([key, value]) => {
+                    const normalized = key.toLowerCase();
+
+                    return (
+                      !normalized.endsWith("id") &&
+                      !normalized.endsWith("ids") &&
+                      (typeof value === "string" ||
+                        typeof value === "number" ||
+                        typeof value === "boolean")
+                    );
+                  });
+
+                return (
+                  <div className="journey-detail-body">
+                    {fieldNote && (
+                      <section className="journey-detail-section">
+                        <p className="eyebrow">Field Note</p>
+                        <p>
+                          {journeyText(fieldNote, "content")}
+                        </p>
+                        {journeyText(
+                          fieldNote,
+                          "capturedAt",
+                        ) && (
+                          <small>
+                            Captured{" "}
+                            {formatJourneyDate(
+                              journeyText(
+                                fieldNote,
+                                "capturedAt",
+                              ),
+                            )}
+                          </small>
+                        )}
+                      </section>
+                    )}
+
+                    {photo && (
+                      <section className="journey-detail-section">
+                        <p className="eyebrow">Photo</p>
+
+                        {photoUrl && (
+                          <img
+                            className="journey-detail-photo"
+                            src={photoUrl}
+                            alt={
+                              journeyText(photo, "caption") ??
+                              "Job photo"
+                            }
+                          />
+                        )}
+
+                        {journeyText(photo, "caption") && (
+                          <p>
+                            {journeyText(photo, "caption")}
+                          </p>
+                        )}
+
+                        {journeyText(photo, "stage") && (
+                          <small>
+                            {formatLabel(
+                              journeyText(photo, "stage")!,
+                            )}
+                          </small>
+                        )}
+                      </section>
+                    )}
+
+                    {visit && (
+                      <section className="journey-detail-section">
+                        <p className="eyebrow">Visit</p>
+
+                        {journeyText(visit, "status") && (
+                          <p>
+                            Status:{" "}
+                            <strong>
+                              {formatLabel(
+                                journeyText(
+                                  visit,
+                                  "status",
+                                )!,
+                              )}
+                            </strong>
+                          </p>
+                        )}
+
+                        {journeyText(
+                          visit,
+                          "scheduledStart",
+                        ) && (
+                          <p>
+                            Scheduled:{" "}
+                            {formatJourneyDate(
+                              journeyText(
+                                visit,
+                                "scheduledStart",
+                              ),
+                            )}
+                          </p>
+                        )}
+
+                        {journeyText(visit, "notes") && (
+                          <p>{journeyText(visit, "notes")}</p>
+                        )}
+                      </section>
+                    )}
+
+                    {scopeRevision && (
+                      <section className="journey-detail-section">
+                        <p className="eyebrow">
+                          Scope Revision
+                        </p>
+
+                        {journeyValue(
+                          scopeRevision,
+                          "revisionNumber",
+                        ) && (
+                          <h3>
+                            Revision{" "}
+                            {journeyValue(
+                              scopeRevision,
+                              "revisionNumber",
+                            )}
+                          </h3>
+                        )}
+
+                        {journeyText(
+                          scopeRevision,
+                          "scopeText",
+                        ) && (
+                          <p>
+                            {journeyText(
+                              scopeRevision,
+                              "scopeText",
+                            )}
+                          </p>
+                        )}
+
+                        {journeyValue(
+                          scopeRevision,
+                          "priceChange",
+                        ) && (
+                          <p>
+                            Price change: $
+                            {journeyValue(
+                              scopeRevision,
+                              "priceChange",
+                            )}
+                          </p>
+                        )}
+
+                        {journeyText(
+                          scopeRevision,
+                          "reason",
+                        ) && (
+                          <p>
+                            {journeyText(
+                              scopeRevision,
+                              "reason",
+                            )}
+                          </p>
+                        )}
+                      </section>
+                    )}
+
+                    {closure && (
+                      <section className="journey-detail-section">
+                        <p className="eyebrow">Completion</p>
+
+                        {journeyValue(
+                          closure,
+                          "finalPrice",
+                        ) && (
+                          <p>
+                            Final price: $
+                            {journeyValue(
+                              closure,
+                              "finalPrice",
+                            )}
+                          </p>
+                        )}
+
+                        {journeyText(
+                          closure,
+                          "completionDate",
+                        ) && (
+                          <p>
+                            Completed:{" "}
+                            {formatJourneyDate(
+                              journeyText(
+                                closure,
+                                "completionDate",
+                              ),
+                            )}
+                          </p>
+                        )}
+
+                        {journeyText(closure, "notes") && (
+                          <p>
+                            {journeyText(
+                              closure,
+                              "notes",
+                            )}
+                          </p>
+                        )}
+                      </section>
+                    )}
+
+                    {vow && (
+                      <section className="journey-detail-section">
+                        <p className="eyebrow">VOW</p>
+                        <p>
+                          {journeyText(vow, "title") ??
+                            "Visual of Work"}
+                        </p>
+
+                        {vowId && (
+                          <Link
+                            className="btn"
+                            to={`/vows/${vowId}`}
+                          >
+                            Open VOW
+                          </Link>
+                        )}
+                      </section>
+                    )}
+
+                    {supplemental.length > 0 && (
+                      <dl className="journey-detail-meta">
+                        {supplemental.map(([key, value]) => (
+                          <div key={key}>
+                            <dt>{formatLabel(key)}</dt>
+                            <dd>{String(value)}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+                  </div>
+                );
+              })()}
+            </section>
+          </div>
+        )}
+
+        {journeySummaryModalOpen &&
+          journeySummaryState.status !== "idle" && (
+          <div
+            className="modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.currentTarget === event.target) {
+                setJourneySummaryModalOpen(false);
+              }
+            }}
+          >
+            <section
+              className="journey-detail-panel journey-summary-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="journey-summary-title"
+            >
+              <div className="journey-detail-heading">
+                <div>
+                  <p className="eyebrow">Local AI</p>
+                  <h2 id="journey-summary-title">
+                    Journey Summary
+                  </h2>
+                </div>
+
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() =>
+                    setJourneySummaryModalOpen(false)
+                  }
+                >
+                  Close
+                </button>
+              </div>
+
+              {journeySummaryState.status === "loading" && (
+                <div className="notice">
+                  Summarizing Journey locally…
+                </div>
+              )}
+
+              {journeySummaryState.status === "error" && (
+                <div
+                  className="notice notice-error"
+                  role="alert"
+                >
+                  {journeySummaryState.message}
+                </div>
+              )}
+
+              {journeySummaryState.status === "ready" && (
+                <div className="journey-ai-summary">
+                  <div>
+                    {journeySummaryState.summary}
+                  </div>
+                  <small>
+                    Local model:{" "}
+                    {journeySummaryState.model}
+                  </small>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+      </section>
+
+      <section className="helper-card stack-lg">
         <div className="card-topline">
           <div className="stack">
             <p className="eyebrow">
@@ -1017,7 +1697,9 @@ function JobDetailContent({
           </div>
 
           <span className={stageClass}>
-            {formatLabel(job.currentCycle.stage)}
+            {job.currentCycle.stage === "completed"
+              ? "Completed"
+              : "Open"}
           </span>
         </div>
 
@@ -1097,7 +1779,7 @@ function JobDetailContent({
   );
 }
 
-function JobDetailPage() {
+export function ArchivedJobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const [state, setState] = useState<JobDetailState>({
     status: "loading",
@@ -1217,8 +1899,8 @@ function NotFoundPage() {
           <p className="eyebrow">Navigation</p>
           <h1>Page not found</h1>
           <div className="cluster">
-            <Link className="btn btn-primary" to="/requests">
-              Return to Requests
+            <Link className="btn btn-primary" to="/inbox">
+              Return to Inbox
             </Link>
           </div>
         </section>
@@ -1230,11 +1912,20 @@ function NotFoundPage() {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/requests" element={<RequestsPage />} />
-      <Route path="/field" element={<FieldPage />} />
+      <Route path="/" element={<Today />} />
+      <Route path="/nailed-it" element={<NailedItPage />} />
+      <Route path="/request" element={<PublicRequestPage />} />
+      <Route path="/availability" element={<PublicCalendarPage />} />
+      <Route path="/inbox" element={<InboxPage />} />
+      <Route path="/calendar" element={<CalendarPage />} />
+      <Route path="/media" element={<MediaLibraryPage />} />
+      <Route path="/reporting" element={<ReportingPage />} />
+      <Route path="/data" element={<BusinessDataPage />} />
+      <Route path="/demo" element={<DemoProvider><DemoPage /></DemoProvider>} />
+      <Route path="/field" element={<FieldModePage />} />
       <Route path="/jobs" element={<JobsPage />} />
-      <Route path="/jobs/:jobId" element={<JobDetailPage />} />
+      <Route path="/jobs/:jobId" element={<JobPage />} />
+      <Route path="/jobs/:jobId/vow" element={<JobVowPage />} />
       <Route path="/vows" element={<VowsPage />} />
       <Route path="/vows/:vowId" element={<VowDetailPage />} />
       <Route path="*" element={<NotFoundPage />} />

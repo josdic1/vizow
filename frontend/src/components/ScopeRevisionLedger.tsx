@@ -97,7 +97,7 @@ export function ScopeRevisionLedger({
   const isActive =
     job.lifecycleStatus === "active" &&
     job.archivedAt === null &&
-    job.currentCycle.stage === "project";
+    job.currentCycle.stage === "open";
 
   const currentRevisions = useMemo(
     () =>
@@ -343,7 +343,11 @@ export function ScopeRevisionLedger({
   }
 
   if (currentRevisions.length === 0) {
-    return null;
+    return (
+      <p className="scope-revision-empty">
+        No scope changes in Cycle {job.currentCycle.cycleNumber}.
+      </p>
+    );
   }
 
   return (

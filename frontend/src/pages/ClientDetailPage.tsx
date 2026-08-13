@@ -12,7 +12,6 @@ import type {
   ClientRecord,
   CreateClientPropertyInput,
   Job,
-  Request as WorkRequest,
   UpdateClientInput,
   UpdateClientPropertyInput,
 } from "@vizow/shared";
@@ -432,7 +431,7 @@ export function ClientDetailPage() {
         kind: "client",
         title: `Archive ${client.name}?`,
         message:
-          "Existing Requests, Jobs, Properties, and history will remain. Nothing will be deleted.",
+          "Existing Jobs, Properties, intake records, and history will remain. Nothing will be deleted.",
         confirmLabel: "Archive Client",
       });
       return;
@@ -640,7 +639,7 @@ export function ClientDetailPage() {
         property,
         title: `Archive ${property.label}?`,
         message:
-          "Existing Requests and Jobs will keep their original address snapshots. Nothing will be deleted.",
+          "Existing work keeps its original service address. Nothing will be deleted.",
         confirmLabel: "Archive Property",
       });
       return;
@@ -910,7 +909,7 @@ export function ClientDetailPage() {
               ? mutation.message
               : client?.archivedAt
                 ? `${client.name} is archived. Existing work and history remain intact.`
-                : `${client?.name ?? "Client"} is loaded with Properties, Requests, and Jobs.`;
+                : `${client?.name ?? "Client"} is loaded with contact details, Properties, and work history.`;
 
   return (
     <AppLayout
@@ -935,6 +934,11 @@ export function ClientDetailPage() {
             ? "error"
             : "success"
       }
+      sections={[
+        { id: "client-contact", label: "Contact" },
+        { id: "client-properties", label: "Properties" },
+        { id: "client-work", label: "Work" },
+      ]}
     >
       <div className="page">
         <div className="admin-page client-detail-page">
@@ -943,7 +947,7 @@ export function ClientDetailPage() {
               <div className="client-detail-title-line">
                 <div>
                   <p className="eyebrow">
-                    Client Record
+                    Client
                   </p>
                   <h1>
                     {client?.name ?? "Client"}
@@ -973,12 +977,6 @@ export function ClientDetailPage() {
                     {activeProperties.length === 1
                       ? "Property"
                       : "Properties"}
-                  </span>
-                  <span>
-                    {client.requests.length}{" "}
-                    {client.requests.length === 1
-                      ? "Request"
-                      : "Requests"}
                   </span>
                   <span>
                     {client.jobs.length}{" "}
@@ -1096,13 +1094,13 @@ export function ClientDetailPage() {
 
           {client && (
             <>
-              <section className="client-record-section">
+              <section className="client-record-section" id="client-contact">
                 <div className="client-record-section-heading">
                   <div>
                     <p className="eyebrow">
-                      Client Identity
+                      Client
                     </p>
-                    <h2>Contact Record</h2>
+                    <h2>Contact</h2>
                   </div>
 
                   {!client.archivedAt && (
@@ -1258,23 +1256,6 @@ export function ClientDetailPage() {
                       </dl>
                     </article>
 
-                    <article className="client-record-card">
-                      <p className="eyebrow">
-                        Default Property
-                      </p>
-                      <h3>
-                        {client.defaultAddress
-                          ?.label ??
-                          "No default Property"}
-                      </h3>
-                      <p>
-                        {client.defaultAddress
-                          ? formatPropertyAddress(
-                              client.defaultAddress,
-                            )
-                          : "No active default service Property is saved."}
-                      </p>
-                    </article>
 
                     <article className="client-record-card client-record-wide">
                       <p className="eyebrow">
@@ -1289,18 +1270,13 @@ export function ClientDetailPage() {
                 )}
               </section>
 
-              <section className="client-record-section">
+              <section className="client-record-section" id="client-properties">
                 <div className="client-record-section-heading">
                   <div>
                     <p className="eyebrow">
-                      Saved Locations
+                      Service Locations
                     </p>
                     <h2>Properties</h2>
-                    <p>
-                      Property edits do not rewrite
-                      addresses already stored on
-                      Requests or Jobs.
-                    </p>
                   </div>
 
                   {!client.archivedAt && (
@@ -1576,103 +1552,15 @@ export function ClientDetailPage() {
                 )}
               </section>
 
-              <section className="client-record-section">
+              <section className="client-record-section" id="client-work">
                 <div className="client-record-section-heading">
                   <div>
                     <p className="eyebrow">
-                      Intake History
-                    </p>
-                    <h2>Requests</h2>
-                  </div>
-
-                  <Link
-                    className="btn"
-                    to={`/requests?clientId=${encodeURIComponent(
-                      client.id,
-                    )}`}
-                  >
-                    This Client’s Requests
-                  </Link>
-                </div>
-
-                {client.requests.length > 0 ? (
-                  <div className="client-activity-list">
-                    {client.requests.map(
-                      (
-                        request: WorkRequest,
-                      ) => (
-                        <article
-                          className="client-activity-row"
-                          key={request.id}
-                        >
-                          <div>
-                            <div className="client-activity-title">
-                              <h3>
-                                {request.title}
-                              </h3>
-
-                              <span
-                                className={`client-record-status request-status-${request.status}`}
-                              >
-                                {formatLabel(
-                                  request.status,
-                                )}
-                              </span>
-                            </div>
-
-                            <p>
-                              {formatWorkAddress(
-                                request,
-                              )}
-                            </p>
-
-                            <small>
-                              Submitted{" "}
-                              {formatDate(
-                                request.submittedAt,
-                              )}
-                            </small>
-                          </div>
-
-                          {request.approvedJobId && (
-                            <div className="client-record-actions">
-                              <Link
-                                className="btn"
-                                to={`/jobs/${request.approvedJobId}`}
-                              >
-                                Open Job
-                              </Link>
-                            </div>
-                          )}
-                        </article>
-                      ),
-                    )}
-                  </div>
-                ) : (
-                  <div className="clients-empty">
-                    No Requests are recorded for this
-                    Client.
-                  </div>
-                )}
-              </section>
-
-              <section className="client-record-section">
-                <div className="client-record-section-heading">
-                  <div>
-                    <p className="eyebrow">
-                      Work History
+                      Work
                     </p>
                     <h2>Jobs</h2>
                   </div>
 
-                  <Link
-                    className="btn"
-                    to={`/jobs?clientId=${encodeURIComponent(
-                      client.id,
-                    )}`}
-                  >
-                    This Client’s Jobs
-                  </Link>
                 </div>
 
                 {client.jobs.length > 0 ? (
@@ -1691,8 +1579,7 @@ export function ClientDetailPage() {
                                 className={`client-record-status job-stage-${job.currentCycle.stage}`}
                               >
                                 {formatLabel(
-                                  job.currentCycle
-                                    .stage,
+                                  job.lifecycleStatus,
                                 )}
                               </span>
                             </div>
@@ -1715,19 +1602,28 @@ export function ClientDetailPage() {
                             </small>
                           </div>
 
-                          <Link
-                            className="btn"
-                            to={`/jobs/${job.id}`}
-                          >
-                            Open Job
-                          </Link>
+                          <div className="client-record-actions">
+                            <Link
+                              className="btn btn-primary"
+                              to={`/jobs/${job.id}`}
+                            >
+                              Open Job
+                            </Link>
+
+                            <Link
+                              className="btn"
+                              to={`/jobs/${job.id}/vow`}
+                            >
+                              See VOW
+                            </Link>
+                          </div>
                         </article>
                       ),
                     )}
                   </div>
                 ) : (
                   <div className="clients-empty">
-                    No Jobs are recorded for this Client.
+                    No work is recorded for this Client yet.
                   </div>
                 )}
               </section>

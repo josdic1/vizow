@@ -398,3 +398,122 @@ button.btn:disabled {
     min-height: 44px;
   }
 }
+
+
+/* ── ADMIN SAMPLE DATA MENU ── */
+
+.admin-menu {
+  position: relative;
+}
+
+.admin-menu > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.admin-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-menu > summary::after {
+  content: "▾";
+  margin-left: 0.45rem;
+  font-size: 0.7rem;
+}
+
+.admin-menu[open] > summary {
+  background: var(--color-orange);
+  box-shadow: var(--shadow-md);
+  transform: translate(-2px, -2px);
+}
+
+.admin-menu-popover {
+  position: absolute;
+  z-index: 100;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  display: grid;
+  width: 15rem;
+  border: var(--border-heavy);
+  background: var(--color-paper);
+  box-shadow: var(--shadow-md);
+}
+
+.admin-menu-heading {
+  display: grid;
+  gap: 0.2rem;
+  border-bottom: var(--border-normal);
+  padding: var(--space-3);
+}
+
+.admin-menu-heading strong {
+  font-size: 0.8rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-menu-heading span {
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
+.admin-menu-item {
+  width: 100%;
+  border: 0;
+  border-bottom: var(--border-normal);
+  background: var(--color-paper-soft);
+  color: var(--color-ink);
+  padding: 0.8rem var(--space-3);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.admin-menu-item:hover:not(:disabled) {
+  background: var(--color-orange);
+}
+
+.admin-menu-item:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.admin-menu-divider {
+  height: 0.4rem;
+  border-bottom: var(--border-normal);
+  background: var(--color-ink);
+}
+
+.admin-menu-clear {
+  background: var(--color-steel);
+  color: var(--color-paper-soft);
+}
+
+.admin-menu-clear:hover:not(:disabled) {
+  background: var(--color-ink-soft);
+}
+
+@media (max-width: 720px) {
+  .header-actions {
+    display: flex;
+    justify-content: center;
+  }
+
+  .admin-menu {
+    width: 100%;
+  }
+
+  .admin-menu > summary {
+    width: 100%;
+  }
+
+  .admin-menu-popover {
+    right: 50%;
+    width: min(20rem, calc(100vw - 2rem));
+    transform: translateX(50%);
+  }
+}
