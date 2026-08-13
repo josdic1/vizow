@@ -5,7 +5,7 @@ import {
   type DemoView,
 } from "./DemoContext";
 
-const STORAGE_KEY = "vizow.demo.completed.v2";
+const STORAGE_KEY = "vizow.demo.completed.v3";
 
 function readCompleted(): DemoIssueId[] {
   if (typeof window === "undefined") return [];

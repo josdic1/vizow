@@ -13,7 +13,6 @@ export type DemoIssueId =
   | "invoices"
   | "history"
   | "field"
-  | "scope"
   | "record";
 
 export type DemoContextValue = {

@@ -1,5 +1,4 @@
 import { Link } from "react-router";
-import { DemoAdminMenu } from "../demo/DemoAdminMenu";
 import { DemoProblemLab } from "../demo/DemoProblemLab";
 import { DemoWalkthrough } from "../demo/DemoWalkthrough";
 import { demoIssues } from "../demo/demoIssues";
@@ -7,12 +6,20 @@ import { useDemo } from "../demo/useDemo";
 import "../styles/demo.css";
 
 const navItems = [
-  { view: "contractor" as const, label: "Try It · Contractor" },
-  { view: "client" as const, label: "Try It · Client" },
-  { view: "problems" as const, label: "What Vizow Fixes" },
-  { view: "documentation" as const, label: "Documentation" },
-  { view: "walkthrough" as const, label: "Guided Walkthrough" },
+  { view: "problems" as const, label: "What Vizow Fixes", shortLabel: "Fixes" },
+  { view: "contractor" as const, label: "Contractor Simulator", shortLabel: "Contractor" },
+  { view: "client" as const, label: "Client Simulator", shortLabel: "Client" },
+  { view: "documentation" as const, label: "Documentation", shortLabel: "Docs" },
+  { view: "walkthrough" as const, label: "Guided Walkthrough", shortLabel: "Walkthrough" },
 ];
+
+const nextByView = {
+  problems: "Pick one problem",
+  contractor: "Run the Job",
+  client: "Submit a request",
+  documentation: "Read the system",
+  walkthrough: "Follow the steps",
+} as const;
 
 function DemoFrame({ src, title, eyebrow, heading, copy }: { src: string; title: string; eyebrow: string; heading: string; copy: string }) {
   return (
@@ -42,26 +49,48 @@ function Documentation() {
 }
 
 export function DemoPage() {
-  const { view, setView, activeIssue, openIssue, completedIssues, completeIssue } = useDemo();
-  const completedCount = completedIssues.length;
+  const { view, setView, activeIssue, openIssue, completedIssues, completeIssue, reset } = useDemo();
+  const completedCount = demoIssues.filter((issue) => completedIssues.includes(issue.id)).length;
+  const currentView = navItems.find((item) => item.view === view)?.label ?? "Public Demo";
 
   return (
     <main className="demo-shell">
-      <div className="app-header demo-header-wrap">
-        <header className="site-header shell demo-header">
-          <Link className="brand-lockup" to="/" aria-label="VIZOW Home"><img className="brand-mark" src="/icons/vizow-icon.svg" alt="" /><span className="brand-copy"><strong>VIZOW</strong></span></Link>
-          <nav className="site-nav demo-primary-nav" aria-label="Demo navigation">
-            {navItems.map((item) => <button key={item.view} className={`site-nav-link${view === item.view ? " site-nav-link-active" : ""}`} type="button" onClick={() => setView(item.view)}>{item.label}</button>)}
-          </nav>
-          <div className="header-actions"><DemoAdminMenu /></div>
-        </header>
-      </div>
+      <header className="demo-masthead">
+        <div className="shell demo-masthead-top">
+          <Link className="brand-lockup" to="/" aria-label="VIZOW Home">
+            <img className="brand-mark" src="/icons/vizow-icon.svg" alt="" />
+            <span className="brand-copy"><strong>VIZOW</strong></span>
+          </Link>
+          <div className="demo-masthead-title">
+            <span>Public demo</span>
+            <strong>{currentView}</strong>
+          </div>
+          <div className="demo-masthead-actions">
+            <button type="button" onClick={reset}>Reset Demo</button>
+            <Link to="/">Exit Vizow →</Link>
+          </div>
+        </div>
+        <nav className="shell demo-nav-tabs" aria-label="Demo navigation">
+          {navItems.map((item) => (
+            <button
+              key={item.view}
+              className={view === item.view ? "is-active" : ""}
+              type="button"
+              onClick={() => setView(item.view)}
+              aria-current={view === item.view ? "page" : undefined}
+            >
+              <span className="demo-nav-long">{item.label}</span>
+              <span className="demo-nav-short">{item.shortLabel}</span>
+            </button>
+          ))}
+        </nav>
+      </header>
 
       <section className="demo-context-strip" aria-label="Demo context">
-        <div><span>Demo</span><strong>{view === "problems" ? "What Vizow Fixes" : navItems.find((item) => item.view === view)?.label ?? "Public Demo"}</strong></div>
-        <div><span>Progress</span><strong>{completedCount} of {demoIssues.length} problems tried</strong></div>
-        <div><span>Data</span><strong>Demo-only · non-persistent</strong></div>
-        <div><span>Exit</span><Link to="/">Open Vizow →</Link></div>
+        <div><span>View</span><strong>{currentView}</strong></div>
+        <div><span>Progress</span><strong>{completedCount} of {demoIssues.length} fixes tried</strong></div>
+        <div><span>Data</span><strong>Demo only · nothing saved</strong></div>
+        <div><span>Next</span><strong>{nextByView[view]}</strong></div>
       </section>
 
       {view === "contractor" ? <DemoFrame src="/demo/simulators/contractor.html" title="Vizow Contractor Simulator" eyebrow="Try it · Contractor simulator" heading="Run one Job from request to proof." copy="Review the request, schedule it, document the work, close it, and see the resulting VOW." /> : null}
@@ -72,9 +101,9 @@ export function DemoPage() {
       {view === "problems" ? (
         <div className="page"><div className="shell demo-problems-layout">
           <aside className="demo-problem-list panel">
-            <div className="demo-problem-list-head"><p className="eyebrow">What's wasting your time?</p><h1>Try the annoying parts.</h1><p>Pick a complaint. First see the before/after. Then use the Vizow version yourself.</p></div>
+            <div className="demo-problem-list-head"><p className="eyebrow">What's wasting your time?</p><h1>Pick the mess you recognize.</h1><p>One problem at a time: see the mess, then use the Vizow fix.</p></div>
             <div className="demo-progress-meter" aria-label={`${completedCount} of ${demoIssues.length} demo problems completed`}><span style={{ width: `${(completedCount / demoIssues.length) * 100}%` }} /></div>
-            <strong className="demo-progress-label">{completedCount} / {demoIssues.length} tried</strong>
+            <strong className="demo-progress-label">{completedCount} / {demoIssues.length} fixes tried</strong>
             <div className="demo-problem-buttons">
               {demoIssues.map((issue) => (
                 <button key={issue.id} className={`${activeIssue === issue.id ? "is-active" : ""}${completedIssues.includes(issue.id) ? " is-complete" : ""}`} type="button" onClick={() => openIssue(issue.id)}>
