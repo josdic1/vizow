@@ -6,6 +6,7 @@ import { fetchVisits } from "../api/jobs";
 import { fetchRequests } from "../api/requests";
 import { useActiveJob } from "../contexts/ActiveJobContext";
 import { SectionRail } from "../components/SectionRail";
+import { AdminSampleDataMenu } from "../components/AdminSampleDataMenu";
 
 type ScheduledVisit = { job: Job; visit: Visit };
 type DashboardState =
@@ -178,7 +179,9 @@ export function Today() {
           <Link className="today-mark" to="/">VIZOW</Link>
           <div className="today-date"><span>Today</span><strong>{formatToday()}</strong></div>
           <nav className="today-nav" aria-label="Primary">
-            <Link to="/inbox">Inbox</Link><Link to="/jobs">Jobs</Link>
+            <Link to="/inbox">Inbox</Link>
+            <Link to="/jobs">Jobs</Link>
+            <AdminSampleDataMenu />
           </nav>
         </header>
 

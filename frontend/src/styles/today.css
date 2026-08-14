@@ -84,7 +84,8 @@
   gap: 8px;
 }
 
-.today-nav a {
+.today-nav > a,
+.today-nav > .admin-menu > summary {
   min-height: 34px;
   display: inline-flex;
   align-items: center;
@@ -92,11 +93,28 @@
   border: 1px solid currentColor;
   color: inherit;
   background: var(--today-panel);
+  box-shadow: none;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.13em;
+  line-height: 1;
   text-decoration: none;
   text-transform: uppercase;
+  transform: none;
+}
+
+.today-nav > .admin-menu > summary::after {
+  margin-left: 6px;
+  font-size: 8px;
+}
+
+.today-nav > .admin-menu[open] > summary,
+.today-nav > .admin-menu > summary:hover,
+.today-nav > a:hover {
+  background: var(--today-panel);
+  box-shadow: none;
+  color: inherit;
+  transform: none;
 }
 
 .today-route {
