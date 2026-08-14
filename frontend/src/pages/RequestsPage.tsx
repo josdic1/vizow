@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import type { Client, Request as WorkRequest, ReviewRequestInput } from "@vizow/shared";
 
 import { createClient, fetchClients } from "../api/clients";
@@ -50,6 +50,7 @@ function inboxStatusLabel(request: WorkRequest): string {
 
 export function InboxPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [state, setState] = useState<PageState>({ status: "loading" });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<InboxView>("new");
@@ -58,7 +59,9 @@ export function InboxPage() {
   const [busy, setBusy] = useState<"approve" | "decline" | "client" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
-  const [internalRequestOpen, setInternalRequestOpen] = useState(false);
+  const [internalRequestOpen, setInternalRequestOpen] = useState(
+    () => new URLSearchParams(location.search).get("compose") === "request",
+  );
 
   useEffect(() => {
     const controller = new AbortController();

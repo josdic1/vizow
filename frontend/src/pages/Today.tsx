@@ -181,6 +181,8 @@ export function Today() {
           <nav className="today-nav" aria-label="Primary">
             <Link to="/inbox">Inbox</Link>
             <Link to="/jobs">Jobs</Link>
+            <Link className="today-nav-primary" to="/inbox?compose=request">Create Request</Link>
+            <Link className="today-nav-demo" to="/demo">Meet Vizow</Link>
             <AdminSampleDataMenu />
           </nav>
         </header>
@@ -193,7 +195,7 @@ export function Today() {
           </div>
           <div className="today-metrics">
             <Link to="/inbox"><span>New in Inbox</span><strong>{loading ? "—" : pendingRequests}</strong></Link>
-            <a href="#today-schedule"><span>Visits today</span><strong>{loading ? "—" : todayVisits.length}</strong></a>
+            <Link to="/calendar"><span>Visits today</span><strong>{loading ? "—" : todayVisits.length}</strong></Link>
             <Link to="/jobs"><span>Jobs coming up</span><strong>{loading ? "—" : upcomingJobs}</strong></Link>
           </div>
         </section>

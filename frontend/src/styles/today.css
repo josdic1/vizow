@@ -117,6 +117,19 @@
   transform: none;
 }
 
+.today-nav > a.today-nav-primary {
+  background: #e9581b;
+}
+
+.today-nav > a.today-nav-primary:hover {
+  background: #211a15;
+  color: var(--today-paper);
+}
+
+.today-nav > a.today-nav-demo {
+  border-style: dashed;
+}
+
 .today-route {
   --paper: var(--today-paper);
   --paper-panel: rgba(246, 240, 219, 0.96);
