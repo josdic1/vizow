@@ -11,7 +11,11 @@ import {
   fieldNoteResponseSchema,
   fieldNoteSchema,
   idSchema,
-  jobResponseSchema,
+  jobJourneyEventSchema,
+jobJourneyResponseSchema,
+jobJourneySummaryResponseSchema,
+jobJourneyStoredSummaryResponseSchema,
+jobResponseSchema,
   jobSchema,
   reopenJobCycleSchema,
   reopenJobCycleResponseSchema,
@@ -217,6 +221,589 @@ jobsRouter.get("/:jobId", async (request, response) => {
     });
   }
 });
+
+type JobJourneyEventDatabaseRow = {
+id: string;
+jobId: string;
+jobCycleId: string | null;
+eventType: string;
+details: Record<string, unknown>;
+createdAt: Date;
+};
+
+jobsRouter.get("/:jobId/journey", async (request, response) => {
+const jobIdResult = idSchema.safeParse(request.params.jobId);
+
+if (!jobIdResult.success) {
+response.status(400).json({
+ok: false,
+error: "Invalid job ID.",
+});
+return;
+}
+
+try {
+const jobResult = await pool.query<{ id: string }>(
+`
+SELECT job.id
+FROM jobs job
+JOIN organizations organization
+ON organization.id = job.organization_id
+WHERE job.id = $1
+AND organization.slug = $2
+`,
+[jobIdResult.data, env.ORGANIZATION_SLUG],
+);
+
+if (!jobResult.rows[0]) {
+response.status(404).json({
+ok: false,
+error: "Job was not found.",
+});
+return;
+}
+
+const eventResult = await pool.query<JobJourneyEventDatabaseRow>(
+`
+SELECT
+event.id,
+event.job_id AS "jobId",
+event.job_cycle_id AS "jobCycleId",
+event.event_type AS "eventType",
+(
+  event.details ||
+  jsonb_strip_nulls(
+    jsonb_build_object(
+      'fieldNote',
+      CASE WHEN note.id IS NULL THEN NULL ELSE
+        jsonb_strip_nulls(jsonb_build_object(
+          'content', note.content,
+          'capturedAt', note.captured_at
+        ))
+      END,
+      'photo',
+      CASE WHEN media_record.id IS NULL THEN NULL ELSE
+        jsonb_strip_nulls(jsonb_build_object(
+          'url', media_record.url,
+          'stage', media_record.stage,
+          'caption', media_record.caption,
+          'capturedAt', media_record.captured_at
+        ))
+      END,
+      'visit',
+      CASE WHEN visit.id IS NULL THEN NULL ELSE
+        jsonb_strip_nulls(jsonb_build_object(
+          'status', visit.status,
+          'scheduledStart', visit.scheduled_start,
+          'scheduledEnd', visit.scheduled_end,
+          'notes', visit.notes
+        ))
+      END,
+      'scopeRevision',
+      CASE WHEN revision.id IS NULL THEN NULL ELSE
+        jsonb_strip_nulls(jsonb_build_object(
+          'revisionNumber', revision.revision_number,
+          'scopeText', revision.scope_text,
+          'priceChange', revision.price_change,
+          'reason', revision.reason,
+          'visitRequirement', revision.visit_requirement
+        ))
+      END,
+      'closure',
+      CASE WHEN closure.id IS NULL THEN NULL ELSE
+        jsonb_strip_nulls(jsonb_build_object(
+          'finalPrice', closure.final_price,
+          'completionDate', closure.completion_date,
+          'notes', closure.notes
+        ))
+      END,
+      'vow',
+      CASE WHEN vow.id IS NULL THEN NULL ELSE
+        jsonb_strip_nulls(jsonb_build_object(
+          'title', vow.title,
+          'status', vow.status
+        ))
+      END
+    )
+  )
+) AS details,
+event.created_at AS "createdAt"
+FROM job_events event
+LEFT JOIN field_notes note
+  ON note.organization_id = event.organization_id
+ AND note.job_id = event.job_id
+ AND note.id::text = event.details->>'fieldNoteId'
+LEFT JOIN media media_record
+  ON media_record.organization_id = event.organization_id
+ AND media_record.job_id = event.job_id
+ AND media_record.id::text = event.details->>'mediaId'
+ AND media_record.is_redacted = false
+LEFT JOIN visits visit
+  ON visit.organization_id = event.organization_id
+ AND visit.job_id = event.job_id
+ AND visit.id::text = event.details->>'visitId'
+LEFT JOIN scope_revisions revision
+  ON revision.organization_id = event.organization_id
+ AND revision.job_id = event.job_id
+ AND revision.id::text = event.details->>'scopeRevisionId'
+LEFT JOIN closures closure
+  ON closure.organization_id = event.organization_id
+ AND closure.job_id = event.job_id
+ AND closure.id::text = event.details->>'closureId'
+LEFT JOIN vows vow
+  ON vow.organization_id = event.organization_id
+ AND vow.id::text = event.details->>'vowId'
+JOIN organizations organization
+ON organization.id = event.organization_id
+WHERE event.job_id = $1
+AND organization.slug = $2
+ORDER BY event.created_at ASC, event.id ASC
+`,
+[jobIdResult.data, env.ORGANIZATION_SLUG],
+);
+
+const events = eventResult.rows.map((row) =>
+jobJourneyEventSchema.parse({
+id: row.id,
+jobId: row.jobId,
+jobCycleId: row.jobCycleId,
+eventType: row.eventType,
+details: row.details,
+createdAt: row.createdAt.toISOString(),
+}),
+);
+
+response.json(
+jobJourneyResponseSchema.parse({
+ok: true,
+events,
+}),
+);
+} catch (error) {
+console.error(error);
+
+response.status(500).json({
+ok: false,
+error: "Unable to load job journey.",
+});
+}
+});
+
+
+jobsRouter.get(
+  "/:jobId/journey-summary",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(request.params.jobId);
+
+    if (!jobIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid job ID.",
+      });
+      return;
+    }
+
+    try {
+      const result = await pool.query<{
+        summary: string | null;
+        model: string | null;
+        eventCount: number | null;
+        latestEventAt: Date | null;
+        generatedAt: Date | null;
+        currentEventCount: number;
+        currentLatestEventAt: Date | null;
+      }>(
+        `
+          SELECT
+            summary.summary,
+            summary.model,
+            summary.event_count AS "eventCount",
+            summary.latest_event_at AS "latestEventAt",
+            summary.generated_at AS "generatedAt",
+            COUNT(event.id)::int AS "currentEventCount",
+            MAX(event.created_at) AS "currentLatestEventAt"
+          FROM jobs job
+          JOIN organizations organization
+            ON organization.id = job.organization_id
+          LEFT JOIN job_journey_summaries summary
+            ON summary.organization_id = job.organization_id
+           AND summary.job_id = job.id
+          LEFT JOIN job_events event
+            ON event.organization_id = job.organization_id
+           AND event.job_id = job.id
+          WHERE job.id = $1
+            AND organization.slug = $2
+          GROUP BY
+            job.id,
+            summary.summary,
+            summary.model,
+            summary.event_count,
+            summary.latest_event_at,
+            summary.generated_at
+        `,
+        [jobIdResult.data, env.ORGANIZATION_SLUG],
+      );
+
+      const row = result.rows[0];
+
+      if (!row) {
+        response.status(404).json({
+          ok: false,
+          error: "Job was not found.",
+        });
+        return;
+      }
+
+      const hasSummary =
+        row.summary !== null &&
+        row.model !== null &&
+        row.eventCount !== null &&
+        row.generatedAt !== null;
+
+      const stale =
+        hasSummary &&
+        (row.eventCount !== row.currentEventCount ||
+          (row.latestEventAt?.getTime() ?? null) !==
+            (row.currentLatestEventAt?.getTime() ?? null));
+
+      response.json(
+        jobJourneyStoredSummaryResponseSchema.parse({
+          ok: true,
+          summary: hasSummary
+            ? {
+                summary: row.summary,
+                model: row.model,
+                eventCount: row.eventCount,
+                latestEventAt:
+                  row.latestEventAt?.toISOString() ?? null,
+                generatedAt: row.generatedAt!.toISOString(),
+              }
+            : null,
+          stale,
+        }),
+      );
+    } catch (error) {
+      console.error(error);
+
+      response.status(500).json({
+        ok: false,
+        error: "Unable to load Journey summary.",
+      });
+    }
+  },
+);
+
+jobsRouter.post(
+  "/:jobId/journey-summary",
+  async (request, response) => {
+    const jobIdResult = idSchema.safeParse(request.params.jobId);
+
+    if (!jobIdResult.success) {
+      response.status(400).json({
+        ok: false,
+        error: "Invalid job ID.",
+      });
+      return;
+    }
+
+    try {
+      const jobResult = await pool.query<{
+        id: string;
+        title: string;
+        clientName: string;
+      }>(
+        `
+          SELECT
+            job.id,
+            job.title,
+            client.name AS "clientName"
+          FROM jobs job
+          JOIN organizations organization
+            ON organization.id = job.organization_id
+          JOIN clients client
+            ON client.id = job.client_id
+           AND client.organization_id = job.organization_id
+          WHERE job.id = $1
+            AND organization.slug = $2
+        `,
+        [jobIdResult.data, env.ORGANIZATION_SLUG],
+      );
+
+      const job = jobResult.rows[0];
+
+      if (!job) {
+        response.status(404).json({
+          ok: false,
+          error: "Job was not found.",
+        });
+        return;
+      }
+
+      const eventResult =
+        await pool.query<JobJourneyEventDatabaseRow>(
+          `
+            SELECT
+              event.id,
+              event.job_id AS "jobId",
+              event.job_cycle_id AS "jobCycleId",
+              event.event_type AS "eventType",
+              (
+                event.details ||
+                jsonb_strip_nulls(
+                  jsonb_build_object(
+                    'fieldNote',
+                    CASE WHEN note.id IS NULL THEN NULL ELSE
+                      jsonb_strip_nulls(jsonb_build_object(
+                        'content', note.content,
+                        'capturedAt', note.captured_at
+                      ))
+                    END,
+                    'photo',
+                    CASE WHEN media_record.id IS NULL THEN NULL ELSE
+                      jsonb_strip_nulls(jsonb_build_object(
+                        'url', media_record.url,
+                        'stage', media_record.stage,
+                        'caption', media_record.caption,
+                        'capturedAt', media_record.captured_at
+                      ))
+                    END,
+                    'visit',
+                    CASE WHEN visit.id IS NULL THEN NULL ELSE
+                      jsonb_strip_nulls(jsonb_build_object(
+                        'status', visit.status,
+                        'scheduledStart', visit.scheduled_start,
+                        'scheduledEnd', visit.scheduled_end,
+                        'notes', visit.notes
+                      ))
+                    END,
+                    'scopeRevision',
+                    CASE WHEN revision.id IS NULL THEN NULL ELSE
+                      jsonb_strip_nulls(jsonb_build_object(
+                        'revisionNumber', revision.revision_number,
+                        'scopeText', revision.scope_text,
+                        'priceChange', revision.price_change,
+                        'reason', revision.reason,
+                        'visitRequirement', revision.visit_requirement
+                      ))
+                    END,
+                    'closure',
+                    CASE WHEN closure.id IS NULL THEN NULL ELSE
+                      jsonb_strip_nulls(jsonb_build_object(
+                        'finalPrice', closure.final_price,
+                        'completionDate', closure.completion_date,
+                        'notes', closure.notes
+                      ))
+                    END,
+                    'vow',
+                    CASE WHEN vow.id IS NULL THEN NULL ELSE
+                      jsonb_strip_nulls(jsonb_build_object(
+                        'title', vow.title,
+                        'status', vow.status
+                      ))
+                    END
+                  )
+                )
+              ) AS details,
+              event.created_at AS "createdAt"
+            FROM job_events event
+LEFT JOIN field_notes note
+  ON note.organization_id = event.organization_id
+ AND note.job_id = event.job_id
+ AND note.id::text = event.details->>'fieldNoteId'
+LEFT JOIN media media_record
+  ON media_record.organization_id = event.organization_id
+ AND media_record.job_id = event.job_id
+ AND media_record.id::text = event.details->>'mediaId'
+ AND media_record.is_redacted = false
+LEFT JOIN visits visit
+  ON visit.organization_id = event.organization_id
+ AND visit.job_id = event.job_id
+ AND visit.id::text = event.details->>'visitId'
+LEFT JOIN scope_revisions revision
+  ON revision.organization_id = event.organization_id
+ AND revision.job_id = event.job_id
+ AND revision.id::text = event.details->>'scopeRevisionId'
+LEFT JOIN closures closure
+  ON closure.organization_id = event.organization_id
+ AND closure.job_id = event.job_id
+ AND closure.id::text = event.details->>'closureId'
+LEFT JOIN vows vow
+  ON vow.organization_id = event.organization_id
+ AND vow.id::text = event.details->>'vowId'
+            JOIN organizations organization
+              ON organization.id = event.organization_id
+            WHERE event.job_id = $1
+              AND organization.slug = $2
+            ORDER BY event.created_at ASC, event.id ASC
+          `,
+          [jobIdResult.data, env.ORGANIZATION_SLUG],
+        );
+
+      const journey = eventResult.rows.map((event) => ({
+        eventType: event.eventType,
+        createdAt: event.createdAt.toISOString(),
+        details: event.details,
+      }));
+
+      const prompt = [
+        "You summarize contractor Job history for Vizow.",
+        "Use only the supplied Journey events.",
+        "Do not invent facts.",
+        "Be concise and practical.",
+        "Highlight major work, visits, discoveries, scope or price changes, completion, reopening, cancellation, and VOW creation when present.",
+        "Keep entity states distinct: a completed VISIT does not mean the Job or work cycle was completed.",
+        "Only describe a work cycle as completed when the events explicitly record cycle closure/completion.",
+        "A Job may have completed visits and later be cancelled; describe that chronology accurately.",
+        "Do not expose internal IDs unless essential.",
+        "Start immediately with the actual Job summary. Do not explain the input data or your task.",
+        "Return plain text only. Do not use Markdown, headings, asterisks, hashes, or code formatting.",
+        "Write 2-3 sentences followed by up to 5 short dash-prefixed bullet points.",
+        "",
+        `Client: ${job.clientName}`,
+        `Job: ${job.title}`,
+        "",
+        "Journey events:",
+        JSON.stringify(journey),
+      ].join("\n");
+
+      let ollamaResponse: globalThis.Response;
+
+      try {
+        ollamaResponse = await fetch(
+          `${env.OLLAMA_URL}/api/generate`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              model: env.OLLAMA_MODEL,
+              prompt,
+              think: false,
+              stream: false,
+              keep_alive: "10m",
+              options: {
+                num_predict: 220,
+                temperature: 0.2,
+              },
+            }),
+            signal: AbortSignal.timeout(60_000),
+          },
+        );
+      } catch {
+        response.status(503).json({
+          ok: false,
+          error:
+            "Local AI is unavailable. Make sure Ollama is running.",
+        });
+        return;
+      }
+
+      if (!ollamaResponse.ok) {
+        response.status(503).json({
+          ok: false,
+          error:
+            "Local AI could not generate the Journey summary.",
+        });
+        return;
+      }
+
+      const ollamaPayload: unknown = await ollamaResponse.json();
+
+      if (
+        typeof ollamaPayload !== "object" ||
+        ollamaPayload === null ||
+        !("response" in ollamaPayload) ||
+        typeof ollamaPayload.response !== "string" ||
+        ollamaPayload.response.trim() === ""
+      ) {
+        response.status(502).json({
+          ok: false,
+          error: "Local AI returned an invalid response.",
+        });
+        return;
+      }
+
+      const summary = ollamaPayload.response.trim();
+      const eventCount = eventResult.rows.length;
+      const latestEventAt =
+        eventResult.rows.at(-1)?.createdAt ?? null;
+
+      const savedResult = await pool.query<{
+        generatedAt: Date;
+      }>(
+        `
+          INSERT INTO job_journey_summaries (
+            organization_id,
+            job_id,
+            summary,
+            model,
+            event_count,
+            latest_event_at
+          )
+          SELECT
+            job.organization_id,
+            job.id,
+            $3,
+            $4,
+            $5,
+            $6
+          FROM jobs job
+          JOIN organizations organization
+            ON organization.id = job.organization_id
+          WHERE job.id = $1
+            AND organization.slug = $2
+          ON CONFLICT (organization_id, job_id)
+          DO UPDATE SET
+            summary = EXCLUDED.summary,
+            model = EXCLUDED.model,
+            event_count = EXCLUDED.event_count,
+            latest_event_at = EXCLUDED.latest_event_at,
+            generated_at = now(),
+            updated_at = now()
+          RETURNING generated_at AS "generatedAt"
+        `,
+        [
+          jobIdResult.data,
+          env.ORGANIZATION_SLUG,
+          summary,
+          env.OLLAMA_MODEL,
+          eventCount,
+          latestEventAt,
+        ],
+      );
+
+      const saved = savedResult.rows[0];
+
+      if (!saved) {
+        throw new Error(
+          "Journey summary was not persisted.",
+        );
+      }
+
+      response.json(
+        jobJourneySummaryResponseSchema.parse({
+          ok: true,
+          summary,
+          model: env.OLLAMA_MODEL,
+          eventCount,
+          latestEventAt:
+            latestEventAt?.toISOString() ?? null,
+          generatedAt: saved.generatedAt.toISOString(),
+          stale: false,
+        }),
+      );
+    } catch (error) {
+      console.error(error);
+
+      response.status(500).json({
+        ok: false,
+        error: "Unable to summarize Job journey.",
+      });
+    }
+  },
+);
 
 type ClosureDatabaseRow = {
   id: string;
@@ -619,7 +1206,7 @@ jobsRouter.post(
         return;
       }
 
-      if (currentCycle.stage !== "project") {
+      if (currentCycle.stage !== "open") {
         await databaseClient.query("ROLLBACK");
 
         response.status(409).json({
@@ -877,7 +1464,7 @@ jobsRouter.patch(
         return;
       }
 
-      if (existingVisit.currentCycleStage !== "project") {
+      if (existingVisit.currentCycleStage !== "open") {
         await databaseClient.query("ROLLBACK");
 
         response.status(409).json({
@@ -1137,7 +1724,7 @@ jobsRouter.post(
         return;
       }
 
-      if (currentCycle.stage !== "project") {
+      if (currentCycle.stage !== "open") {
         await databaseClient.query("ROLLBACK");
 
         response.status(409).json({
@@ -1456,7 +2043,7 @@ jobsRouter.post(
         return;
       }
 
-      if (currentCycle.stage !== "project") {
+      if (currentCycle.stage !== "open") {
         await databaseClient.query("ROLLBACK");
 
         response.status(409).json({
@@ -1998,7 +2585,7 @@ jobsRouter.patch(
         return;
       }
 
-      if (currentCycle.stage !== "project") {
+      if (currentCycle.stage !== "open") {
         await databaseClient.query("ROLLBACK");
 
         response.status(409).json({
@@ -2488,7 +3075,7 @@ jobsRouter.post(
         return;
       }
 
-      if (currentCycle.stage !== "project") {
+      if (currentCycle.stage !== "open") {
         await databaseClient.query("ROLLBACK");
 
         response.status(409).json({
@@ -2643,7 +3230,7 @@ jobsRouter.post(
             WHERE organization_id = $1
               AND job_id = $2
               AND id = $3
-              AND stage = 'project'
+              AND stage = 'open'
             RETURNING id
           `,
           [
@@ -2886,7 +3473,7 @@ jobsRouter.post(
               $2,
               $3,
               'reopened',
-              'project'
+              'open'
             )
             RETURNING id
           `,

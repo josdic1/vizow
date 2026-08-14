@@ -120,7 +120,7 @@ beforeEach(() => {
           cycleId,
           cycleNumber: 1,
           cycleReason: "original",
-          cycleStage: "project",
+          cycleStage: "open",
           cycleOpenedAt: now,
           cycleCompletedAt: null,
           cycleCreatedAt: now,
@@ -150,6 +150,12 @@ beforeEach(() => {
           updatedAt: now,
         }],
       };
+    }
+
+    if (
+      sql.includes("UPDATE media AS media_record")
+    ) {
+      return { rows: [] };
     }
 
     if (
@@ -187,7 +193,7 @@ describe("POST /api/requests/:requestId/approve", () => {
           id: cycleId,
           cycleNumber: 1,
           reason: "original",
-          stage: "project",
+          stage: "open",
         },
       },
     });
@@ -224,7 +230,7 @@ describe("POST /api/requests/:requestId/approve", () => {
       sqlStatements.find((sql) =>
         sql.includes("FROM requests work_request"),
       ),
-    ).toContain("FOR UPDATE OF work_request, client");
+    ).toContain("FOR UPDATE OF work_request");
 
     expect(sqlStatements).not.toEqual(
       expect.arrayContaining([

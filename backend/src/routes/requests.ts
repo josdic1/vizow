@@ -6,6 +6,7 @@ import {
   idSchema,
   jobSchema,
   requestSchema,
+  reviewRequestSchema,
   type Job,
   type Request,
 } from "@vizow/shared";
@@ -18,8 +19,8 @@ export const requestsRouter = Router();
 
 type RequestDatabaseRow = {
   id: string;
-  clientId: string;
-  clientName: string;
+  clientId: string | null;
+  clientName: string | null;
   title: string;
   description: string | null;
   serviceAddressLine1: string | null;
@@ -34,6 +35,20 @@ type RequestDatabaseRow = {
   decidedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  submittedName?: string | null;
+  submittedEmail?: string | null;
+  submittedPhone?: string | null;
+  preferredTiming?: string | null;
+  preferredContact?: string | null;
+  suggestedClientId?: string | null;
+  suggestedClientName?: string | null;
+  matchReason?: string | null;
+  media?: Array<{
+    id: string;
+    url: string;
+    originalFilename: string | null;
+    createdAt: string;
+  }>;
 };
 
 type CreatedJobDatabaseRow = {
@@ -103,6 +118,18 @@ function prepareCreatedJob(
 function prepareRequest(row: RequestDatabaseRow): Request {
   return requestSchema.parse({
     ...row,
+    submittedName: row.submittedName ?? null,
+    submittedEmail: row.submittedEmail ?? null,
+    submittedPhone: row.submittedPhone ?? null,
+    preferredTiming: row.preferredTiming ?? null,
+    preferredContact: row.preferredContact ?? null,
+    suggestedClientId: row.suggestedClientId ?? null,
+    suggestedClientName: row.suggestedClientName ?? null,
+    matchReason: row.matchReason ?? null,
+    media: (row.media ?? []).map((item) => ({
+      ...item,
+      createdAt: new Date(item.createdAt).toISOString(),
+    })),
     submittedAt: row.submittedAt.toISOString(),
     decidedAt: row.decidedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
@@ -128,14 +155,89 @@ requestsRouter.get("/", async (_request, response) => {
           request.status,
           request.approved_job_id AS "approvedJobId",
           request.decline_reason AS "declineReason",
+          request.submitted_name AS "submittedName",
+          request.submitted_email AS "submittedEmail",
+          request.submitted_phone AS "submittedPhone",
+          request.preferred_timing AS "preferredTiming",
+          request.preferred_contact AS "preferredContact",
+          suggestion.id AS "suggestedClientId",
+          suggestion.name AS "suggestedClientName",
+          suggestion.reason AS "matchReason",
+          COALESCE(request_photos.items, '[]'::jsonb) AS media,
           request.submitted_at AS "submittedAt",
           request.decided_at AS "decidedAt",
           request.created_at AS "createdAt",
           request.updated_at AS "updatedAt"
         FROM requests request
-        JOIN clients client
+        LEFT JOIN clients client
           ON client.organization_id = request.organization_id
          AND client.id = request.client_id
+        LEFT JOIN LATERAL (
+          SELECT
+            candidate.id,
+            candidate.name,
+            CASE
+              WHEN request.submitted_email IS NOT NULL
+               AND candidate.email IS NOT NULL
+               AND lower(candidate.email) = lower(request.submitted_email)
+                THEN 'Same email address'
+              WHEN request.submitted_phone IS NOT NULL
+               AND candidate.phone IS NOT NULL
+               AND regexp_replace(candidate.phone, '[^0-9]', '', 'g') =
+                   regexp_replace(request.submitted_phone, '[^0-9]', '', 'g')
+                THEN 'Same phone number'
+              ELSE 'Same service address'
+            END AS reason
+          FROM clients candidate
+          LEFT JOIN client_addresses candidate_address
+            ON candidate_address.organization_id = candidate.organization_id
+           AND candidate_address.client_id = candidate.id
+           AND candidate_address.archived_at IS NULL
+          WHERE candidate.organization_id = request.organization_id
+            AND candidate.archived_at IS NULL
+            AND (
+              (
+                request.submitted_email IS NOT NULL
+                AND candidate.email IS NOT NULL
+                AND lower(candidate.email) = lower(request.submitted_email)
+              ) OR (
+                request.submitted_phone IS NOT NULL
+                AND candidate.phone IS NOT NULL
+                AND regexp_replace(candidate.phone, '[^0-9]', '', 'g') =
+                    regexp_replace(request.submitted_phone, '[^0-9]', '', 'g')
+              ) OR (
+                request.service_address_line_1 IS NOT NULL
+                AND candidate_address.address_line_1 ILIKE request.service_address_line_1
+                AND candidate_address.postal_code ILIKE COALESCE(request.service_postal_code, candidate_address.postal_code)
+              )
+            )
+          ORDER BY
+            CASE
+              WHEN request.submitted_email IS NOT NULL
+               AND lower(candidate.email) = lower(request.submitted_email) THEN 0
+              WHEN request.submitted_phone IS NOT NULL
+               AND regexp_replace(candidate.phone, '[^0-9]', '', 'g') =
+                   regexp_replace(request.submitted_phone, '[^0-9]', '', 'g') THEN 1
+              ELSE 2
+            END
+          LIMIT 1
+        ) suggestion ON request.client_id IS NULL
+        LEFT JOIN LATERAL (
+          SELECT jsonb_agg(
+            jsonb_build_object(
+              'id', media.id,
+              'url', media.url,
+              'originalFilename', media.original_filename,
+              'createdAt', media.created_at
+            ) ORDER BY request_media.created_at, media.id
+          ) AS items
+          FROM request_media
+          JOIN media
+            ON media.organization_id = request_media.organization_id
+           AND media.id = request_media.media_id
+          WHERE request_media.organization_id = request.organization_id
+            AND request_media.request_id = request.id
+        ) request_photos ON true
         JOIN organizations organization
           ON organization.id = request.organization_id
         WHERE organization.slug = $1
@@ -319,6 +421,136 @@ requestsRouter.post("/", async (request, response) => {
   }
 });
 
+requestsRouter.patch("/:requestId/review", async (request, response) => {
+  const requestIdResult = idSchema.safeParse(request.params.requestId);
+  const inputResult = reviewRequestSchema.safeParse(request.body);
+
+  if (!requestIdResult.success || !inputResult.success) {
+    response.status(400).json({
+      ok: false,
+      error: "Valid Client and approved Request details are required.",
+    });
+    return;
+  }
+
+  const input = inputResult.data;
+  const databaseClient = await pool.connect();
+
+  try {
+    await databaseClient.query("BEGIN");
+    const clientResult = await databaseClient.query<{
+      organizationId: string;
+      clientName: string;
+      archivedAt: Date | null;
+    }>(
+      `
+        SELECT
+          client.organization_id AS "organizationId",
+          client.name AS "clientName",
+          client.archived_at AS "archivedAt"
+        FROM clients client
+        JOIN organizations organization ON organization.id = client.organization_id
+        WHERE organization.slug = $1 AND client.id = $2
+        FOR SHARE OF client
+      `,
+      [env.ORGANIZATION_SLUG, input.clientId],
+    );
+    const selectedClient = clientResult.rows[0];
+
+    if (!selectedClient || selectedClient.archivedAt) {
+      await databaseClient.query("ROLLBACK");
+      response.status(selectedClient ? 409 : 404).json({
+        ok: false,
+        error: selectedClient
+          ? "Restore this Client before approving the Request."
+          : "Client was not found.",
+      });
+      return;
+    }
+
+    const updateResult = await databaseClient.query<RequestDatabaseRow>(
+      `
+        UPDATE requests
+        SET
+          client_id = $3,
+          title = $4,
+          description = $5,
+          service_address_line_1 = $6,
+          service_address_line_2 = $7,
+          service_city = $8,
+          service_state = $9,
+          service_postal_code = $10,
+          updated_at = now()
+        WHERE organization_id = $1
+          AND id = $2
+          AND status = 'open'
+        RETURNING
+          id,
+          client_id AS "clientId",
+          $11::text AS "clientName",
+          title,
+          description,
+          service_address_line_1 AS "serviceAddressLine1",
+          service_address_line_2 AS "serviceAddressLine2",
+          service_city AS "serviceCity",
+          service_state AS "serviceState",
+          service_postal_code AS "servicePostalCode",
+          status,
+          approved_job_id AS "approvedJobId",
+          decline_reason AS "declineReason",
+          submitted_name AS "submittedName",
+          submitted_email AS "submittedEmail",
+          submitted_phone AS "submittedPhone",
+          preferred_timing AS "preferredTiming",
+          preferred_contact AS "preferredContact",
+          submitted_at AS "submittedAt",
+          decided_at AS "decidedAt",
+          created_at AS "createdAt",
+          updated_at AS "updatedAt"
+      `,
+      [
+        selectedClient.organizationId,
+        requestIdResult.data,
+        input.clientId,
+        input.title,
+        input.description,
+        input.serviceAddressLine1,
+        input.serviceAddressLine2,
+        input.serviceCity,
+        input.serviceState,
+        input.servicePostalCode,
+        selectedClient.clientName,
+      ],
+    );
+    const reviewedRequest = updateResult.rows[0];
+
+    if (!reviewedRequest) {
+      await databaseClient.query("ROLLBACK");
+      response.status(409).json({
+        ok: false,
+        error: "Only an open Request can be reviewed.",
+      });
+      return;
+    }
+
+    await databaseClient.query(
+      `
+        INSERT INTO request_events (organization_id, request_id, event_type, details)
+        VALUES ($1, $2, 'request_reviewed', jsonb_build_object('clientId', $3::uuid))
+      `,
+      [selectedClient.organizationId, reviewedRequest.id, input.clientId],
+    );
+    await databaseClient.query("COMMIT");
+    response.json({ ok: true, request: prepareRequest(reviewedRequest) });
+  } catch (error) {
+    await databaseClient.query("ROLLBACK");
+    console.error(error);
+    response.status(500).json({ ok: false, error: "Unable to save Request review." });
+  } finally {
+    databaseClient.release();
+  }
+});
+
 requestsRouter.post("/:requestId/approve", async (request, response) => {
 
   const requestIdResult = idSchema.safeParse(request.params.requestId);
@@ -366,14 +598,14 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
           work_request.created_at AS "createdAt",
           work_request.updated_at AS "updatedAt"
         FROM requests work_request
-        JOIN clients client
+        LEFT JOIN clients client
           ON client.organization_id = work_request.organization_id
          AND client.id = work_request.client_id
         JOIN organizations organization
           ON organization.id = work_request.organization_id
         WHERE work_request.id = $1
           AND organization.slug = $2
-        FOR UPDATE OF work_request, client
+        FOR UPDATE OF work_request
       `,
       [requestIdResult.data, env.ORGANIZATION_SLUG],
     );
@@ -400,6 +632,17 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
             ? "Request has already been approved."
             : "A declined request cannot be approved.",
         approvedJobId: selectedRequest.approvedJobId,
+      });
+      return;
+    }
+
+    if (!selectedRequest.clientId || !selectedRequest.clientName) {
+      await databaseClient.query("ROLLBACK");
+
+      response.status(409).json({
+        ok: false,
+        error:
+          "Confirm the Client and approved Request details before creating the Job.",
       });
       return;
     }
@@ -475,7 +718,7 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
             reason,
             stage
           )
-          VALUES ($1, $2, 1, 'original', 'project')
+          VALUES ($1, $2, 1, 'original', 'open')
           RETURNING
             id AS "cycleId",
             cycle_number AS "cycleNumber",
@@ -586,6 +829,30 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
       ],
     );
 
+    await databaseClient.query(
+      `
+        UPDATE media AS media_record
+        SET
+          job_id = $2,
+          job_cycle_id = $3,
+          stage = 'before'
+        FROM request_media
+        WHERE media_record.organization_id = $1
+          AND media_record.id =
+                request_media.media_id
+          AND request_media.organization_id = $1
+          AND request_media.request_id = $4
+          AND media_record.job_id IS NULL
+          AND media_record.job_cycle_id IS NULL
+      `,
+      [
+        selectedRequest.organizationId,
+        createdJob.id,
+        createdCycle.cycleId,
+        selectedRequest.id,
+      ],
+    );
+
     const responsePayload = approveRequestResponseSchema.parse({
       ok: true,
       request: prepareRequest({
@@ -683,7 +950,7 @@ requestsRouter.post("/:requestId/decline", async (request, response) => {
           work_request.created_at AS "createdAt",
           work_request.updated_at AS "updatedAt"
         FROM requests work_request
-        JOIN clients client
+        LEFT JOIN clients client
           ON client.organization_id = work_request.organization_id
          AND client.id = work_request.client_id
         JOIN organizations organization

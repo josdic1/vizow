@@ -290,7 +290,7 @@ jobPhotosRouter.post(
         return;
       }
 
-      if (currentCycle.stage !== "project") {
+      if (currentCycle.stage !== "open") {
         await databaseClient.query("ROLLBACK");
 
         response.status(409).json({

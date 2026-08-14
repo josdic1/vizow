@@ -3,7 +3,7 @@ import { z } from "zod";
 export const idSchema = z.uuid();
 
 export const jobStageSchema = z.enum([
-  "project",
+  "open",
   "completed",
 ]);
 
@@ -46,6 +46,19 @@ export const vowStatusSchema = z.enum([
   "published",
   "archived",
 ]);
+
+export const publicCalendarStatusSchema = z.enum([
+  "available",
+  "limited",
+  "emergencies_only",
+  "unavailable",
+]);
+
+export const publicCalendarOverrideStatusSchema = publicCalendarStatusSchema;
+
+export const publicCalendarDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Calendar date must be YYYY-MM-DD.");
 
 const optionalTextInputSchema = z
   .string()
@@ -144,6 +157,10 @@ export const createRequestSchema = z.object({
   servicePostalCode: optionalTextInputSchema,
 });
 
+export const reviewRequestSchema = createRequestSchema.extend({
+  clientId: idSchema,
+});
+
 export const declineRequestSchema = z
   .object({
     reason: z
@@ -166,6 +183,15 @@ export const jobCycleSchema = z.object({
   completedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+});
+
+export const jobJourneyEventSchema = z.object({
+  id: idSchema,
+  jobId: idSchema,
+  jobCycleId: idSchema.nullable(),
+  eventType: z.string().min(1),
+  details: z.record(z.string(), z.unknown()),
+  createdAt: z.string().datetime(),
 });
 
 export const jobSchema = z.object({
@@ -380,6 +406,19 @@ export const mediaSchema = z.object({
   createdAt: z.string().datetime(),
 });
 
+export const mediaLibraryItemSchema = mediaSchema.extend({
+  jobTitle: z.string().min(1),
+  clientId: idSchema,
+  clientName: z.string().min(1),
+  cycleNumber: z.number().int().positive(),
+  serviceAddressLine1: z.string().nullable(),
+  serviceAddressLine2: z.string().nullable(),
+  serviceCity: z.string().nullable(),
+  serviceState: z.string().nullable(),
+  servicePostalCode: z.string().nullable(),
+  attachedNote: z.string().nullable(),
+});
+
 export const closureSchema = z.object({
   id: idSchema,
   jobId: idSchema,
@@ -433,6 +472,14 @@ export const visitSchema = z.object({
 
 export const createBasicVowSchema = z.object({}).strict();
 
+export const persistedJourneySummarySchema = z.object({
+  summary: z.string().min(1),
+  model: z.string().min(1),
+  eventCount: z.number().int().nonnegative(),
+  latestEventAt: z.string().datetime().nullable(),
+  generatedAt: z.string().datetime(),
+});
+
 export const basicVowSnapshotSchema = z.object({
   client: z.object({
     id: idSchema,
@@ -455,6 +502,9 @@ export const basicVowSnapshotSchema = z.object({
   }),
   fieldNotes: z.array(fieldNoteSchema),
   media: z.array(mediaSchema),
+  workSummary: persistedJourneySummarySchema
+    .nullable()
+    .optional(),
 });
 
 export const vowSchema = z.object({
@@ -468,10 +518,43 @@ export const vowSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
+export const publicCalendarSettingsSchema = z.object({
+  enabled: z.boolean(),
+});
+
+export const publicCalendarDaySchema = z.object({
+  date: publicCalendarDateSchema,
+  status: publicCalendarStatusSchema,
+  publicNote: z.string().nullable(),
+  isOverride: z.boolean(),
+  updatedAt: z.string().datetime().nullable(),
+});
+
+export const publicAvailabilityDaySchema = z.object({
+  date: publicCalendarDateSchema,
+  status: publicCalendarStatusSchema,
+  publicNote: z.string().nullable(),
+});
+
+export const updatePublicCalendarDaySchema = z
+  .object({
+    status: publicCalendarOverrideStatusSchema,
+  })
+  .strict();
+
+export const updatePublicCalendarSettingsSchema = publicCalendarSettingsSchema.strict();
+
+export const requestMediaSchema = z.object({
+  id: idSchema,
+  url: z.string().min(1),
+  originalFilename: z.string().nullable(),
+  createdAt: z.string().datetime(),
+});
+
 export const requestSchema = z.object({
   id: idSchema,
-  clientId: idSchema,
-  clientName: z.string().min(1),
+  clientId: idSchema.nullable(),
+  clientName: z.string().min(1).nullable(),
   title: z.string().min(1),
   description: z.string().nullable(),
   serviceAddressLine1: z.string().nullable(),
@@ -482,6 +565,15 @@ export const requestSchema = z.object({
   status: requestStatusSchema,
   approvedJobId: idSchema.nullable(),
   declineReason: z.string().min(1).nullable(),
+  submittedName: z.string().nullable().optional().default(null),
+  submittedEmail: z.string().nullable().optional().default(null),
+  submittedPhone: z.string().nullable().optional().default(null),
+  preferredTiming: z.string().nullable().optional().default(null),
+  preferredContact: z.string().nullable().optional().default(null),
+  suggestedClientId: idSchema.nullable().optional().default(null),
+  suggestedClientName: z.string().nullable().optional().default(null),
+  matchReason: z.string().nullable().optional().default(null),
+  media: z.array(requestMediaSchema).optional().default([]),
   submittedAt: z.string().datetime(),
   decidedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
@@ -519,6 +611,27 @@ export const jobResponseSchema = z.object({
   job: jobSchema,
 });
 
+export const jobJourneyResponseSchema = z.object({
+  ok: z.literal(true),
+  events: z.array(jobJourneyEventSchema),
+});
+
+export const jobJourneySummaryResponseSchema = z.object({
+  ok: z.literal(true),
+  summary: z.string().min(1),
+  model: z.string().min(1),
+  eventCount: z.number().int().nonnegative(),
+  latestEventAt: z.string().datetime().nullable(),
+  generatedAt: z.string().datetime(),
+  stale: z.boolean(),
+});
+
+export const jobJourneyStoredSummaryResponseSchema = z.object({
+  ok: z.literal(true),
+  summary: persistedJourneySummarySchema.nullable(),
+  stale: z.boolean(),
+});
+
 export const fieldNoteResponseSchema = z.object({
   ok: z.literal(true),
   fieldNote: fieldNoteSchema,
@@ -532,6 +645,11 @@ export const mediaResponseSchema = z.object({
 export const mediaListResponseSchema = z.object({
   ok: z.literal(true),
   media: z.array(mediaSchema),
+});
+
+export const mediaLibraryResponseSchema = z.object({
+  ok: z.literal(true),
+  media: z.array(mediaLibraryItemSchema),
 });
 
 export const closeJobCycleResponseSchema = z.object({
@@ -576,6 +694,28 @@ export const vowsResponseSchema = z.object({
   vows: z.array(vowSchema),
 });
 
+export const publicCalendarDaysResponseSchema = z.object({
+  ok: z.literal(true),
+  settings: publicCalendarSettingsSchema,
+  days: z.array(publicCalendarDaySchema),
+});
+
+export const publicAvailabilityDaysResponseSchema = z.object({
+  ok: z.literal(true),
+  settings: publicCalendarSettingsSchema,
+  days: z.array(publicAvailabilityDaySchema),
+});
+
+export const publicCalendarSettingsResponseSchema = z.object({
+  ok: z.literal(true),
+  settings: publicCalendarSettingsSchema,
+});
+
+export const publicCalendarDayResponseSchema = z.object({
+  ok: z.literal(true),
+  day: publicCalendarDaySchema,
+});
+
 export const requestsResponseSchema = z.object({
   ok: z.literal(true),
   requests: z.array(requestSchema),
@@ -613,7 +753,21 @@ export type ScopeVisitRelationshipType = z.infer<
 >;
 export type ScopeVisitPlan = z.infer<typeof scopeVisitPlanSchema>;
 export type MediaStage = z.infer<typeof mediaStageSchema>;
+export type MediaLibraryItem = z.infer<typeof mediaLibraryItemSchema>;
 export type VowStatus = z.infer<typeof vowStatusSchema>;
+export type PublicCalendarStatus = z.infer<typeof publicCalendarStatusSchema>;
+export type PublicCalendarOverrideStatus = z.infer<
+  typeof publicCalendarOverrideStatusSchema
+>;
+export type PublicCalendarSettings = z.infer<typeof publicCalendarSettingsSchema>;
+export type PublicCalendarDay = z.infer<typeof publicCalendarDaySchema>;
+export type PublicAvailabilityDay = z.infer<typeof publicAvailabilityDaySchema>;
+export type UpdatePublicCalendarDayInput = z.infer<
+  typeof updatePublicCalendarDaySchema
+>;
+export type UpdatePublicCalendarSettingsInput = z.infer<
+  typeof updatePublicCalendarSettingsSchema
+>;
 export type Organization = z.infer<typeof organizationSchema>;
 export type CreateClientAddressInput = z.infer<
   typeof createClientAddressSchema
@@ -635,6 +789,7 @@ export type ClientRecordResponse = z.infer<
   typeof clientRecordResponseSchema
 >;
 export type CreateRequestInput = z.infer<typeof createRequestSchema>;
+export type ReviewRequestInput = z.infer<typeof reviewRequestSchema>;
 export type DeclineRequestInput = z.infer<
   typeof declineRequestSchema
 >;
@@ -685,15 +840,30 @@ export type VisitScopeRevision = z.infer<
   typeof visitScopeRevisionSchema
 >;
 export type Visit = z.infer<typeof visitSchema>;
+export type PersistedJourneySummary = z.infer<
+  typeof persistedJourneySummarySchema
+>;
 export type BasicVowSnapshot = z.infer<
   typeof basicVowSnapshotSchema
 >;
 export type Vow = z.infer<typeof vowSchema>;
+export type JobJourneyEvent = z.infer<
+  typeof jobJourneyEventSchema
+>;
 export type Job = z.infer<typeof jobSchema>;
 export type Request = z.infer<typeof requestSchema>;
 export type ClientsResponse = z.infer<typeof clientsResponseSchema>;
 export type JobsResponse = z.infer<typeof jobsResponseSchema>;
 export type JobResponse = z.infer<typeof jobResponseSchema>;
+export type JobJourneyResponse = z.infer<
+  typeof jobJourneyResponseSchema
+>;
+export type JobJourneySummaryResponse = z.infer<
+  typeof jobJourneySummaryResponseSchema
+>;
+export type JobJourneyStoredSummaryResponse = z.infer<
+  typeof jobJourneyStoredSummaryResponseSchema
+>;
 export type FieldNoteResponse = z.infer<
   typeof fieldNoteResponseSchema
 >;
@@ -729,6 +899,15 @@ export type BasicVowResponse = z.infer<
 >;
 export type VowsResponse = z.infer<
   typeof vowsResponseSchema
+>;
+export type PublicCalendarDaysResponse = z.infer<
+  typeof publicCalendarDaysResponseSchema
+>;
+export type PublicAvailabilityDaysResponse = z.infer<
+  typeof publicAvailabilityDaysResponseSchema
+>;
+export type PublicCalendarDayResponse = z.infer<
+  typeof publicCalendarDayResponseSchema
 >;
 export type RequestsResponse = z.infer<typeof requestsResponseSchema>;
 export type RequestResponse = z.infer<typeof requestResponseSchema>;

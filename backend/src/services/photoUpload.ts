@@ -77,3 +77,59 @@ export async function deleteJobPhoto(
     invalidate: true,
   });
 }
+
+type UploadRequestPhotoInput = {
+  requestId: string;
+};
+
+export function uploadRequestPhoto(
+  file: UploadedPhotoFile,
+  input: UploadRequestPhotoInput,
+): Promise<UploadApiResponse> {
+  return new Promise((resolve, reject) => {
+    const uploadStream =
+      cloudinary.uploader.upload_stream(
+        {
+          resource_type: "image",
+          asset_folder:
+            `${cloudinaryBaseFolder}/requests/${input.requestId}`,
+          tags: [
+            "vizow",
+            "request-photo",
+          ],
+          context: {
+            request_id: input.requestId,
+            original_filename: file.originalname,
+          },
+        },
+        (error, result) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          if (!result) {
+            reject(
+              new Error(
+                "Cloudinary upload returned no result.",
+              ),
+            );
+            return;
+          }
+
+          resolve(result);
+        },
+      );
+
+    uploadStream.end(file.buffer);
+  });
+}
+
+export async function deleteRequestPhoto(
+  publicId: string,
+): Promise<void> {
+  await cloudinary.uploader.destroy(publicId, {
+    resource_type: "image",
+    invalidate: true,
+  });
+}

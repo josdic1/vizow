@@ -90,7 +90,7 @@ beforeEach(() => {
           cycleId,
           cycleNumber: 1,
           cycleReason: "original",
-          cycleStage: "project",
+          cycleStage: "open",
           cycleOpenedAt: createdAt,
           cycleCompletedAt: null,
           cycleCreatedAt: createdAt,
@@ -118,7 +118,7 @@ describe("GET /api/clients/:clientId", () => {
         archivedAt: archivedAt.toISOString(),
         currentCycle: expect.objectContaining({
           id: cycleId,
-          stage: "project",
+          stage: "open",
         }),
       }),
     ]);

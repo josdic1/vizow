@@ -82,7 +82,7 @@ beforeEach(() => {
           jobCycleId: cycleId,
           lifecycleStatus,
           archivedAt,
-          stage: "project",
+          stage: "open",
         }],
       };
     }

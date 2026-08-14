@@ -129,7 +129,7 @@ describe("Vizow API", () => {
       expect(approval.job.archivedAt).toBeNull();
       expect(approval.job.currentCycle.cycleNumber).toBe(1);
       expect(approval.job.currentCycle.reason).toBe("original");
-      expect(approval.job.currentCycle.stage).toBe("project");
+      expect(approval.job.currentCycle.stage).toBe("open");
 
       const persistedResult = await pool.query<{
         jobCount: number;

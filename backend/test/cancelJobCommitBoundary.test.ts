@@ -79,7 +79,7 @@ beforeEach(() => {
           lifecycleStatus: "active",
           archivedAt: null,
           jobCycleId: cycleId,
-          cycleStage: "project",
+          cycleStage: "open",
         }],
       };
     }
@@ -122,7 +122,7 @@ beforeEach(() => {
           cycleId,
           cycleNumber: 1,
           cycleReason: "original",
-          cycleStage: "project",
+          cycleStage: "open",
           cycleOpenedAt: createdAt,
           cycleCompletedAt: null,
           cycleCreatedAt: createdAt,
@@ -156,7 +156,7 @@ describe("POST /api/jobs/:jobId/cancel commit boundary", () => {
         archivedAt: null,
         currentCycle: {
           id: cycleId,
-          stage: "project",
+          stage: "open",
         },
       },
     });

@@ -83,7 +83,7 @@ beforeEach(() => {
           cycleNumber: 1,
           lifecycleStatus,
           archivedAt,
-          stage: "project",
+          stage: "open",
         }],
       };
     }

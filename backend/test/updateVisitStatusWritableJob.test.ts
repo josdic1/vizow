@@ -42,7 +42,7 @@ const visitId = "00000000-0000-4000-8000-000000000004";
 const reopenedCycleId = "00000000-0000-4000-8000-000000000005";
 let lifecycleStatus: "active" | "cancelled";
 let archivedAt: Date | null;
-let currentCycleStage: "project" | "completed";
+let currentCycleStage: "open" | "completed";
 let currentCycleId: string;
 let createdAt: Date;
 
@@ -61,7 +61,7 @@ beforeAll(async () => {
 beforeEach(() => {
   lifecycleStatus = "active";
   archivedAt = null;
-  currentCycleStage = "project";
+  currentCycleStage = "open";
   currentCycleId = cycleId;
   createdAt = new Date("2026-08-05T14:00:00.000Z");
   database.connect.mockClear();

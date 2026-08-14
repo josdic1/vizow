@@ -31,7 +31,7 @@ type CompletedCycleDatabaseRow = {
   servicePostalCode: string | null;
   jobCycleId: string;
   cycleNumber: number;
-  stage: "project" | "completed";
+  stage: "open" | "completed";
   openedAt: Date;
   completedAt: Date | null;
 };

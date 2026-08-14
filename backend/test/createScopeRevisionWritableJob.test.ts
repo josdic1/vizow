@@ -41,7 +41,7 @@ const cycleId = "00000000-0000-4000-8000-000000000003";
 const scopeRevisionId = "00000000-0000-4000-8000-000000000004";
 let lifecycleStatus: "active" | "cancelled";
 let archivedAt: Date | null;
-let stage: "project" | "completed";
+let stage: "open" | "completed";
 let createdAt: Date;
 
 beforeAll(async () => {
@@ -59,7 +59,7 @@ beforeAll(async () => {
 beforeEach(() => {
   lifecycleStatus = "active";
   archivedAt = null;
-  stage = "project";
+  stage = "open";
   createdAt = new Date("2026-08-05T14:00:00.000Z");
   database.connect.mockClear();
   database.query.mockReset();
