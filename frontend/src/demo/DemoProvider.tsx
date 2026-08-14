@@ -2,10 +2,10 @@ import { useMemo, useState, type ReactNode } from "react";
 import {
   DemoContext,
   type DemoIssueId,
-  type DemoView,
+  type DemoStage,
 } from "./DemoContext";
 
-const STORAGE_KEY = "vizow.demo.completed.v3";
+const STORAGE_KEY = "vizow.demo.completed.v4";
 
 function readCompleted(): DemoIssueId[] {
   if (typeof window === "undefined") return [];
@@ -18,36 +18,39 @@ function readCompleted(): DemoIssueId[] {
 }
 
 export function DemoProvider({ children }: { children: ReactNode }) {
-  const [view, setView] = useState<DemoView>("problems");
-  const [activeIssue, setActiveIssue] = useState<DemoIssueId>("correspondence");
-  const [completedIssues, setCompletedIssues] = useState<DemoIssueId[]>(readCompleted);
+  const [stage, setStage] = useState<DemoStage>("list");
+  const [activeIssueId, setActiveIssueId] = useState<DemoIssueId>("correspondence");
+  const [completedIssueIds, setCompletedIssueIds] = useState<DemoIssueId[]>(readCompleted);
 
   const value = useMemo(
     () => ({
-      view,
-      activeIssue,
-      completedIssues,
-      setView,
+      stage,
+      activeIssueId,
+      completedIssueIds,
       openIssue: (issue: DemoIssueId) => {
-        setActiveIssue(issue);
-        setView("problems");
+        setActiveIssueId(issue);
+        setStage("compare");
       },
-      completeIssue: (issue: DemoIssueId) => {
-        setCompletedIssues((current) => {
-          if (current.includes(issue)) return current;
-          const next = [...current, issue];
+      showGuided: () => setStage("guided"),
+      completeActiveIssue: () => {
+        setCompletedIssueIds((current) => {
+          if (current.includes(activeIssueId)) return current;
+          const next = [...current, activeIssueId];
           window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
           return next;
         });
       },
+      backToList: () => {
+        setStage("list");
+      },
       reset: () => {
-        setView("problems");
-        setActiveIssue("correspondence");
-        setCompletedIssues([]);
+        setStage("list");
+        setActiveIssueId("correspondence");
+        setCompletedIssueIds([]);
         window.localStorage.removeItem(STORAGE_KEY);
       },
     }),
-    [activeIssue, completedIssues, view],
+    [activeIssueId, completedIssueIds, stage],
   );
 
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>;

@@ -1,27 +1,26 @@
 import { createContext } from "react";
 
-export type DemoView =
-  | "problems"
-  | "contractor"
-  | "client"
-  | "documentation"
-  | "walkthrough";
+export type DemoStage = "list" | "compare" | "guided";
 
 export type DemoIssueId =
   | "correspondence"
   | "marketing"
-  | "invoices"
+  | "photos"
+  | "notes"
   | "history"
+  | "record"
   | "field"
-  | "record";
+  | "invoices";
+
 
 export type DemoContextValue = {
-  view: DemoView;
-  activeIssue: DemoIssueId;
-  completedIssues: DemoIssueId[];
-  setView: (view: DemoView) => void;
+  stage: DemoStage;
+  activeIssueId: DemoIssueId;
+  completedIssueIds: DemoIssueId[];
   openIssue: (issue: DemoIssueId) => void;
-  completeIssue: (issue: DemoIssueId) => void;
+  showGuided: () => void;
+  completeActiveIssue: () => void;
+  backToList: () => void;
   reset: () => void;
 };
 
