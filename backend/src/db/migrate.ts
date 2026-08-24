@@ -308,7 +308,7 @@ async function applyPendingMigrations(
   }
 }
 
-async function main(): Promise<void> {
+export async function runMigrations(): Promise<void> {
   const client = new Client({
     connectionString: env.DATABASE_URL,
   });
@@ -368,4 +368,10 @@ async function main(): Promise<void> {
   }
 }
 
-await main();
+const executedDirectly =
+  process.argv[1] !== undefined &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (executedDirectly) {
+  await runMigrations();
+}

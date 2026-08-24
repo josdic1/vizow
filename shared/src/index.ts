@@ -393,11 +393,19 @@ export const fieldNoteSchema = z.object({
   createdAt: z.string().datetime(),
 });
 
+const mediaDeliveryUrlSchema = z.union([
+  z.string().url(),
+  z.string().regex(
+    /^\/(?!\/).+/,
+    "Expected an absolute URL or root-relative media path.",
+  ),
+]);
+
 export const mediaSchema = z.object({
   id: idSchema,
   jobId: idSchema,
   jobCycleId: idSchema,
-  url: z.string().url(),
+  url: mediaDeliveryUrlSchema,
   storageKey: z.string().nullable(),
   mimeType: z.string().nullable(),
   stage: mediaStageSchema,

@@ -8,7 +8,7 @@
     "dev:backend": "npm run build:shared && npm run dev --workspace @vizow/backend",
     "dev:frontend": "npm run build:shared && npm run dev --workspace @vizow/frontend",
     "test": "npm run test --workspace @vizow/backend",
-    "start": "node backend/dist/db/migrate.js && node backend/dist/scripts/cleanupExpiredDemoMedia.js && node backend/dist/server.js",
+    "start": "node backend/dist/server.js",
     "media:cleanup-demo": "npm run build --workspace @vizow/shared && npm run build --workspace @vizow/backend && node backend/dist/scripts/cleanupExpiredDemoMedia.js"
   },
   "keywords": [],
