@@ -229,18 +229,25 @@ publicRequestsRouter.post(
         return;
       }
 
-      const uploaded = await uploadRequestPhoto(photo, { requestId: requestIdResult.data });
+      const uploaded = await uploadRequestPhoto(photo, {
+        organizationId: selected.organizationId,
+        requestId: requestIdResult.data,
+      });
       uploadedPublicId = uploaded.public_id;
       const mediaResult = await databaseClient.query<{ id: string; url: string }>(
         `
           INSERT INTO media (
             organization_id, job_id, job_cycle_id, url, storage_key,
-            mime_type, stage, caption, is_redacted, captured_at, original_filename
+            mime_type, stage, caption, is_redacted, captured_at, original_filename,
+            storage_provider, source_type
           )
-          VALUES ($1, NULL, NULL, $2, $3, $4, 'before', NULL, false, NULL, $5)
+          VALUES (
+            $1, NULL, NULL, $2, $3, $4, 'before', NULL, false, NULL, $5,
+            'cloudinary', 'uploaded'
+          )
           RETURNING id, url
         `,
-        [selected.organizationId, uploaded.secure_url, uploaded.public_id, photo.mimetype, photo.originalname],
+        [selected.organizationId, uploaded.secure_url, uploaded.public_id, "image/jpeg", photo.originalname],
       );
       const media = mediaResult.rows[0];
       if (!media) throw new Error("PostgreSQL did not return the Request photo.");

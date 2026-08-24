@@ -14,6 +14,11 @@ export type CreatedDemoWorkspace = {
   expiresAt: Date;
 };
 
+export type ReplacedDemoWorkspace = CreatedDemoWorkspace & {
+  staleOrganizationId: string;
+  staleUploadedMediaKeys: string[];
+};
+
 async function insertDemoOrganization(
   client: PoolClient,
   expiresAt: Date,
@@ -125,7 +130,7 @@ export async function replacePrivateDemoWorkspace(
   client: PoolClient,
   sessionId: string,
   token: string,
-): Promise<CreatedDemoWorkspace> {
+): Promise<ReplacedDemoWorkspace> {
   const current = await client.query<{ organizationId: string }>(
     `
       SELECT organization_id AS "organizationId"
@@ -140,6 +145,19 @@ export async function replacePrivateDemoWorkspace(
   if (!oldOrganizationId) {
     throw new Error("Demo session was not found.");
   }
+
+  const staleMedia = await client.query<{ storageKey: string }>(
+    `
+      SELECT storage_key AS "storageKey"
+      FROM media
+      WHERE organization_id = $1
+        AND storage_provider = 'cloudinary'
+        AND source_type = 'uploaded'
+        AND storage_key IS NOT NULL
+      ORDER BY id
+    `,
+    [oldOrganizationId],
+  );
 
   const expiresAt = new Date(
     Date.now() + env.DEMO_SESSION_HOURS * 60 * 60 * 1000,
@@ -185,5 +203,7 @@ export async function replacePrivateDemoWorkspace(
     organizationId: organization.id,
     organizationSlug: organization.slug,
     expiresAt,
+    staleOrganizationId: oldOrganizationId,
+    staleUploadedMediaKeys: staleMedia.rows.map((row) => row.storageKey),
   };
 }

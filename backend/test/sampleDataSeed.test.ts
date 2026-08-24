@@ -10,7 +10,7 @@ import {
 } from "../src/data/sampleProjects.js";
 
 const projectAssetsRoot = fileURLToPath(
-  new URL("../../frontend/public/sample-projects/", import.meta.url),
+  new URL("../../frontend/public/media/", import.meta.url),
 );
 
 describe("curated sample project catalog", () => {
@@ -144,7 +144,10 @@ describe("realistic Admin sample-data seed", () => {
 
     for (const insert of mediaInserts) {
       expect(insert.values?.[4]).toMatch(
-        /^http:\/\/localhost:5173\/sample-projects\//,
+        /^\/media\//,
+      );
+      expect(insert.values?.[5]).toMatch(
+        /^media\//,
       );
     }
 
@@ -155,7 +158,7 @@ describe("realistic Admin sample-data seed", () => {
 
     expect(snapshot.fieldNotes.length).toBeGreaterThan(0);
     expect(snapshot.media.length).toBeGreaterThan(0);
-    expect(snapshot.media[0].url).toContain("/sample-projects/");
+    expect(snapshot.media[0].url).toMatch(/^\/media\//);
 
     const eventTypes = journeyEventInserts.map((entry) =>
       String(entry.values?.[4]),

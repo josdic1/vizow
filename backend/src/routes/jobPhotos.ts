@@ -304,6 +304,7 @@ jobPhotosRouter.post(
       const cloudinaryResult = await uploadJobPhoto(
         photo,
         {
+          organizationId: currentCycle.organizationId,
           clientId: currentCycle.clientId,
           jobId: jobIdResult.data,
           jobCycleId: currentCycle.jobCycleId,
@@ -324,7 +325,9 @@ jobPhotosRouter.post(
               storage_key,
               mime_type,
               stage,
-              captured_at
+              captured_at,
+              storage_provider,
+              source_type
             )
             VALUES (
               $1,
@@ -334,7 +337,9 @@ jobPhotosRouter.post(
               $5,
               $6,
               $7,
-              now()
+              now(),
+              'cloudinary',
+              'uploaded'
             )
             RETURNING
               id,
@@ -354,7 +359,7 @@ jobPhotosRouter.post(
             currentCycle.jobCycleId,
             cloudinaryResult.secure_url,
             cloudinaryResult.public_id,
-            photo.mimetype,
+            "image/jpeg",
             stageResult.data,
           ],
         );

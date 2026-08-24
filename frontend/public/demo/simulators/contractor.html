@@ -216,9 +216,9 @@ button, input, select, textarea { font: inherit; outline: none; cursor: pointer;
     </div>
     <p class="eyebrow" style="margin-bottom: 0.5rem;">Client Photos</p>
     <div class="photo-strip">
-      <div class="photo-slot captured"><img src="/sample-projects/ceiling-water-damage/A-1.png" class="direct-img" alt="Client Photo 1" style="display: block;"></div>
-      <div class="photo-slot captured"><img src="/sample-projects/ceiling-water-damage/A-2.png" class="direct-img" alt="Client Photo 2" style="display: block;"></div>
-      <div class="photo-slot captured"><img src="/sample-projects/ceiling-water-damage/A-3.png" class="direct-img" alt="Client Photo 3" style="display: block;"></div>
+      <div class="photo-slot captured"><img src="/media/ceiling-water-damage/A-1.png" class="direct-img" alt="Client Photo 1" style="display: block;"></div>
+      <div class="photo-slot captured"><img src="/media/ceiling-water-damage/A-2.png" class="direct-img" alt="Client Photo 2" style="display: block;"></div>
+      <div class="photo-slot captured"><img src="/media/ceiling-water-damage/A-3.png" class="direct-img" alt="Client Photo 3" style="display: block;"></div>
     </div>
     <button class="btn btn-primary needs-click" style="width: 100%;" onclick="nextStage(3)">Process Ticket <i data-lucide="arrow-right"></i></button>
   </div>
@@ -316,17 +316,17 @@ button, input, select, textarea { font: inherit; outline: none; cursor: pointer;
       <p class="subtitle" id="before-sub">Document existing damage (0/3).</p>
     </div>
     <div class="photo-strip">
-      <div class="photo-slot camera needs-click" id="b-slot-1" onclick="snapPhoto('b', 1, '/sample-projects/ceiling-water-damage/A-1.png')">
+      <div class="photo-slot camera needs-click" id="b-slot-1" onclick="snapPhoto('b', 1, '/media/ceiling-water-damage/A-1.png')">
         <i data-lucide="camera" class="cam-icon"></i>
         <img src="" class="direct-img" alt="Before 1">
         <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
       </div>
-      <div class="photo-slot camera" id="b-slot-2" onclick="snapPhoto('b', 2, '/sample-projects/ceiling-water-damage/B-1.png')">
+      <div class="photo-slot camera" id="b-slot-2" onclick="snapPhoto('b', 2, '/media/ceiling-water-damage/B-1.png')">
         <i data-lucide="camera" class="cam-icon"></i>
         <img src="" class="direct-img" alt="Before 2">
         <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
       </div>
-      <div class="photo-slot camera" id="b-slot-3" onclick="snapPhoto('b', 3, '/sample-projects/ceiling-water-damage/B-2.png')">
+      <div class="photo-slot camera" id="b-slot-3" onclick="snapPhoto('b', 3, '/media/ceiling-water-damage/B-2.png')">
         <i data-lucide="camera" class="cam-icon"></i>
         <img src="" class="direct-img" alt="Before 3">
         <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
@@ -356,17 +356,17 @@ button, input, select, textarea { font: inherit; outline: none; cursor: pointer;
       <p class="subtitle" id="after-sub">Document completed repair (0/3).</p>
     </div>
     <div class="photo-strip">
-      <div class="photo-slot camera needs-click" id="a-slot-1" onclick="snapPhoto('a', 1, '/sample-projects/ceiling-water-damage/D-1.png')">
+      <div class="photo-slot camera needs-click" id="a-slot-1" onclick="snapPhoto('a', 1, '/media/ceiling-water-damage/D-1.png')">
         <i data-lucide="camera" class="cam-icon"></i>
         <img src="" class="direct-img" alt="After 1">
         <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
       </div>
-      <div class="photo-slot camera" id="a-slot-2" onclick="snapPhoto('a', 2, '/sample-projects/ceiling-water-damage/D-2.png')">
+      <div class="photo-slot camera" id="a-slot-2" onclick="snapPhoto('a', 2, '/media/ceiling-water-damage/D-2.png')">
         <i data-lucide="camera" class="cam-icon"></i>
         <img src="" class="direct-img" alt="After 2">
         <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
       </div>
-      <div class="photo-slot camera" id="a-slot-3" onclick="snapPhoto('a', 3, '/sample-projects/ceiling-water-damage/D-3.png')">
+      <div class="photo-slot camera" id="a-slot-3" onclick="snapPhoto('a', 3, '/media/ceiling-water-damage/D-3.png')">
         <i data-lucide="camera" class="cam-icon"></i>
         <img src="" class="direct-img" alt="After 3">
         <div class="icon-overlay" style="display:none;"><i data-lucide="check-square" style="color: var(--color-success); width:32px; height:32px;"></i></div>
@@ -483,21 +483,21 @@ const DB = {
 let currentJob = "roof";
 
 const IMG_PATHS = {
-  '/sample-projects/ceiling-water-damage/A-1.png': '/sample-projects/ceiling-water-damage/A-1.png',
-  '/sample-projects/ceiling-water-damage/A-2.png': '/sample-projects/ceiling-water-damage/A-2.png',
-  '/sample-projects/ceiling-water-damage/A-3.png': '/sample-projects/ceiling-water-damage/A-3.png',
-  '/sample-projects/ceiling-water-damage/A-1.png': '/sample-projects/ceiling-water-damage/A-1.png',
-  '/sample-projects/ceiling-water-damage/B-1.png': '/sample-projects/ceiling-water-damage/B-1.png',
-  '/sample-projects/ceiling-water-damage/B-2.png': '/sample-projects/ceiling-water-damage/B-2.png',
-  '/sample-projects/ceiling-water-damage/D-1.png': '/sample-projects/ceiling-water-damage/D-1.png',
-  '/sample-projects/ceiling-water-damage/D-2.png': '/sample-projects/ceiling-water-damage/D-2.png',
-  '/sample-projects/ceiling-water-damage/D-3.png': '/sample-projects/ceiling-water-damage/D-3.png'
+  '/media/ceiling-water-damage/A-1.png': '/media/ceiling-water-damage/A-1.png',
+  '/media/ceiling-water-damage/A-2.png': '/media/ceiling-water-damage/A-2.png',
+  '/media/ceiling-water-damage/A-3.png': '/media/ceiling-water-damage/A-3.png',
+  '/media/ceiling-water-damage/A-1.png': '/media/ceiling-water-damage/A-1.png',
+  '/media/ceiling-water-damage/B-1.png': '/media/ceiling-water-damage/B-1.png',
+  '/media/ceiling-water-damage/B-2.png': '/media/ceiling-water-damage/B-2.png',
+  '/media/ceiling-water-damage/D-1.png': '/media/ceiling-water-damage/D-1.png',
+  '/media/ceiling-water-damage/D-2.png': '/media/ceiling-water-damage/D-2.png',
+  '/media/ceiling-water-damage/D-3.png': '/media/ceiling-water-damage/D-3.png'
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('client-img-1').src = IMG_PATHS['/sample-projects/ceiling-water-damage/A-1.png'];
-  document.getElementById('client-img-2').src = IMG_PATHS['/sample-projects/ceiling-water-damage/A-2.png'];
-  document.getElementById('client-img-3').src = IMG_PATHS['/sample-projects/ceiling-water-damage/A-3.png'];
+  document.getElementById('client-img-1').src = IMG_PATHS['/media/ceiling-water-damage/A-1.png'];
+  document.getElementById('client-img-2').src = IMG_PATHS['/media/ceiling-water-damage/A-2.png'];
+  document.getElementById('client-img-3').src = IMG_PATHS['/media/ceiling-water-damage/A-3.png'];
 });
 
 function nextStage(stage) {

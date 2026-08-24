@@ -7,7 +7,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "start": "node dist/server.js",
-    "db:migrate": "tsx src/db/migrate.ts"
+    "db:migrate": "tsx src/db/migrate.ts",
+    "media:cleanup-demo": "tsx src/scripts/cleanupExpiredDemoMedia.ts"
   },
   "keywords": [],
   "author": "",
@@ -35,6 +36,7 @@
     "express": "^5.2.1",
     "multer": "^2.2.0",
     "pg": "^8.22.0",
+    "sharp": "^0.35.3",
     "zod": "^4.4.3"
   }
 }

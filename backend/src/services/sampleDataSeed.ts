@@ -12,6 +12,10 @@ import {
 } from "../data/sampleProjects.js";
 import { env } from "../env.js";
 import { getOrganizationSlug } from "../organizationScope.js";
+import {
+  sampleMediaDeliveryUrl,
+  sampleMediaStorageKey,
+} from "./sampleMediaStorage.js";
 
 export type SampleRange = "day" | "week" | "month" | "demo";
 
@@ -162,8 +166,8 @@ type SnapshotMedia = {
   jobId: string;
   jobCycleId: string;
   url: string;
-  storageKey: null;
-  mimeType: "image/png";
+  storageKey: string;
+  mimeType: "image/jpeg";
   stage: "before" | "during" | "after";
   caption: string;
   capturedAt: string;
@@ -237,12 +241,6 @@ function addDays(value: Date, days: number): Date {
 
 function addHours(value: Date, hours: number): Date {
   return new Date(value.getTime() + hours * 60 * 60 * 1000);
-}
-
-function assetUrl(project: SampleProject, filename: string): string {
-  const origin = env.FRONTEND_ORIGIN.replace(/\/$/, "");
-
-  return `${origin}/sample-projects/${project.slug}/${filename}`;
 }
 
 async function insertJobEvent(
@@ -485,7 +483,8 @@ async function seedMedia(
     const attachedAt = isIntakePhoto
       ? addHours(startedAt, 0.1)
       : capturedAt;
-    const url = assetUrl(project, photo.filename);
+    const storageKey = sampleMediaStorageKey(project.slug, photo.filename);
+    const url = sampleMediaDeliveryUrl(project.slug, photo.filename);
 
     await client.query(
       `
@@ -502,11 +501,13 @@ async function seedMedia(
           is_redacted,
           captured_at,
           created_at,
-          original_filename
+          original_filename,
+          storage_provider,
+          source_type
         )
         VALUES (
-          $1, $2, $3, $4, $5, NULL, 'image/png', $6, $7,
-          false, $8, $8, $9
+          $1, $2, $3, $4, $5, $6, 'image/jpeg', $7, $8,
+          false, $9, $9, $10, 'bundled', 'seed'
         )
       `,
       [
@@ -515,6 +516,7 @@ async function seedMedia(
         jobId,
         cycleId,
         url,
+        storageKey,
         photo.stage,
         photo.caption,
         capturedAt,
@@ -542,8 +544,8 @@ async function seedMedia(
       jobId,
       jobCycleId: cycleId,
       url,
-      storageKey: null,
-      mimeType: "image/png",
+      storageKey,
+      mimeType: "image/jpeg",
       stage: photo.stage,
       caption: photo.caption,
       capturedAt: capturedAt.toISOString(),

@@ -247,9 +247,9 @@ function TodayScene({ progress }: { progress: number }) {
 }
 
 const vowCards = [
-  { client: "PRIYA COLLINS", job: "Dead kitchen outlet", address: "20 Ridgefield Ave · West Orange", before: "/sample-projects/dead-kitchen-outlet/B-1.png", after: "/sample-projects/dead-kitchen-outlet/A-1.png", detail: "1 visit · 8 photos · Completed" },
-  { client: "CASEY COLLINS", job: "Door alignment", address: "21 Forest Hill Rd · Montclair", before: "/sample-projects/door-alignment/B-1.png", after: "/sample-projects/door-alignment/A-1.png", detail: "1 cycle · Before + After" },
-  { client: "THEO COLLINS", job: "Sump pump problem", address: "19 Maple Street · Maplewood", before: "/sample-projects/sump-pump-problem/B-1.png", after: "/sample-projects/sump-pump-problem/A-1.png", detail: "1 visit · Full photo record" },
+  { client: "PRIYA COLLINS", job: "Dead kitchen outlet", address: "20 Ridgefield Ave · West Orange", before: "/media/dead-kitchen-outlet/B-1.png", after: "/media/dead-kitchen-outlet/A-1.png", detail: "1 visit · 8 photos · Completed" },
+  { client: "CASEY COLLINS", job: "Door alignment", address: "21 Forest Hill Rd · Montclair", before: "/media/door-alignment/B-1.png", after: "/media/door-alignment/A-1.png", detail: "1 cycle · Before + After" },
+  { client: "THEO COLLINS", job: "Sump pump problem", address: "19 Maple Street · Maplewood", before: "/media/sump-pump-problem/B-1.png", after: "/media/sump-pump-problem/A-1.png", detail: "1 visit · Full photo record" },
 ];
 
 function VowScene({ progress }: { progress: number }) {
@@ -307,8 +307,8 @@ function MarketingScene({ progress }: { progress: number }) {
         <strong>Dead kitchen outlet</strong>
         <span>Priya Collins · West Orange, NJ</span>
         <div className="eli5-campaign-source-images">
-          <figure><img src="/sample-projects/dead-kitchen-outlet/B-1.png" alt="Outlet before repair" /><figcaption>BEFORE</figcaption></figure>
-          <figure><img src="/sample-projects/dead-kitchen-outlet/A-1.png" alt="Outlet after repair" /><figcaption>AFTER</figcaption></figure>
+          <figure><img src="/media/dead-kitchen-outlet/B-1.png" alt="Outlet before repair" /><figcaption>BEFORE</figcaption></figure>
+          <figure><img src="/media/dead-kitchen-outlet/A-1.png" alt="Outlet after repair" /><figcaption>AFTER</figcaption></figure>
         </div>
         
         <div className="eli5-campaign-ready">CAMPAIGN READY <b>✓</b></div>
@@ -329,7 +329,7 @@ function MarketingScene({ progress }: { progress: number }) {
               <b>•••</b>
             </header>
             <div className="eli5-instagram-photo">
-              <img src="/sample-projects/dead-kitchen-outlet/A-1.png" alt="Completed outlet repair Instagram post" />
+              <img src="/media/dead-kitchen-outlet/A-1.png" alt="Completed outlet repair Instagram post" />
               <span>1/2</span>
             </div>
             <div className="eli5-instagram-actions"><span>♡</span><span>◯</span><span>⌁</span><i>▱</i></div>
@@ -346,15 +346,15 @@ function MarketingScene({ progress }: { progress: number }) {
             </header>
             <p>Small repair. Big difference. This dead kitchen outlet was replaced, tested, and left clean—with the full before/after record attached to the Job.</p>
             <div className="eli5-facebook-pair">
-              <figure><img src="/sample-projects/dead-kitchen-outlet/B-1.png" alt="Before outlet repair" /><figcaption>BEFORE</figcaption></figure>
-              <figure><img src="/sample-projects/dead-kitchen-outlet/A-1.png" alt="After outlet repair" /><figcaption>AFTER</figcaption></figure>
+              <figure><img src="/media/dead-kitchen-outlet/B-1.png" alt="Before outlet repair" /><figcaption>BEFORE</figcaption></figure>
+              <figure><img src="/media/dead-kitchen-outlet/A-1.png" alt="After outlet repair" /><figcaption>AFTER</figcaption></figure>
             </div>
             <div className="eli5-facebook-meta"><span>👍 24</span><span>3 comments · 2 shares</span></div>
             <div className="eli5-facebook-actions"><b>Like</b><b>Comment</b><b>Share</b></div>
           </article>
 
           <article className={`eli5-story-post ${active === 2 ? "is-featured" : ""}`}>
-            <img src="/sample-projects/dead-kitchen-outlet/A-1.png" alt="Finished outlet repair story creative" />
+            <img src="/media/dead-kitchen-outlet/A-1.png" alt="Finished outlet repair story creative" />
             <div className="eli5-story-shade" />
             <header><div className="eli5-social-avatar">NL</div><b>northlinehome</b><span>4h</span></header>
             <div className="eli5-story-copy"><small>WEST ORANGE · NJ</small><strong>DEAD OUTLET.<br/>FIXED + TESTED.</strong><p>Real work. Real proof.</p><button type="button">SEE THE WORK ↑</button></div>
@@ -414,10 +414,10 @@ function NotesScene({ progress }: { progress: number }) {
 function MediaScene({ progress }: { progress: number }) {
   const query = progress < 0.22 ? "" : progress < 0.42 ? "out" : "outlet";
   const images = [
-    ["/sample-projects/dead-kitchen-outlet/B-1.png", "BEFORE", "Priya Collins", "Dead kitchen outlet"],
-    ["/sample-projects/dead-kitchen-outlet/D-1.png", "DURING", "Priya Collins", "Dead kitchen outlet"],
-    ["/sample-projects/dead-kitchen-outlet/A-1.png", "AFTER", "Priya Collins", "Dead kitchen outlet"],
-    ["/sample-projects/door-alignment/A-1.png", "AFTER", "Casey Collins", "Door alignment"],
+    ["/media/dead-kitchen-outlet/B-1.png", "BEFORE", "Priya Collins", "Dead kitchen outlet"],
+    ["/media/dead-kitchen-outlet/D-1.png", "DURING", "Priya Collins", "Dead kitchen outlet"],
+    ["/media/dead-kitchen-outlet/A-1.png", "AFTER", "Priya Collins", "Dead kitchen outlet"],
+    ["/media/door-alignment/A-1.png", "AFTER", "Casey Collins", "Door alignment"],
   ];
   return (
     <div className="eli5-scene eli5-media-scene">

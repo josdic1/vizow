@@ -4,9 +4,9 @@ import { useDemo } from "./useDemo";
 
 const TOTAL_STEPS = 3;
 
-const PHOTO_A = "/sample-projects/door-alignment/A-1.png";
-const PHOTO_B = "/sample-projects/door-alignment/B-1.png";
-const PHOTO_D = "/sample-projects/door-alignment/D-1.png";
+const PHOTO_A = "/media/door-alignment/A-1.png";
+const PHOTO_B = "/media/door-alignment/B-1.png";
+const PHOTO_D = "/media/door-alignment/D-1.png";
 
 async function downloadInvoicePdf() {
   const { downloadDemoInvoicePdf } = await import("../pdf/demo-invoice-pdf");
@@ -19,11 +19,11 @@ const PHOTO_LIBRARY_ITEMS = [
   { id: "door-before", job: "Bedroom door alignment", client: "Eli Collins", stage: "before", cycle: 1, date: "Aug 11", city: "West Orange, NJ", src: PHOTO_A, note: "Door rubbing at the latch side before adjustment." },
   { id: "door-during", job: "Bedroom door alignment", client: "Eli Collins", stage: "during", cycle: 1, date: "Aug 11", city: "West Orange, NJ", src: PHOTO_B, note: "Jamb shifted; hinge and reveal checked during repair." },
   { id: "door-after", job: "Bedroom door alignment", client: "Eli Collins", stage: "after", cycle: 1, date: "Aug 13", city: "West Orange, NJ", src: PHOTO_D, note: "Door aligned and closing cleanly after adjustment." },
-  { id: "ceiling-before", job: "Ceiling water damage", client: "Mara Collins", stage: "before", cycle: 1, date: "Aug 6", city: "South Orange, NJ", src: "/sample-projects/ceiling-water-damage/B-1.png", note: "Water stain and damaged finish documented before opening the ceiling." },
-  { id: "ceiling-during", job: "Ceiling water damage", client: "Mara Collins", stage: "during", cycle: 1, date: "Aug 7", city: "South Orange, NJ", src: "/sample-projects/ceiling-water-damage/D-1.png", note: "Damaged section opened and repair documented in progress." },
-  { id: "deck-before", job: "Deck stair repair", client: "Nick R.", stage: "before", cycle: 1, date: "Aug 4", city: "Maplewood, NJ", src: "/sample-projects/deck-stair-repair/B-1.png", note: "Loose stair section documented before repair." },
-  { id: "deck-during", job: "Deck stair repair", client: "Nick R.", stage: "during", cycle: 1, date: "Aug 5", city: "Maplewood, NJ", src: "/sample-projects/deck-stair-repair/D-1.png", note: "Stair repair documented while the damaged section was being rebuilt." },
-  { id: "roof-during", job: "Roof leak investigation", client: "Devon R.", stage: "during", cycle: 1, date: "Aug 3", city: "South Orange, NJ", src: "/sample-projects/roof-leak-investigation/D-1.png", note: "Leak path documented during the roof investigation." },
+  { id: "ceiling-before", job: "Ceiling water damage", client: "Mara Collins", stage: "before", cycle: 1, date: "Aug 6", city: "South Orange, NJ", src: "/media/ceiling-water-damage/B-1.png", note: "Water stain and damaged finish documented before opening the ceiling." },
+  { id: "ceiling-during", job: "Ceiling water damage", client: "Mara Collins", stage: "during", cycle: 1, date: "Aug 7", city: "South Orange, NJ", src: "/media/ceiling-water-damage/D-1.png", note: "Damaged section opened and repair documented in progress." },
+  { id: "deck-before", job: "Deck stair repair", client: "Nick R.", stage: "before", cycle: 1, date: "Aug 4", city: "Maplewood, NJ", src: "/media/deck-stair-repair/B-1.png", note: "Loose stair section documented before repair." },
+  { id: "deck-during", job: "Deck stair repair", client: "Nick R.", stage: "during", cycle: 1, date: "Aug 5", city: "Maplewood, NJ", src: "/media/deck-stair-repair/D-1.png", note: "Stair repair documented while the damaged section was being rebuilt." },
+  { id: "roof-during", job: "Roof leak investigation", client: "Devon R.", stage: "during", cycle: 1, date: "Aug 3", city: "South Orange, NJ", src: "/media/roof-leak-investigation/D-1.png", note: "Leak path documented during the roof investigation." },
 ] as const;
 
 type PhotoLibraryStage = "all" | "before" | "during" | "after";
@@ -131,7 +131,7 @@ const HISTORY_JOBS = [
     invoice: "Not invoiced",
     amount: "$0",
     scope: "Diagnose the buzzing dimmer and replace the device if needed.",
-    media: ["/sample-projects/dead-kitchen-outlet/B-1.png"],
+    media: ["/media/dead-kitchen-outlet/B-1.png"],
   },
   {
     title: "Loose stair handrail",
@@ -145,9 +145,9 @@ const HISTORY_JOBS = [
     amount: "$210",
     scope: "Secure loose exterior handrail and reinforce the stair connection.",
     media: [
-      "/sample-projects/deck-stair-repair/B-1.png",
-      "/sample-projects/deck-stair-repair/D-1.png",
-      "/sample-projects/deck-stair-repair/A-1.png",
+      "/media/deck-stair-repair/B-1.png",
+      "/media/deck-stair-repair/D-1.png",
+      "/media/deck-stair-repair/A-1.png",
     ],
   },
   {

@@ -12,6 +12,8 @@ import {
   hashDemoSessionToken,
   readDemoSessionToken,
 } from "../services/demoSessionToken.js";
+import { cleanupExpiredDemoMedia } from "../services/demoMediaCleanup.js";
+import { deleteMediaAsset } from "../services/photoUpload.js";
 
 export const demoSessionRouter = Router();
 
@@ -135,6 +137,10 @@ demoSessionRouter.post("/", async (request, response) => {
         expiresAt: demo.expiresAt.toISOString(),
       },
     });
+
+    void cleanupExpiredDemoMedia().catch((error) => {
+      console.error("Unable to clean expired demo media.", error);
+    });
   } catch (error) {
     await client.query("ROLLBACK");
     console.error(error);
@@ -177,6 +183,35 @@ demoSessionRouter.post(
       await client.query("BEGIN");
       const demo = await replacePrivateDemoWorkspace(client, sessionId, token);
       await client.query("COMMIT");
+
+      const cleanupResults = await Promise.allSettled(
+        demo.staleUploadedMediaKeys.map((storageKey) =>
+          deleteMediaAsset(storageKey),
+        ),
+      );
+      const cleanupFailures = cleanupResults.filter(
+        (result) => result.status === "rejected",
+      );
+
+      if (cleanupFailures.length > 0) {
+        console.error(
+          `Unable to remove ${cleanupFailures.length} expired demo media assets.`,
+        );
+      } else {
+        await pool.query(
+          `
+            UPDATE organizations
+            SET demo_media_cleaned_at = now()
+            WHERE id = $1
+              AND is_demo = true
+          `,
+          [demo.staleOrganizationId],
+        );
+      }
+
+      void cleanupExpiredDemoMedia().catch((error) => {
+        console.error("Unable to clean expired demo media.", error);
+      });
 
       response.setHeader("Set-Cookie", createDemoSessionCookie(demo.token));
       response.json({
