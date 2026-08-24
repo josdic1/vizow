@@ -81,53 +81,57 @@ export function ContextRail({
         className="context-rail context-rail--semantic"
         aria-label="Current work context"
       >
-        <div className="context-rail__steps">
-          <ContextRailItem name="object" label="Work" value={work} />
-          <ContextRailItem name="tool" label="Client" value={client} />
-          <ContextRailItem name="action" label="Status" value={status} />
-          <ContextRailItem name="result" label="Next" value={next} />
+        <div className="context-rail__inner">
+          <div className="context-rail__steps">
+            <ContextRailItem name="object" label="Work" value={work} />
+            <ContextRailItem name="tool" label="Client" value={client} />
+            <ContextRailItem name="action" label="Status" value={status} />
+            <ContextRailItem name="result" label="Next" value={next} />
+          </div>
+          {message ? (
+            <p className="context-rail__message" aria-live="polite">
+              {message}
+            </p>
+          ) : null}
         </div>
-        {message ? (
-          <p className="context-rail__message" aria-live="polite">
-            {message}
-          </p>
-        ) : null}
       </section>
     );
   }
 
   return (
     <section className="context-rail" aria-label="Current work context">
-      <div className="context-rail__steps">
-        <ContextRailItem
-          name="object"
-          label="Object"
-          value={object}
-          activeStep={activeStep}
-        />
-        <ContextRailItem
-          name="tool"
-          label="Tool"
-          value={tool}
-          activeStep={activeStep}
-        />
-        <ContextRailItem
-          name="action"
-          label="Action"
-          value={action}
-          activeStep={activeStep}
-        />
-        <ContextRailItem
-          name="result"
-          label="Result"
-          value={result}
-          activeStep={activeStep}
-          tone={resultTone}
-        />
+      <div className="context-rail__inner">
+        <div className="context-rail__steps">
+          <ContextRailItem
+            name="object"
+            label="Object"
+            value={object}
+            activeStep={activeStep}
+          />
+          <ContextRailItem
+            name="tool"
+            label="Tool"
+            value={tool}
+            activeStep={activeStep}
+          />
+          <ContextRailItem
+            name="action"
+            label="Action"
+            value={action}
+            activeStep={activeStep}
+          />
+          <ContextRailItem
+            name="result"
+            label="Result"
+            value={result}
+            activeStep={activeStep}
+            tone={resultTone}
+          />
+        </div>
+        <p className="context-rail__message" aria-live="polite">
+          {message || "No work is currently selected."}
+        </p>
       </div>
-      <p className="context-rail__message" aria-live="polite">
-        {message || "No work is currently selected."}
-      </p>
     </section>
   );
 }

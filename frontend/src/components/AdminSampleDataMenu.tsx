@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 
 import {
   clearSampleData,
   loadSampleData,
   type SampleRange,
 } from "../api/adminSampleData";
+import { fetchDemoSessionStatus } from "../api/demoSession";
 
 const ranges: {
   value: SampleRange;
@@ -24,6 +26,28 @@ function errorMessage(error: unknown): string {
 export function AdminSampleDataMenu() {
   const [busy, setBusy] =
     useState<string | null>(null);
+  const [privateDemo, setPrivateDemo] = useState(false);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchDemoSessionStatus(controller.signal)
+      .then((status) => {
+        setPrivateDemo(status.enabled && status.active);
+      })
+      .catch(() => {
+        setPrivateDemo(false);
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  function closeOtherHeaderMenus() {
+    document.querySelectorAll<HTMLDetailsElement>("details.site-dropdown[open]").forEach((details) => {
+      if (details !== detailsRef.current) details.open = false;
+    });
+  }
 
   async function load(
     range: SampleRange,
@@ -61,8 +85,20 @@ export function AdminSampleDataMenu() {
     }
   }
 
+  if (privateDemo) {
+    return (
+      <Link className="site-nav-link demo-nav-link" to="/demo">
+        Demo Guide
+      </Link>
+    );
+  }
+
   return (
-    <details className="admin-menu">
+    <details
+      ref={detailsRef}
+      className="admin-menu site-dropdown"
+      onToggle={() => { if (detailsRef.current?.open) closeOtherHeaderMenus(); }}
+    >
       <summary className="site-nav-link">
         Admin
       </summary>

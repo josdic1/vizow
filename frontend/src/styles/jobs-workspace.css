@@ -446,3 +446,752 @@
 .admin-table-action a:hover {
   color: var(--color-ink);
 }
+
+/* Jobs polish pass — align the Jobs index with the Today / Inbox workspace grammar. */
+.jobs-page {
+  max-width: 78rem;
+  gap: 18px;
+}
+
+.jobs-page .admin-page-header {
+  align-items: end;
+  overflow: visible;
+  border: 0;
+  border-bottom: 2px solid var(--color-ink);
+  background: transparent;
+  padding: 0 0 22px;
+  box-shadow: none;
+}
+
+.jobs-page .admin-page-header::before {
+  display: none;
+}
+
+.jobs-page .admin-page-heading {
+  gap: 7px;
+}
+
+.jobs-page .admin-page-heading h1 {
+  font-size: clamp(3rem, 4.4vw, 4.5rem);
+  line-height: 0.86;
+  letter-spacing: -0.045em;
+}
+
+.jobs-page .admin-page-heading > p:not(.eyebrow) {
+  max-width: 52ch;
+  font-size: 0.98rem;
+  line-height: 1.35;
+}
+
+.jobs-page .admin-page-meta {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(5.8rem, 1fr));
+  align-self: stretch;
+  gap: 0;
+  border: 1px solid var(--color-ink);
+  color: var(--color-ink);
+  background: rgba(246, 240, 219, 0.72);
+  font-size: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.jobs-page .admin-page-meta > span {
+  display: grid;
+  align-content: space-between;
+  min-width: 0;
+  min-height: 5.9rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.jobs-page .admin-page-meta > span + span {
+  border-left: 1px solid var(--color-ink);
+}
+
+.jobs-page .admin-page-meta small {
+  color: var(--color-ink);
+  font-size: 0.6rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.jobs-page .admin-page-meta strong {
+  font-size: clamp(1.85rem, 2.4vw, 2.7rem);
+  line-height: 0.9;
+}
+
+.jobs-page .jobs-toolbar {
+  position: relative;
+  z-index: 1;
+  border: 2px solid var(--color-ink);
+  border-bottom: 1px solid var(--color-ink);
+  background: rgba(246, 240, 219, 0.9);
+  padding: 0.75rem;
+  margin-bottom: -18px;
+}
+
+.jobs-page .admin-filter-tabs {
+  gap: 0;
+}
+
+.jobs-page .admin-filter-tabs button {
+  min-height: 2.5rem;
+  border-width: 1px;
+  padding: 0.5rem 0.7rem;
+}
+
+.jobs-page .admin-filter-tabs button + button {
+  border-left: 0;
+}
+
+.jobs-page .admin-filter-tabs button.is-active {
+  background: var(--color-orange);
+  color: var(--color-ink);
+}
+
+.jobs-page .admin-search-field {
+  min-width: min(19rem, 100%);
+}
+
+.jobs-page .admin-search-field input {
+  min-height: 2.5rem;
+  border-width: 1px;
+  background: var(--color-paper);
+}
+
+.jobs-page .jobs-toolbar + .admin-table-wrap {
+  border: 2px solid var(--color-ink);
+  border-top: 0;
+  background: rgba(246, 240, 219, 0.9);
+}
+
+.jobs-page .admin-table th {
+  padding: 0.72rem 0.8rem;
+}
+
+.jobs-page .admin-table td {
+  padding: 0.78rem 0.8rem;
+}
+
+.jobs-page .admin-table tbody tr:hover {
+  background: rgba(230, 103, 35, 0.09);
+}
+
+.jobs-page .admin-table-action a {
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--color-orange);
+}
+
+.jobs-page .admin-table-action a:hover {
+  background: transparent;
+  color: var(--color-ink);
+}
+
+@media (max-width: 980px) {
+  .jobs-page .admin-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .jobs-page .admin-page-meta {
+    width: 100%;
+  }
+}
+
+@media (max-width: 780px) {
+  .jobs-page .admin-page-heading h1 {
+    font-size: clamp(2.8rem, 15vw, 4rem);
+  }
+
+  .jobs-page .admin-page-meta {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .jobs-page .admin-page-meta > span {
+    min-height: 4.8rem;
+  }
+
+  .jobs-page .admin-page-meta > span + span {
+    border-left: 0;
+  }
+
+  .jobs-page .admin-page-meta > span:nth-child(even) {
+    border-left: 1px solid var(--color-ink);
+  }
+
+  .jobs-page .admin-page-meta > span:nth-child(n + 3) {
+    border-top: 1px solid var(--color-ink);
+  }
+
+  .jobs-page .jobs-toolbar {
+    margin-bottom: 0;
+  }
+
+  .jobs-page .jobs-toolbar + .admin-table-wrap {
+    margin-top: -18px;
+    border-top: 0;
+  }
+
+  .jobs-page .admin-filter-tabs {
+    gap: 0.35rem;
+  }
+
+  .jobs-page .admin-filter-tabs button + button {
+    border-left: var(--border-normal);
+  }
+}
+
+/* Jobs alignment pass: one hero row, aligned to the same shell as global navigation. */
+.jobs-page {
+  max-width: var(--max-page);
+}
+
+.jobs-page .admin-page-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(31rem, 34rem);
+  grid-template-areas:
+    "eyebrow meta"
+    "title meta"
+    "description meta";
+  column-gap: 2.75rem;
+  row-gap: 7px;
+  width: 100%;
+  align-items: end;
+}
+
+.jobs-page .admin-page-heading > .eyebrow {
+  grid-area: eyebrow;
+}
+
+.jobs-page .admin-page-heading > h1 {
+  grid-area: title;
+}
+
+.jobs-page .admin-page-heading > p:not(.eyebrow) {
+  grid-area: description;
+}
+
+.jobs-page .admin-page-meta {
+  grid-area: meta;
+  align-self: end;
+  width: 100%;
+  max-width: 34rem;
+}
+
+@media (max-width: 1120px) {
+  .jobs-page .admin-page-heading {
+    grid-template-columns: minmax(0, 1fr) minmax(26rem, 30rem);
+    column-gap: 2rem;
+  }
+}
+
+@media (max-width: 980px) {
+  .jobs-page .admin-page-heading {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "eyebrow"
+      "title"
+      "description"
+      "meta";
+  }
+
+  .jobs-page .admin-page-meta {
+    max-width: none;
+    margin-top: 0.6rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Jobs / Clients shell harmonization
+   Clients is the canonical directory shell. Keep Jobs behavior/table intact,
+   but make the hero, metrics, divider, and work surface use the same grammar.
+   -------------------------------------------------------------------------- */
+
+.jobs-page {
+  gap: 14px;
+  max-width: 78rem;
+}
+
+.jobs-page .admin-page-header {
+  display: block;
+  overflow: visible;
+  border: 0;
+  border-bottom: 2px solid var(--color-ink);
+  background: transparent;
+  padding: 2px 2px 14px;
+  box-shadow: none;
+}
+
+.jobs-page .admin-page-header::before {
+  display: none;
+}
+
+.jobs-page .admin-page-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "eyebrow meta"
+    "title meta"
+    "description meta";
+  column-gap: 28px;
+  row-gap: 0;
+  width: 100%;
+  align-items: end;
+}
+
+.jobs-page .admin-page-heading > .eyebrow {
+  grid-area: eyebrow;
+}
+
+.jobs-page .admin-page-heading > h1 {
+  grid-area: title;
+  margin-top: 5px;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6vw, 5rem);
+  line-height: 0.82;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.jobs-page .admin-page-heading > p:not(.eyebrow) {
+  grid-area: description;
+  max-width: 720px;
+  margin-top: 10px;
+  color: var(--color-ink-soft);
+  font-size: 0.96rem;
+  line-height: 1.42;
+}
+
+.jobs-page .admin-page-meta {
+  grid-area: meta;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(104px, 1fr));
+  align-self: end;
+  width: auto;
+  max-width: none;
+  min-width: 520px;
+  gap: 0;
+  border: 1px solid var(--color-ink);
+  background: color-mix(in srgb, var(--color-paper-soft) 88%, transparent);
+  color: var(--color-ink);
+  font-size: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.jobs-page .admin-page-meta > span {
+  display: grid;
+  align-content: space-between;
+  min-width: 0;
+  min-height: 92px;
+  padding: 12px 15px;
+}
+
+.jobs-page .admin-page-meta > span + span {
+  border-left: 1px solid color-mix(in srgb, var(--color-ink) 44%, transparent);
+}
+
+.jobs-page .admin-page-meta small {
+  color: var(--color-ink);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.jobs-page .admin-page-meta strong {
+  align-self: end;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  line-height: 0.8;
+}
+
+.jobs-directory-shell {
+  overflow: hidden;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-soft);
+}
+
+.jobs-directory-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 74px;
+  padding: 12px 14px 12px 16px;
+  border-bottom: 2px solid var(--color-ink);
+  border-left: 5px solid var(--color-orange);
+  background: var(--color-paper-soft);
+}
+
+.jobs-directory-heading h2,
+.jobs-directory-heading p {
+  margin-bottom: 0;
+}
+
+.jobs-directory-heading h2 {
+  margin-top: 3px;
+  font-size: clamp(1.45rem, 2.3vw, 2rem);
+  line-height: 1;
+}
+
+.jobs-page .jobs-directory-shell .jobs-toolbar {
+  margin: 0;
+  border: 0;
+  border-bottom: 2px solid var(--color-ink);
+  background: color-mix(in srgb, var(--color-paper) 76%, var(--color-paper-soft));
+  padding: 11px 12px;
+}
+
+.jobs-page .jobs-directory-shell .jobs-toolbar + .admin-table-wrap {
+  margin: 0;
+  border: 0;
+  background: var(--color-paper-soft);
+}
+
+.jobs-page .jobs-directory-shell .admin-table-wrap {
+  border: 0;
+}
+
+.jobs-page .jobs-directory-shell .admin-empty-state {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-paper);
+}
+
+@media (max-width: 1120px) {
+  .jobs-page .admin-page-heading {
+    grid-template-columns: minmax(0, 1fr) minmax(28rem, auto);
+    column-gap: 20px;
+  }
+
+  .jobs-page .admin-page-meta {
+    min-width: 470px;
+  }
+
+  .jobs-page .admin-page-meta > span {
+    padding-inline: 11px;
+  }
+}
+
+@media (max-width: 980px) {
+  .jobs-page .admin-page-heading {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "eyebrow"
+      "title"
+      "description"
+      "meta";
+  }
+
+  .jobs-page .admin-page-meta {
+    width: 100%;
+    min-width: 0;
+    margin-top: 14px;
+  }
+}
+
+@media (max-width: 780px) {
+  .jobs-page .admin-page-heading > h1 {
+    font-size: clamp(2.8rem, 15vw, 4rem);
+  }
+
+  .jobs-page .admin-page-meta {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .jobs-page .admin-page-meta > span {
+    min-height: 72px;
+  }
+
+  .jobs-page .admin-page-meta > span + span {
+    border-left: 0;
+  }
+
+  .jobs-page .admin-page-meta > span:nth-child(even) {
+    border-left: 1px solid color-mix(in srgb, var(--color-ink) 44%, transparent);
+  }
+
+  .jobs-page .admin-page-meta > span:nth-child(n + 3) {
+    border-top: 1px solid color-mix(in srgb, var(--color-ink) 44%, transparent);
+  }
+
+  .jobs-page .admin-page-meta > span:last-child {
+    grid-column: 1 / -1;
+    border-left: 0;
+  }
+
+  .jobs-directory-heading {
+    min-height: 64px;
+  }
+}
+
+/* Jobs/Clients visible harmonization — same command-first directory rhythm. */
+.jobs-directory-heading {
+  min-height: 62px;
+  padding: 10px 14px 9px 16px;
+}
+
+.jobs-directory-heading h2 {
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+}
+
+.jobs-findbar {
+  padding: 14px;
+  border-bottom: 2px solid var(--color-ink);
+  background: color-mix(in srgb, var(--color-paper-soft) 78%, var(--color-ink) 2%);
+}
+
+.jobs-search {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.jobs-search-kicker {
+  padding-left: 2px;
+  color: var(--color-orange);
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.jobs-search-control {
+  position: relative;
+  display: block;
+}
+
+.jobs-search input {
+  width: 100%;
+  min-height: 64px;
+  padding: 0 126px 0 17px;
+  border: 3px solid var(--color-ink);
+  border-radius: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 1.08rem;
+  box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-ink) 13%, transparent);
+}
+
+.jobs-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.jobs-search input:focus-visible {
+  outline: 3px solid var(--color-orange);
+  outline-offset: 3px;
+  background: color-mix(in srgb, white 24%, var(--color-paper));
+}
+
+.jobs-search-clear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  min-width: 100px;
+  padding: 0 12px;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--color-ink) 42%, transparent);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.jobs-search-clear:hover,
+.jobs-search-clear:focus-visible {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  outline: 0;
+}
+
+.jobs-directory-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  padding: 7px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 34%, transparent);
+  background: color-mix(in srgb, var(--color-paper) 72%, var(--color-paper-soft));
+}
+
+.jobs-view-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.jobs-tool-label {
+  color: var(--color-muted);
+  font-size: 0.56rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.jobs-directory-tools .admin-filter-tabs {
+  gap: 0;
+}
+
+.jobs-directory-tools .admin-filter-tabs button {
+  min-height: 34px;
+  padding: 6px 9px;
+  border-width: 1px;
+}
+
+.jobs-directory-tools .admin-filter-tabs button + button {
+  border-left: 0;
+}
+
+.jobs-directory-tools .admin-filter-tabs button.is-active {
+  background: var(--color-orange);
+  color: var(--color-ink);
+}
+
+.jobs-page .jobs-directory-shell .jobs-directory-tools + .admin-table-wrap {
+  margin: 0;
+  border: 0;
+  background: var(--color-paper-soft);
+}
+
+@media (max-width: 780px) {
+  .jobs-search input {
+    min-height: 58px;
+    padding-right: 98px;
+    font-size: 0.94rem;
+  }
+
+  .jobs-search-clear {
+    min-width: 78px;
+    padding-inline: 8px;
+  }
+
+  .jobs-directory-tools,
+  .jobs-view-control {
+    align-items: stretch;
+  }
+
+  .jobs-directory-tools {
+    flex-direction: column;
+  }
+
+  .jobs-view-control {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Jobs / Clients exact shell lock
+   Jobs now uses the actual Clients shell classes in JSX. Do not restyle the
+   shared hero/directory/search/view surfaces here. Job-only differences live
+   below: five metric columns and the Job table.
+   -------------------------------------------------------------------------- */
+
+.jobs-page {
+  gap: 14px;
+  max-width: 78rem;
+}
+
+/* AdminPageHeader is no longer used by the Jobs index. Neutralize older
+   Jobs-specific hero rules so they cannot leak into the shared shell. */
+.jobs-page > .admin-page-header {
+  display: none;
+}
+
+.jobs-hero-stats {
+  grid-template-columns: repeat(5, minmax(104px, 1fr));
+  min-width: 540px;
+}
+
+/* The shared Clients classes own these surfaces. This block intentionally
+   removes old Jobs-only layout declarations that previously caused drift. */
+.jobs-page .jobs-directory-shell,
+.jobs-page .jobs-directory-heading,
+.jobs-page .jobs-findbar,
+.jobs-page .jobs-search,
+.jobs-page .jobs-directory-tools,
+.jobs-page .jobs-view-control {
+  box-sizing: border-box;
+}
+
+.jobs-page .jobs-findbar {
+  /* Clients has a second auto column for + New Client. Jobs has no direct
+     create action, so the same search surface simply occupies the full row. */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.jobs-page .jobs-directory-tools .admin-filter-tabs {
+  gap: 0;
+}
+
+.jobs-page .jobs-directory-tools .admin-filter-tabs button {
+  min-height: 34px;
+  padding: 6px 9px;
+  border-width: 1px;
+}
+
+.jobs-page .jobs-directory-tools .admin-filter-tabs button + button {
+  border-left: 0;
+}
+
+.jobs-page .jobs-directory-tools .admin-filter-tabs button.is-active {
+  background: var(--color-orange);
+  color: var(--color-ink);
+}
+
+.jobs-page .jobs-directory-shell .admin-table-wrap {
+  margin: 0;
+  border: 0;
+  background: var(--color-paper-soft);
+}
+
+.jobs-page .jobs-directory-shell .admin-table-action a {
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--color-orange);
+}
+
+.jobs-page .jobs-directory-shell .admin-table-action a:hover {
+  background: transparent;
+  color: var(--color-ink);
+}
+
+@media (max-width: 980px) {
+  .jobs-hero-stats {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 780px) {
+  .jobs-hero-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .jobs-hero-stats > div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .jobs-page .jobs-findbar {
+    grid-template-columns: 1fr;
+  }
+}

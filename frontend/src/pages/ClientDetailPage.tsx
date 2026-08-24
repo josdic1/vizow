@@ -989,7 +989,7 @@ export function ClientDetailPage() {
             </div>
 
             <div className="client-record-actions">
-              <Link className="btn" to="/clients">
+              <Link className="btn" to="/app/clients">
                 ← Clients
               </Link>
 
@@ -1605,14 +1605,14 @@ export function ClientDetailPage() {
                           <div className="client-record-actions">
                             <Link
                               className="btn btn-primary"
-                              to={`/jobs/${job.id}`}
+                              to={`/app/jobs/${job.id}`}
                             >
                               Open Job
                             </Link>
 
                             <Link
                               className="btn"
-                              to={`/jobs/${job.id}/vow`}
+                              to={`/app/jobs/${job.id}/vow`}
                             >
                               See VOW
                             </Link>

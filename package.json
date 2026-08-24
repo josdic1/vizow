@@ -7,7 +7,8 @@
     "build:shared": "npm run build --workspace @vizow/shared",
     "dev:backend": "npm run build:shared && npm run dev --workspace @vizow/backend",
     "dev:frontend": "npm run build:shared && npm run dev --workspace @vizow/frontend",
-    "test": "npm run test --workspace @vizow/backend"
+    "test": "npm run test --workspace @vizow/backend",
+    "start": "node backend/dist/db/migrate.js && node backend/dist/server.js"
   },
   "keywords": [],
   "author": "",

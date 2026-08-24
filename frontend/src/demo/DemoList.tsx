@@ -1,53 +1,105 @@
-import { demoIssues } from "./demoReplacementIssues";
+import { useEffect } from "react";
+import type { DemoIssueId } from "./DemoContext";
+import { getDemoIssue } from "./demoReplacementIssues";
 import { useDemo } from "./useDemo";
+
+type DemoOutcome = {
+  number: string;
+  title: string;
+  summary: string;
+  issueIds: [DemoIssueId, DemoIssueId];
+};
+
+const demoOutcomes: DemoOutcome[] = [
+  {
+    number: "01",
+    title: "Save time",
+    summary: "Stop re-entering, searching, and scheduling by hand.",
+    issueIds: ["correspondence", "field"],
+  },
+  {
+    number: "02",
+    title: "Protect your money",
+    summary: "Keep the job record, approved changes, and billing attached to the work.",
+    issueIds: ["record", "invoices"],
+  },
+  {
+    number: "03",
+    title: "Win more work",
+    summary: "Turn the work you already did into proof people can actually see.",
+    issueIds: ["marketing", "photos"],
+  },
+  {
+    number: "04",
+    title: "Know your business",
+    summary: "Keep client history and job information connected instead of scattered.",
+    issueIds: ["history", "notes"],
+  },
+];
 
 export function DemoList() {
   const { completedIssueIds, openIssue } = useDemo();
-  const total = demoIssues.length;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);
+  const total = demoOutcomes.reduce((count, outcome) => count + outcome.issueIds.length, 0);
   const done = completedIssueIds.length;
-  const allDone = done === total;
 
   return (
     <div className="demo-list">
       <header className="demo-list-head">
-        <p className="eyebrow">Pick the mess you recognize.</p>
-        <h1>What's wasting your time?</h1>
-        <p>One at a time. See the mess, then see the fix. {total} things, about a minute each.</p>
+        <div>
+          <p className="eyebrow">Guided Walkthrough</p>
+          <h1>What do you want to see Vizow handle?</h1>
+        </div>
+        <div className="demo-list-intro">
+          <p>
+            Pick a workflow. First drag BEFORE ↔ WITH VIZOW, then walk through exactly
+            how Vizow handles it.
+          </p>
+          <strong>{done} / {total} workflows tried</strong>
+        </div>
       </header>
 
+      <div className="demo-outcome-grid">
+        {demoOutcomes.map((outcome) => {
+          const outcomeDone = outcome.issueIds.every((issueId) => completedIssueIds.includes(issueId));
 
-
-      <div className="demo-progress-meter" aria-label={`${done} of ${total} sorted`}>
-        <span style={{ width: `${(done / total) * 100}%` }} />
-      </div>
-      <strong className="demo-progress-label">{done} / {total} sorted</strong>
-
-      {allDone ? (
-        <div className="demo-done-banner">
-          <div>
-            <p className="eyebrow">That's the list</p>
-            <h2>Eight messes. Eight fixes.</h2>
-            <p>The demo stays self-contained: no account, no sample-data loading, and nothing is saved.</p>
-          </div>
-        </div>
-      ) : null}
-
-      <ul className="demo-punch-list">
-        {demoIssues.map((issue) => {
-          const isDone = completedIssueIds.includes(issue.id);
           return (
-            <li key={issue.id}>
-              <button type="button" className={isDone ? "is-complete" : ""} onClick={() => openIssue(issue.id)}>
-                <span className="demo-check" aria-hidden="true">{isDone ? "✓" : ""}</span>
-                <span className="demo-punch-copy">
-                  <strong>{issue.short}</strong>
-                  <small>{issue.label}</small>
-                </span>
-              </button>
-            </li>
+            <section key={outcome.title} className={`demo-outcome-card${outcomeDone ? " is-complete" : ""}`}>
+              <div className="demo-outcome-card-head">
+                <span className="demo-outcome-number">{outcome.number}</span>
+                {outcomeDone ? <span className="demo-outcome-complete">Complete</span> : null}
+              </div>
+
+              <div className="demo-outcome-copy">
+                <h2>{outcome.title}</h2>
+                <p>{outcome.summary}</p>
+              </div>
+
+              <div className="demo-outcome-actions">
+                {outcome.issueIds.map((issueId) => {
+                  const issue = getDemoIssue(issueId);
+                  const isDone = completedIssueIds.includes(issueId);
+
+                  return (
+                    <button
+                      key={issueId}
+                      type="button"
+                      className={isDone ? "is-complete" : ""}
+                      onClick={() => openIssue(issueId)}
+                    >
+                      <span>{issue.short}</span>
+                      <span className="demo-outcome-arrow" aria-hidden="true">{isDone ? "✓" : "→"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
           );
         })}
-      </ul>
+      </div>
     </div>
   );
 }

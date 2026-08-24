@@ -429,8 +429,8 @@ button.btn:disabled {
 
 .admin-menu-popover {
   position: absolute;
-  z-index: 100;
-  top: calc(100% + 0.6rem);
+  z-index: 260;
+  top: calc(100% + 0.35rem);
   right: 0;
   display: grid;
   width: 15rem;
@@ -516,4 +516,179 @@ button.btn:disabled {
     width: min(20rem, calc(100vw - 2rem));
     transform: translateX(50%);
   }
+}
+
+/* 2026-08-17 — compact shared app chrome.
+   Keep navigation inside the same 1180px working shell and remove the
+   artificial gap between the primary tools and utility actions. */
+@media (min-width: 761px) {
+  .app-header {
+    padding-inline: 16px;
+  }
+
+  .app-header .site-header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    min-height: 52px;
+    padding-block: 6px;
+  }
+
+  .app-header .brand-lockup {
+    gap: 7px;
+  }
+
+  .app-header .site-header .brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .app-header .brand-copy strong {
+    font-size: 1.35rem;
+  }
+
+  .app-header .site-nav {
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .app-header .header-actions {
+    gap: 4px;
+    margin-left: 4px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(42, 27, 20, 0.3);
+  }
+
+  .app-header .site-nav-link {
+    min-height: 34px;
+    padding: 8px 12px;
+    box-shadow: 2px 2px 0 rgba(42, 27, 20, 0.8);
+  }
+
+  .app-header .site-nav-link:hover,
+  .app-header .site-nav-link-active {
+    box-shadow: 2px 2px 0 var(--color-ink);
+    transform: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   TODAY-CANONICAL APP HEADER
+   One compact navigation instrument: brand left, tools together on the right.
+   No floating button shadows; no artificial utility island.
+   -------------------------------------------------------------------------- */
+.app-header {
+  border-bottom: 2px solid var(--color-ink);
+  background: var(--color-paper);
+  padding: 0;
+}
+
+.app-header .site-header {
+  width: min(1240px, calc(100% - 40px));
+  min-height: 56px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 24px;
+  margin: 0 auto;
+  padding: 10px 0 11px;
+  border: 0;
+}
+
+.app-header .brand-lockup {
+  gap: 8px;
+}
+
+.app-header .site-header .brand-mark {
+  width: 24px;
+  height: 24px;
+}
+
+.app-header .brand-copy strong {
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+}
+
+.app-header .site-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.app-header .site-nav-link,
+.app-header .admin-menu > summary,
+.app-header .media-nav-menu > summary {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--color-ink);
+  background: color-mix(in srgb, var(--color-paper-soft) 84%, transparent);
+  box-shadow: none;
+  color: var(--color-ink);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  transform: none;
+}
+
+.app-header .site-nav-link:hover,
+.app-header .site-nav-link-active,
+.app-header .admin-menu[open] > summary,
+.app-header .admin-menu > summary:hover,
+.app-header .media-nav-menu[open] > summary,
+.app-header .media-nav-menu.is-active > summary,
+.app-header .media-nav-menu > summary:hover {
+  background: var(--color-orange);
+  box-shadow: none;
+  color: var(--color-ink);
+  transform: none;
+}
+
+.site-nav-separator {
+  width: 1px;
+  height: 22px;
+  margin: 0 4px;
+  background: color-mix(in srgb, var(--color-ink) 32%, transparent);
+}
+
+.app-header .demo-nav-link {
+  min-width: 0;
+  border-style: solid;
+}
+
+@media (max-width: 900px) {
+  .app-header .site-header {
+    width: min(100% - 24px, 1240px);
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding-block: 9px;
+  }
+
+  .app-header .brand-lockup {
+    justify-content: flex-start;
+  }
+
+  .app-header .site-nav {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .app-header .site-nav-link,
+  .app-header .admin-menu > summary,
+  .app-header .media-nav-menu > summary {
+    flex: 0 0 auto;
+  }
+}
+
+
+/* Demo tester menu — compact, legible, and isolated from the Media dropdown. */
+.app-header .admin-menu-popover {
+  width: 14rem;
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+.admin-menu-divider-thin {
+  height: 0;
+  background: transparent;
 }

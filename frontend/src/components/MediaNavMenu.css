@@ -26,7 +26,7 @@
 
 .media-nav-popover {
   position: absolute;
-  z-index: 140;
+  z-index: 260;
   top: calc(100% + 0.55rem);
   left: 0;
   display: grid;
@@ -68,4 +68,20 @@
     left: 50%;
     transform: translateX(-50%);
   }
+}
+
+/* App-header behavior is intentionally flat, matching Today. */
+.app-header .media-nav-menu.is-active > summary,
+.app-header .media-nav-menu[open] > summary {
+  background: var(--color-orange);
+  box-shadow: none;
+  transform: none;
+}
+
+
+/* Demo/public-test navigation: only one header dropdown can own the layer at a time. */
+.app-header .media-nav-popover {
+  top: calc(100% + 0.35rem);
+  min-width: 12.75rem;
+  box-shadow: 4px 4px 0 var(--color-ink);
 }

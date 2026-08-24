@@ -2,6 +2,7 @@ import type { PoolClient } from "pg";
 import { Router } from "express";
 
 import { pool } from "../db/pool.js";
+import { env } from "../env.js";
 import {
   seedRealisticSampleData,
   type SampleRange,
@@ -271,6 +272,14 @@ async function clearAllTransactionalData(
 }
 
 adminSampleDataRouter.post("/:range", async (request, response) => {
+  if (env.DEMO_SESSIONS_ENABLED) {
+    response.status(403).json({
+      ok: false,
+      error: "Admin sample-data controls are disabled in public demo mode.",
+    });
+    return;
+  }
+
   const rawRange = request.params.range;
 
   if (!isSampleRange(rawRange)) {
@@ -316,6 +325,14 @@ adminSampleDataRouter.post("/:range", async (request, response) => {
 });
 
 adminSampleDataRouter.delete("/", async (_request, response) => {
+  if (env.DEMO_SESSIONS_ENABLED) {
+    response.status(403).json({
+      ok: false,
+      error: "Global reset is disabled in public demo mode. Reset only the current demo workspace.",
+    });
+    return;
+  }
+
   const client = await pool.connect();
 
   try {

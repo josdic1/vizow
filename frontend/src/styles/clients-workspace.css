@@ -810,3 +810,1220 @@
     width: 100%;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Clients directory refresh
+   Search-first, contact-book presentation. Keeps Client data + actions intact.
+   -------------------------------------------------------------------------- */
+
+.clients-page {
+  gap: 14px;
+  max-width: 78rem;
+}
+
+.clients-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 28px;
+  padding: 2px 2px 0;
+}
+
+.clients-hero-copy {
+  min-width: 0;
+}
+
+.clients-hero-copy h1,
+.clients-hero-copy p {
+  margin-bottom: 0;
+}
+
+.clients-hero-copy h1 {
+  margin-top: 5px;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6vw, 5rem);
+  line-height: 0.82;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.clients-hero-copy > p:not(.eyebrow) {
+  max-width: 720px;
+  margin-top: 10px;
+  color: var(--color-ink-soft);
+  font-size: 0.96rem;
+  line-height: 1.42;
+}
+
+.clients-hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(104px, 1fr));
+  min-width: 350px;
+
+  border: 1px solid var(--color-ink);
+  background: color-mix(in srgb, var(--color-paper-soft) 88%, transparent);
+}
+
+.clients-hero-stats > div {
+  display: grid;
+  gap: 8px;
+  min-height: 92px;
+  padding: 12px 15px;
+}
+
+.clients-hero-stats > div + div {
+  border-left: 1px solid color-mix(in srgb, var(--color-ink) 44%, transparent);
+}
+
+.clients-hero-stats span {
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.clients-hero-stats strong {
+  align-self: end;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  line-height: 0.8;
+}
+
+.clients-hero-rule {
+  border-top: 2px solid var(--color-ink);
+}
+
+.clients-directory-shell {
+  overflow: hidden;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-soft);
+}
+
+.clients-directory-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 74px;
+  padding: 12px 14px 12px 16px;
+
+  border-bottom: 2px solid var(--color-ink);
+  border-left: 5px solid var(--color-orange);
+  background: var(--color-paper-soft);
+}
+
+.clients-directory-heading h2,
+.clients-directory-heading p {
+  margin-bottom: 0;
+}
+
+.clients-directory-heading h2 {
+  margin-top: 3px;
+  font-size: clamp(1.45rem, 2.3vw, 2rem);
+  line-height: 1;
+}
+
+.clients-directory-heading .btn {
+  min-height: 44px;
+  padding-inline: 17px;
+}
+
+.clients-findbar {
+  display: grid;
+  grid-template-columns: 158px minmax(280px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+
+  border-bottom: 2px solid var(--color-ink);
+  background: color-mix(in srgb, var(--color-paper) 76%, var(--color-paper-soft));
+}
+
+.clients-find-prompt {
+  display: grid;
+  gap: 2px;
+  padding-left: 2px;
+}
+
+.clients-find-prompt strong {
+  font-size: 0.76rem;
+  font-weight: 950;
+  letter-spacing: 0.03em;
+}
+
+.clients-find-prompt span {
+  color: var(--color-muted);
+  font-size: 0.66rem;
+  line-height: 1.25;
+}
+
+.clients-search {
+  width: 100%;
+}
+
+.clients-search input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 14px;
+
+  border: 2px solid var(--color-ink);
+  border-radius: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.clients-search input::placeholder {
+  color: color-mix(in srgb, var(--color-ink) 52%, transparent);
+}
+
+.clients-search input:focus-visible {
+  outline: 3px solid var(--color-orange);
+  outline-offset: 2px;
+  background: color-mix(in srgb, var(--color-orange) 4%, var(--color-paper));
+}
+
+.clients-filter-tabs {
+  flex-wrap: nowrap;
+}
+
+.clients-filter-tabs button {
+  min-height: 42px;
+  padding: 8px 10px;
+}
+
+.clients-create-panel {
+  gap: 13px;
+  padding: 14px 16px 16px;
+
+  border: 0;
+  border-bottom: 2px solid var(--color-ink);
+  border-left: 5px solid var(--color-orange);
+  background: var(--color-paper);
+}
+
+.clients-panel-heading {
+  align-items: center;
+}
+
+.clients-panel-heading h2 {
+  margin-top: 3px;
+}
+
+.clients-form-grid {
+  gap: 10px 12px;
+}
+
+.clients-form-grid .input {
+  min-height: 40px;
+}
+
+.clients-form-grid .textarea {
+  min-height: 64px;
+}
+
+.clients-property-heading {
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 55%, transparent);
+}
+
+.clients-create-panel > .cluster {
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
+.clients-message,
+.clients-empty {
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--color-ink);
+  background: var(--color-paper);
+}
+
+.clients-directory-content {
+  display: grid;
+  gap: 10px;
+  padding: 11px 12px 12px;
+}
+
+.clients-directory-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+  padding: 0 2px;
+
+  color: var(--color-muted);
+  font-size: 0.64rem;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.clients-directory-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.client-directory-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px 16px;
+  min-width: 0;
+  padding: 13px 14px;
+
+  border: 1px solid var(--color-ink);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.client-directory-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px auto -1px -1px;
+  width: 0;
+  background: var(--color-orange);
+  transition: width 120ms ease;
+}
+
+.client-directory-card:hover,
+.client-directory-card:focus-visible {
+  background: color-mix(in srgb, var(--color-orange) 7%, var(--color-paper));
+  color: var(--color-ink);
+  outline: none;
+}
+
+.client-directory-card:hover::before,
+.client-directory-card:focus-visible::before {
+  width: 5px;
+}
+
+.client-directory-card-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.client-directory-card-head > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.client-directory-card-head strong {
+  font-size: 1.02rem;
+  line-height: 1.1;
+}
+
+.client-directory-open {
+  flex: 0 0 auto;
+  color: var(--color-orange);
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.client-directory-contact {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  min-width: 0;
+
+  color: var(--color-ink-soft);
+  font-size: 0.77rem;
+}
+
+.client-directory-contact span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.client-directory-property,
+.client-directory-updated {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding-top: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 28%, transparent);
+}
+
+.client-directory-property > span,
+.client-directory-updated > span {
+  color: var(--color-orange);
+  font-size: 0.57rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.client-directory-property strong,
+.client-directory-updated strong {
+  font-size: 0.73rem;
+  line-height: 1.3;
+}
+
+.client-directory-updated {
+  justify-items: end;
+  text-align: right;
+}
+
+.clients-status-line {
+  display: inline-flex;
+  color: var(--color-danger);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 980px) {
+  .clients-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .clients-hero-stats {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .clients-findbar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .clients-find-prompt {
+    display: none;
+  }
+
+  .clients-directory-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .clients-hero-copy h1 {
+    font-size: clamp(2.8rem, 18vw, 4rem);
+  }
+
+  .clients-hero-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .clients-hero-stats > div {
+    min-height: 74px;
+    padding: 10px;
+  }
+
+  .clients-hero-stats strong {
+    font-size: 2rem;
+  }
+
+  .clients-directory-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .clients-directory-heading .btn {
+    width: 100%;
+  }
+
+  .clients-findbar {
+    grid-template-columns: 1fr;
+  }
+
+  .clients-filter-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .clients-filter-tabs button {
+    justify-content: center;
+  }
+
+  .client-directory-card {
+    grid-template-columns: 1fr;
+  }
+
+  .client-directory-property,
+  .client-directory-updated {
+    grid-column: 1;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .clients-directory-count {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+}
+
+/* Clients alternative: search-first single-column address book */
+.clients-directory-heading {
+  min-height: 62px;
+  padding: 10px 14px 9px 16px;
+}
+
+.clients-directory-heading h2 {
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+}
+
+.clients-findbar {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  padding: 12px;
+}
+
+.clients-find-prompt {
+  display: none;
+}
+
+.clients-search input {
+  min-height: 56px;
+  padding-inline: 16px;
+  font-size: 1.04rem;
+}
+
+.clients-findbar-add {
+  min-height: 56px;
+  padding-inline: 18px;
+  white-space: nowrap;
+}
+
+.clients-filter-tabs button {
+  min-height: 56px;
+  padding: 8px 11px;
+}
+
+.clients-directory-content {
+  gap: 8px;
+  padding: 9px 10px 11px;
+}
+
+.clients-directory-count {
+  padding: 0 5px;
+}
+
+.clients-directory-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  max-height: min(56vh, 530px);
+  overflow-y: auto;
+  padding: 2px 4px 5px 2px;
+  scrollbar-gutter: stable;
+}
+
+.client-directory-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 190px minmax(185px, 0.8fr) minmax(280px, 1.5fr) 105px 68px;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 10px 12px 10px 15px;
+
+  border: 0;
+  background: color-mix(in srgb, var(--color-paper) 84%, transparent);
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.client-directory-card:nth-child(even) {
+  background: color-mix(in srgb, var(--color-paper-soft) 72%, var(--color-paper));
+}
+
+.client-directory-card::before {
+  content: "";
+  position: absolute;
+  inset: 5px auto 5px 0;
+  width: 3px;
+  background: color-mix(in srgb, var(--color-ink) 18%, transparent);
+  transition: width 120ms ease, background 120ms ease;
+}
+
+.client-directory-card:hover,
+.client-directory-card:focus-visible {
+  background: color-mix(in srgb, var(--color-orange) 8%, var(--color-paper));
+  color: var(--color-ink);
+  outline: 2px solid var(--color-ink);
+  outline-offset: -2px;
+}
+
+.client-directory-card:hover::before,
+.client-directory-card:focus-visible::before {
+  width: 6px;
+  background: var(--color-orange);
+}
+
+.client-directory-identity,
+.client-directory-contact,
+.client-directory-property,
+.client-directory-updated {
+  min-width: 0;
+}
+
+.client-directory-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.client-directory-identity > strong {
+  font-size: 0.98rem;
+  line-height: 1.12;
+}
+
+.client-directory-contact {
+  grid-column: auto;
+  display: grid;
+  gap: 2px;
+  color: var(--color-ink);
+  font-size: 0.72rem;
+}
+
+.client-directory-contact strong {
+  font-size: 0.8rem;
+}
+
+.client-directory-contact span {
+  color: var(--color-ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.client-directory-property,
+.client-directory-updated {
+  display: grid;
+  gap: 2px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.client-directory-property strong {
+  overflow: hidden;
+  font-size: 0.77rem;
+  font-weight: 650;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.client-directory-updated {
+  justify-items: start;
+  text-align: left;
+}
+
+.client-directory-updated > span {
+  color: var(--color-muted);
+  font-size: 0.54rem;
+}
+
+.client-directory-updated strong {
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.client-directory-open {
+  justify-self: end;
+  color: var(--color-orange);
+  font-size: 0.66rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (max-width: 1080px) {
+  .client-directory-card {
+    grid-template-columns: 170px minmax(170px, 0.8fr) minmax(220px, 1.3fr) 64px;
+  }
+
+  .client-directory-updated {
+    display: none;
+  }
+}
+
+@media (max-width: 820px) {
+  .clients-findbar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .clients-filter-tabs {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .clients-directory-grid {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .client-directory-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 5px 10px;
+    min-height: 0;
+    padding: 12px 13px 12px 16px;
+  }
+
+  .client-directory-identity,
+  .client-directory-contact,
+  .client-directory-property {
+    grid-column: 1;
+  }
+
+  .client-directory-open {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+  }
+
+  .client-directory-contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  .client-directory-property strong {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 520px) {
+  .clients-findbar {
+    grid-template-columns: 1fr;
+  }
+
+  .clients-findbar-add,
+  .clients-filter-tabs {
+    grid-column: auto;
+    width: 100%;
+  }
+}
+
+/* Clients refinement: command-first search + quiet directory grid */
+.clients-findbar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
+  background: color-mix(in srgb, var(--color-paper-soft) 78%, var(--color-ink) 2%);
+}
+
+.clients-search {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.clients-search-kicker {
+  padding-left: 2px;
+  color: var(--color-orange);
+  font-size: 0.62rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.clients-search-control {
+  position: relative;
+  display: block;
+}
+
+.clients-search input {
+  min-height: 64px;
+  padding: 0 126px 0 17px;
+  border: 3px solid var(--color-ink);
+  background: var(--color-paper);
+  font-size: 1.08rem;
+  box-shadow: 4px 4px 0 color-mix(in srgb, var(--color-ink) 13%, transparent);
+}
+
+.clients-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.clients-search input:focus-visible {
+  outline: 3px solid var(--color-orange);
+  outline-offset: 3px;
+  background: color-mix(in srgb, white 24%, var(--color-paper));
+}
+
+.clients-search-clear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  min-width: 100px;
+  padding: 0 12px;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--color-ink) 42%, transparent);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.clients-search-clear:hover,
+.clients-search-clear:focus-visible {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  outline: 0;
+}
+
+.clients-findbar-add {
+  min-height: 64px;
+  padding-inline: 20px;
+}
+
+.clients-directory-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 34%, transparent);
+  background: color-mix(in srgb, var(--color-paper) 72%, var(--color-paper-soft));
+}
+
+.clients-directory-tools .clients-filter-tabs button {
+  min-height: 34px;
+  padding: 6px 9px;
+}
+
+.clients-sort-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-height: 34px;
+}
+
+.clients-sort-control > span {
+  margin-right: 8px;
+  color: var(--color-muted);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.clients-sort-control button {
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-ink);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clients-sort-control button + button {
+  border-left: 0;
+}
+
+.clients-sort-control button.is-active {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.clients-directory-content {
+  gap: 6px;
+  padding: 8px 10px 10px;
+}
+
+.clients-directory-columns {
+  display: grid;
+  grid-template-columns: 190px minmax(185px, 0.8fr) minmax(280px, 1.5fr) 105px 68px;
+  gap: 14px;
+  padding: 7px 12px 7px 15px;
+  color: var(--color-muted);
+  font-size: 0.55rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.clients-directory-grid {
+  gap: 0;
+  padding: 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-ink) 28%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 28%, transparent);
+}
+
+.client-directory-card {
+  min-height: 62px;
+  padding: 9px 12px 9px 15px;
+  background: color-mix(in srgb, var(--color-paper) 91%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 18%, transparent);
+}
+
+.client-directory-card:last-child {
+  border-bottom: 0;
+}
+
+.client-directory-card:nth-child(even) {
+  background: color-mix(in srgb, var(--color-paper-soft) 82%, var(--color-paper));
+}
+
+.client-directory-contact,
+.client-directory-property,
+.client-directory-updated,
+.client-directory-open {
+  border-left: 1px solid color-mix(in srgb, var(--color-ink) 13%, transparent);
+  padding-left: 12px;
+}
+
+.client-directory-open {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1080px) {
+  .clients-directory-columns {
+    grid-template-columns: 170px minmax(170px, 0.8fr) minmax(220px, 1.3fr) 64px;
+  }
+
+  .clients-directory-columns span:nth-child(4) {
+    display: none;
+  }
+}
+
+@media (max-width: 820px) {
+  .clients-findbar {
+    grid-template-columns: 1fr;
+  }
+
+  .clients-findbar-add {
+    width: 100%;
+  }
+
+  .clients-directory-tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .clients-sort-control {
+    align-self: flex-start;
+  }
+
+  .clients-directory-columns {
+    display: none;
+  }
+
+  .client-directory-contact,
+  .client-directory-property,
+  .client-directory-updated,
+  .client-directory-open {
+    border-left: 0;
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .clients-search input {
+    min-height: 58px;
+    padding-right: 98px;
+    font-size: 0.94rem;
+  }
+
+  .clients-search-clear {
+    min-width: 78px;
+    padding-inline: 8px;
+  }
+}
+
+/* Clients refinement: approachable view controls + sortable headers */
+.clients-directory-tools {
+  min-height: 46px;
+  padding: 7px 12px;
+}
+
+.clients-view-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.clients-tool-label {
+  color: var(--color-muted);
+  font-size: 0.56rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.clients-most-recent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 9px;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.035em;
+}
+
+.clients-most-recent:hover,
+.clients-most-recent:focus-visible {
+  color: var(--color-orange);
+  outline: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.clients-most-recent span {
+  color: var(--color-orange);
+  font-size: 0.8rem;
+}
+
+.clients-sort-control {
+  display: none;
+}
+
+.clients-directory-columns > button,
+.clients-directory-columns > span {
+  min-width: 0;
+}
+
+.clients-directory-columns > button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: inherit;
+}
+
+.clients-directory-columns > button:hover,
+.clients-directory-columns > button:focus-visible {
+  color: var(--color-ink);
+  outline: 0;
+  text-decoration: underline;
+  text-decoration-color: var(--color-orange);
+  text-underline-offset: 3px;
+}
+
+.clients-directory-columns > button.is-active {
+  color: var(--color-ink);
+}
+
+@media (max-width: 820px) {
+  .clients-directory-tools {
+    align-items: stretch;
+    flex-direction: row;
+  }
+
+  .clients-view-control {
+    flex: 1 1 auto;
+  }
+
+  .clients-most-recent {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .clients-directory-tools {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .clients-view-control {
+    width: 100%;
+  }
+
+  .clients-most-recent {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 1080px) {
+  .clients-directory-columns > :nth-child(4) {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Client detail polish
+   Keep the record operational, but remove the nested-card / empty-space feel.
+   -------------------------------------------------------------------------- */
+
+.client-detail-page {
+  max-width: 72rem;
+  gap: 14px;
+}
+
+.client-detail-page .client-detail-top {
+  align-items: center;
+  padding: 5px 2px 14px;
+  border: 0;
+  border-bottom: 2px solid var(--color-ink);
+  background: transparent;
+}
+
+.client-detail-page .client-detail-top h1 {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: clamp(2.55rem, 5vw, 4.35rem);
+  line-height: 0.84;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+}
+
+.client-detail-page .client-detail-meta {
+  margin-top: 9px;
+  color: var(--color-ink-soft);
+}
+
+.client-detail-page .client-record-section {
+  gap: 12px;
+  padding: 0 0 14px;
+  border: 0;
+  border-bottom: 2px solid var(--color-ink);
+  background: transparent;
+  scroll-margin-top: 126px;
+}
+
+.client-detail-page .client-record-section:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.client-detail-page .client-record-section-heading {
+  min-height: 64px;
+  padding: 10px 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 42%, transparent);
+}
+
+.client-detail-page .client-record-section-heading h2 {
+  font-size: clamp(1.45rem, 2.5vw, 2rem);
+  line-height: 1;
+}
+
+/* Contact should read in one glance instead of occupying two stacked cards. */
+.client-detail-page #client-contact .client-record-grid {
+  grid-template-columns: minmax(250px, 0.82fr) minmax(0, 1.58fr);
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 68%, transparent);
+  background: color-mix(in srgb, var(--color-paper) 82%, transparent);
+}
+
+.client-detail-page #client-contact .client-record-card {
+  min-height: 128px;
+  padding: 14px 16px;
+  border: 0;
+  background: transparent;
+}
+
+.client-detail-page #client-contact .client-record-card + .client-record-card {
+  border-left: 1px solid color-mix(in srgb, var(--color-ink) 38%, transparent);
+}
+
+.client-detail-page #client-contact .client-record-wide {
+  grid-column: auto;
+}
+
+.client-detail-page #client-contact .client-record-card h3 {
+  margin: 4px 0 11px;
+  font-size: 1.08rem;
+}
+
+.client-detail-page #client-contact .client-record-card dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+}
+
+.client-detail-page #client-contact .client-record-card:last-child {
+  display: grid;
+  align-content: center;
+}
+
+.client-detail-page #client-contact .client-record-card:last-child p:last-child {
+  max-width: 760px;
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+/* Property + job rows are the working objects; keep those bounded and obvious. */
+.client-detail-page .client-property-card,
+.client-detail-page .client-activity-row {
+  min-height: 74px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 72%, transparent);
+  background: color-mix(in srgb, var(--color-paper) 86%, transparent);
+}
+
+.client-detail-page .client-properties-list,
+.client-detail-page .client-activity-list {
+  gap: 8px;
+}
+
+.client-detail-page .client-property-card:hover,
+.client-detail-page .client-activity-row:hover {
+  background: color-mix(in srgb, var(--color-orange) 5%, var(--color-paper));
+}
+
+.client-detail-page .client-property-card-heading p,
+.client-detail-page .client-activity-row p {
+  color: var(--color-ink-soft);
+}
+
+.client-detail-page .client-record-actions .btn {
+  min-height: 38px;
+}
+
+@media (max-width: 760px) {
+  .client-detail-page .client-detail-top {
+    align-items: stretch;
+    padding: 4px 0 12px;
+  }
+
+  .client-detail-page #client-contact .client-record-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .client-detail-page #client-contact .client-record-card + .client-record-card {
+    border-top: 1px solid color-mix(in srgb, var(--color-ink) 38%, transparent);
+    border-left: 0;
+  }
+
+  .client-detail-page #client-contact .client-record-card dl {
+    grid-template-columns: 1fr;
+  }
+}

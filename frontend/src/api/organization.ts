@@ -3,6 +3,13 @@ import {
   type Organization,
 } from "@vizow/shared";
 
+export class DemoSessionRequiredError extends Error {
+  constructor() {
+    super("A private Vizow demo session is required.");
+    this.name = "DemoSessionRequiredError";
+  }
+}
+
 export async function fetchOrganization(
   signal?: AbortSignal,
 ): Promise<Organization> {
@@ -15,6 +22,10 @@ export async function fetchOrganization(
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new DemoSessionRequiredError();
+    }
+
     throw new Error(
       `Failed to load organization. HTTP ${response.status}.`,
     );

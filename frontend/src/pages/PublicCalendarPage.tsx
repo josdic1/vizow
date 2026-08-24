@@ -223,7 +223,10 @@ export function PublicCalendarPage() {
               })}
             </div>
 
-            <aside className="public-calendar-detail" aria-live="polite">
+            <aside
+              className={`public-calendar-detail ${selectedDay ? "has-selection" : "is-empty"}`}
+              aria-live="polite"
+            >
               {selectedDay ? (
                 <>
                   <div>
@@ -250,14 +253,11 @@ export function PublicCalendarPage() {
                   </Link>
                 </>
               ) : (
-                <>
-                  <div>
-                    <p className="eyebrow">Reference only</p>
-                    <h2>Pick a day</h2>
-                    <p>Availability helps set expectations. Your request is still reviewed before any visit is scheduled.</p>
-                  </div>
-                  <Link className="btn btn-primary" to="/request">Send a request</Link>
-                </>
+                <div>
+                  <p className="eyebrow">Reference only</p>
+                  <h2>Choose a day</h2>
+                  <p>Select any date above to see what the contractor is showing publicly. You can still send a request either way.</p>
+                </div>
               )}
             </aside>
           </>

@@ -5,7 +5,7 @@ import {
 import { Router } from "express";
 
 import { pool } from "../db/pool.js";
-import { env } from "../env.js";
+import { getOrganizationSlug } from "../organizationScope.js";
 
 export const organizationRouter = Router();
 
@@ -24,7 +24,7 @@ organizationRouter.get("/", async (_request, response) => {
         FROM organizations
         WHERE slug = $1
       `,
-      [env.ORGANIZATION_SLUG],
+      [getOrganizationSlug()],
     );
 
     const row = result.rows[0];

@@ -14,7 +14,7 @@ import { Router } from "express";
 import { z } from "zod";
 
 import { pool } from "../db/pool.js";
-import { env } from "../env.js";
+import { getOrganizationSlug } from "../organizationScope.js";
 
 export const calendarRouter = Router();
 export const publicCalendarRouter = Router();
@@ -99,7 +99,7 @@ async function loadSettings(): Promise<PublicCalendarSettings> {
       LEFT JOIN public_calendar_settings settings
         ON settings.organization_id = organization.id
     `,
-    [env.ORGANIZATION_SLUG],
+    [getOrganizationSlug()],
   );
 
   const row = result.rows[0];
@@ -170,7 +170,7 @@ async function loadPublicDays(from: string, to: string): Promise<PublicCalendarD
         ON bookings.date = visible_dates.date
       ORDER BY visible_dates.date ASC
     `,
-    [env.ORGANIZATION_SLUG, from, to],
+    [getOrganizationSlug(), from, to],
   );
 
   return result.rows.map(prepareDay);
@@ -278,7 +278,7 @@ calendarRouter.put("/public/settings", async (request, response) => {
           updated_at = now()
         RETURNING enabled
       `,
-      [env.ORGANIZATION_SLUG, input.enabled],
+      [getOrganizationSlug(), input.enabled],
     );
 
     const row = result.rows[0];
@@ -335,7 +335,7 @@ calendarRouter.put("/public/:date", async (request, response) => {
           public_note = NULL,
           updated_at = now()
       `,
-      [env.ORGANIZATION_SLUG, dateResult.data, inputResult.data.status],
+      [getOrganizationSlug(), dateResult.data, inputResult.data.status],
     );
 
     if (result.rowCount === 0) {
@@ -375,7 +375,7 @@ calendarRouter.delete("/public/:date", async (request, response) => {
           AND organization.slug = $1
           AND override.date = $2::date
       `,
-      [env.ORGANIZATION_SLUG, dateResult.data],
+      [getOrganizationSlug(), dateResult.data],
     );
 
     const days = await loadPublicDays(dateResult.data, dateResult.data);

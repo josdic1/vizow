@@ -14,7 +14,7 @@ import {
 import { Router } from "express";
 
 import { pool } from "../db/pool.js";
-import { env } from "../env.js";
+import { getOrganizationSlug } from "../organizationScope.js";
 
 export const jobVowsRouter = Router();
 
@@ -196,7 +196,7 @@ jobVowsRouter.post(
           `,
           [
             jobIdResult.data,
-            env.ORGANIZATION_SLUG,
+            getOrganizationSlug(),
           ],
         );
 

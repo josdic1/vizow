@@ -152,3 +152,283 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* 2026-08-17 — compact context instrument.
+   The rail is useful context, not a second page header. Keep it aligned to
+   the application shell and fit the explanation beside the state instead
+   of consuming another full-width row. */
+@media (min-width: 901px) {
+  .context-rail:not(.context-rail--semantic) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+    align-items: stretch;
+    column-gap: 0;
+    padding-inline: max(16px, calc((100vw - var(--max-page)) / 2));
+    border-top: 0;
+    border-bottom-width: 2px;
+  }
+
+  .context-rail:not(.context-rail--semantic) .context-rail__steps {
+    grid-template-columns: 1.15fr 0.78fr 1.05fr 0.68fr;
+    min-width: 0;
+    border-left: 1px solid rgba(42, 27, 20, 0.45);
+  }
+
+  .context-rail:not(.context-rail--semantic) .context-rail__item {
+    min-height: 42px;
+    padding: 6px 10px;
+    border-right-color: rgba(42, 27, 20, 0.45);
+  }
+
+  .context-rail:not(.context-rail--semantic) .context-rail__label {
+    margin-bottom: 2px;
+    font-size: 7px;
+    letter-spacing: 0.15em;
+  }
+
+  .context-rail:not(.context-rail--semantic) .context-rail__value {
+    font-size: 12px;
+    line-height: 1.1;
+  }
+
+  .context-rail:not(.context-rail--semantic) .context-rail__item--active::after {
+    height: 3px;
+  }
+
+  .context-rail:not(.context-rail--semantic) .context-rail__message {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    margin: 0;
+    padding: 6px 10px;
+    border-top: 0;
+    border-right: 1px solid rgba(42, 27, 20, 0.45);
+    border-left: 1px solid rgba(42, 27, 20, 0.45);
+    color: var(--color-muted);
+    font-size: 9px;
+    font-weight: 650;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Semantic screens use the same compact shell instead of the taller
+     58px treatment, while preserving their Work / Client / Status / Next model. */
+  .context-rail--semantic {
+    padding-inline: max(16px, calc((100vw - var(--max-page)) / 2));
+    background: var(--color-paper);
+  }
+
+  .context-rail--semantic .context-rail__steps {
+    grid-template-columns: 1.3fr 0.95fr 0.8fr 1fr;
+    border-left: 1px solid rgba(42, 27, 20, 0.45);
+    border-right: 1px solid rgba(42, 27, 20, 0.45);
+  }
+
+  .context-rail--semantic .context-rail__item {
+    min-height: 42px;
+    padding: 6px 10px;
+  }
+
+  .context-rail--semantic .context-rail__label {
+    margin-bottom: 2px;
+    font-size: 7px;
+  }
+
+  .context-rail--semantic .context-rail__value {
+    font-size: 12px;
+  }
+
+  .context-rail--semantic .context-rail__message {
+    width: 100%;
+    max-width: var(--max-page);
+    margin: 0 auto;
+    padding: 4px 10px 5px;
+    font-size: 9px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   TODAY-CANONICAL CONTEXT INSTRUMENT
+   Keep context useful, but make it a compact instrument inside the same shell
+   as the page rather than a second full-width header.
+   -------------------------------------------------------------------------- */
+.context-rail,
+.context-rail--semantic {
+  position: relative;
+  top: auto;
+  border-top: 0;
+  border-bottom: 2px solid var(--color-ink);
+  background: color-mix(in srgb, var(--color-paper) 96%, transparent);
+}
+
+.context-rail__inner {
+  width: min(1240px, calc(100% - 40px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 330px);
+  border-right: 1px solid color-mix(in srgb, var(--color-ink) 34%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--color-ink) 34%, transparent);
+}
+
+.context-rail__steps,
+.context-rail--semantic .context-rail__steps {
+  grid-template-columns: 1.2fr 0.82fr 1.05fr 0.72fr;
+  min-width: 0;
+  border: 0;
+}
+
+.context-rail__item,
+.context-rail--semantic .context-rail__item {
+  min-height: 40px;
+  padding: 6px 10px 5px;
+  border-right: 1px solid color-mix(in srgb, var(--color-ink) 34%, transparent);
+}
+
+.context-rail__label,
+.context-rail--semantic .context-rail__label {
+  margin-bottom: 2px;
+  color: var(--color-muted);
+  font-size: 0.43rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  line-height: 1;
+}
+
+.context-rail__value,
+.context-rail--semantic .context-rail__value {
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.12;
+}
+
+.context-rail__item--active::after {
+  height: 3px;
+}
+
+.context-rail__message,
+.context-rail--semantic .context-rail__message {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  margin: 0;
+  padding: 6px 10px;
+  border: 0;
+  color: var(--color-muted);
+  font-size: 0.55rem;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-rail--semantic .context-rail__steps {
+  grid-template-columns: 1.25fr 0.95fr 0.8fr 1fr;
+}
+
+.context-rail--semantic .context-rail__item:nth-child(3) .context-rail__value {
+  color: var(--color-success);
+}
+
+.context-rail--semantic .context-rail__item:nth-child(4) .context-rail__value {
+  color: var(--color-orange);
+}
+
+@media (max-width: 900px) {
+  .context-rail__inner {
+    width: min(100% - 24px, 1240px);
+    display: block;
+  }
+
+  .context-rail__steps,
+  .context-rail--semantic .context-rail__steps {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .context-rail__item:nth-child(2),
+  .context-rail--semantic .context-rail__item:nth-child(2) {
+    border-right: 0;
+  }
+
+  .context-rail__item:nth-child(-n + 2),
+  .context-rail--semantic .context-rail__item:nth-child(-n + 2) {
+    border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 34%, transparent);
+  }
+
+  .context-rail__message,
+  .context-rail--semantic .context-rail__message {
+    border-top: 1px solid color-mix(in srgb, var(--color-ink) 28%, transparent);
+    white-space: normal;
+  }
+}
+
+@media (min-width: 901px) {
+  .context-rail:not(.context-rail--semantic) {
+    display: block;
+    padding-inline: 0;
+  }
+
+  .context-rail:not(.context-rail--semantic) .context-rail__steps {
+    grid-template-columns: 1.2fr 0.82fr 1.05fr 0.72fr;
+    border-left: 0;
+  }
+
+  .context-rail:not(.context-rail--semantic) .context-rail__item {
+    min-height: 40px;
+    padding: 6px 10px 5px;
+  }
+
+  .context-rail:not(.context-rail--semantic) .context-rail__label {
+    margin-bottom: 2px;
+    font-size: 0.43rem;
+    letter-spacing: 0.16em;
+  }
+
+  .context-rail:not(.context-rail--semantic) .context-rail__value {
+    font-size: 0.72rem;
+    line-height: 1.12;
+  }
+
+  .context-rail:not(.context-rail--semantic) .context-rail__message {
+    display: flex;
+    min-width: 0;
+    margin: 0;
+    padding: 6px 10px;
+    border: 0;
+    font-size: 0.55rem;
+    line-height: 1.25;
+  }
+
+  .context-rail--semantic {
+    padding-inline: 0;
+  }
+
+  .context-rail--semantic .context-rail__steps {
+    grid-template-columns: 1.25fr 0.95fr 0.8fr 1fr;
+    border: 0;
+  }
+
+  .context-rail--semantic .context-rail__item {
+    min-height: 40px;
+    padding: 6px 10px 5px;
+  }
+
+  .context-rail--semantic .context-rail__label {
+    margin-bottom: 2px;
+    font-size: 0.43rem;
+  }
+
+  .context-rail--semantic .context-rail__value {
+    font-size: 0.72rem;
+  }
+
+  .context-rail--semantic .context-rail__message {
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 6px 10px;
+    font-size: 0.55rem;
+  }
+}

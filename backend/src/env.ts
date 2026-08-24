@@ -57,6 +57,18 @@ const environmentSchema = z.object({
       /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
       "ORGANIZATION_SLUG must be lowercase words separated by hyphens.",
     ),
+
+  DEMO_SESSIONS_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+
+  DEMO_SESSION_HOURS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(168)
+    .default(72),
 });
 
 export const env = environmentSchema.parse(process.env);

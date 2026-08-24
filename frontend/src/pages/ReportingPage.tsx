@@ -2,6 +2,7 @@ import type { Job, MediaLibraryItem } from "@vizow/shared";
 import { useEffect, useMemo, useState } from "react";
 import { fetchJobs } from "../api/jobs";
 import { fetchMediaLibrary } from "../api/media";
+import { WorkspaceHero } from "../components/WorkspaceHero";
 import { AppLayout } from "../layouts/AppLayout";
 import "../styles/reporting-data.css";
 
@@ -370,23 +371,28 @@ export function ReportingPage() {
       next={`${filtered.length} Jobs`}
     >
       <div className="page">
-        <div className="shell insights-page reporting-v3">
-          <header className="insights-title reporting-v3-title">
-            <p className="eyebrow">Media · Reporting</p>
-            <h1>Find exactly the work you need.</h1>
-            <p>Filter the Job record live, choose what facts matter, then export the result or turn selected work into a real document.</p>
-          </header>
+        <div className="shell workspace-canonical-page insights-page reporting-v3 reporting-canonical-page">
+          <WorkspaceHero
+            eyebrow="Media · Reporting"
+            title="Reporting"
+            description="Filter the Job record live, choose what facts matter, then export the result or turn selected work into a real document."
+            metrics={[
+              { label: "Jobs in view", value: filtered.length },
+              { label: "Selected", value: selectedJobs.length },
+              { label: "Fields", value: selectedFields.length },
+            ]}
+          />
 
           {state.status === "loading" ? <div className="panel">Loading reporting data…</div> : null}
           {state.status === "error" ? <div className="notice notice-error">{state.message}</div> : null}
 
           {state.status === "ready" ? (
             <>
-              <section className="panel reporting-v3-filters">
+              <section className="panel reporting-v3-filters reporting-canonical-surface">
                 <div className="reporting-v3-filter-head">
                   <div>
-                    <p className="eyebrow">Filters</p>
-                    <strong>{filtered.length} Job{filtered.length === 1 ? "" : "s"} found</strong>
+                    <p className="eyebrow">Filter</p>
+                    <strong>Narrow the work</strong>
                     <span>Results update immediately as you narrow the work.</span>
                   </div>
                   <button className="btn" type="button" onClick={clearFilters}>Clear filters</button>
@@ -405,7 +411,7 @@ export function ReportingPage() {
                 </div>
               </section>
 
-              <section className="report-preview panel reporting-v3-results">
+              <section className="report-preview panel reporting-v3-results reporting-canonical-surface">
                 <div className="reporting-v3-results-head">
                   <div>
                     <p className="eyebrow">Results</p>

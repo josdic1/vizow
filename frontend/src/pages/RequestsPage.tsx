@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import type { Client, Request as WorkRequest, ReviewRequestInput } from "@vizow/shared";
 
 import { createClient, fetchClients } from "../api/clients";
 import { approveRequest, declineRequest, fetchRequests, reviewRequest } from "../api/requests";
+import { fetchDemoSessionStatus } from "../api/demoSession";
 import { InternalRequestComposer } from "../components/InternalRequestComposer";
+import { WorkspaceHero } from "../components/WorkspaceHero";
+import "../styles/clients-workspace.css";
 import { AppLayout } from "../layouts/AppLayout";
 
 type PageState =
@@ -62,17 +65,28 @@ export function InboxPage() {
   const [internalRequestOpen, setInternalRequestOpen] = useState(
     () => new URLSearchParams(location.search).get("compose") === "request",
   );
+  const [jobComposerOpen, setJobComposerOpen] = useState(false);
+  const [privateDemo, setPrivateDemo] = useState(false);
+  const requestListRef = useRef<HTMLElement | null>(null);
+  const detailRef = useRef<HTMLDivElement | null>(null);
+  const focusDetailOnOpenRef = useRef(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchDemoSessionStatus(controller.signal)
+      .then((status) => setPrivateDemo(status.enabled && status.active))
+      .catch(() => setPrivateDemo(false));
+
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
     Promise.all([fetchRequests(controller.signal), fetchClients(controller.signal, true)])
       .then(([requests, clients]) => {
         setState({ status: "ready", requests, clients });
-        setSelectedId(
-          requests.find((item) => item.status === "open")?.id ??
-          requests.find((item) => item.status !== "open")?.id ??
-          null,
-        );
+        setSelectedId(null);
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
@@ -91,19 +105,44 @@ export function InboxPage() {
     setDraft(selected ? requestDraft(selected) : null);
     setMessage(null);
     setClientPickerOpen(false);
+    setJobComposerOpen(false);
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!focusDetailOnOpenRef.current || !selectedId || !draft) return;
+    focusDetailOnOpenRef.current = false;
+    window.requestAnimationFrame(() => {
+      detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [selectedId, draft]);
+
+  function openRequest(requestId: string) {
+    focusDetailOnOpenRef.current = true;
+    setSelectedId(requestId);
+  }
+
+  function returnToRequests() {
+    setSelectedId(null);
+    window.requestAnimationFrame(() => {
+      requestListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
   const visibleRequests = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return requests.filter((request) => {
-      const belongsInView = view === "new"
-        ? request.status === "open"
-        : request.status !== "open";
-      if (!belongsInView) return false;
-      if (!needle) return true;
-      return [request.submittedName, request.clientName, request.title, request.description, requestAddress(request)]
-        .filter(Boolean).join(" ").toLowerCase().includes(needle);
-    });
+    return requests
+      .filter((request) => {
+        const belongsInView = view === "new"
+          ? request.status === "open"
+          : request.status !== "open";
+        if (!belongsInView) return false;
+        if (!needle) return true;
+        return [request.submittedName, request.clientName, request.title, request.description, requestAddress(request)]
+          .filter(Boolean).join(" ").toLowerCase().includes(needle);
+      })
+      .sort((first, second) =>
+        new Date(second.submittedAt).getTime() - new Date(first.submittedAt).getTime(),
+      );
   }, [requests, search, view]);
 
   const draftClient = draft?.clientId
@@ -189,7 +228,7 @@ export function InboxPage() {
       replaceRequest(reviewed);
       const result = await approveRequest(selected.id);
       replaceRequest(result.request);
-      navigate(`/jobs/${result.job.id}`);
+      navigate(`/app/jobs/${result.job.id}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to create Job.");
     } finally {
@@ -216,6 +255,7 @@ export function InboxPage() {
     }
   }
 
+
   return (
     <AppLayout
       work={
@@ -231,9 +271,7 @@ export function InboxPage() {
       client={
         internalRequestOpen
           ? "Internal intake"
-          : selected?.submittedName ??
-            selected?.clientName ??
-            "—"
+          : selected?.submittedName ?? selected?.clientName ?? "—"
       }
       status={
         internalRequestOpen
@@ -248,7 +286,7 @@ export function InboxPage() {
         internalRequestOpen
           ? "Save to Inbox"
           : selected?.status === "open"
-            ? "Review → Create Job"
+            ? jobComposerOpen ? "Create Job" : "Review request"
             : selected?.status === "approved"
               ? "Open Job"
               : selected?.status === "declined"
@@ -259,310 +297,450 @@ export function InboxPage() {
       }
       sections={[{ id: "inbox-work", label: "Inbox" }]}
     >
-      <div className="page requests-inbox-page">
-        <div className="admin-page">
-          <header className="request-inbox-titlebar">
-            <div>
-              <p className="eyebrow">Incoming Work</p>
-              <h1>Inbox</h1>
-            </div>
-            <div className="request-inbox-titlebar-meta">
-              <strong>{openCount} new</strong>
-              <span>Review the request, then create the Job.</span>
-            </div>
-          </header>
+      <div className="page requests-inbox-page inbox-clean-page">
+        <div className="admin-page clients-page workspace-canonical-page inbox-clean-shell">
+          {internalRequestOpen ? (
+            <>
+              <header className="inbox-clean-hero inbox-clean-hero-compose">
+                <div>
+                  <p className="eyebrow">Incoming Work</p>
+                  <h1>New Request</h1>
+                  <p>Log a phone call, text, or walk-in. Saving puts it in Inbox for review; it does not create a Job.</p>
+                </div>
+                <button className="btn" type="button" onClick={() => setInternalRequestOpen(false)}>
+                  ← Back to Inbox
+                </button>
+              </header>
 
-          <div className="request-inbox-toolbar">
-            <div className="admin-filter-tabs" aria-label="Inbox view">
-              <button
-                className={view === "new" ? "is-active" : undefined}
-                type="button"
-                onClick={() => changeView("new")}
-              >
-                New <strong>{openCount}</strong>
-              </button>
-              <button
-                className={view === "history" ? "is-active" : undefined}
-                type="button"
-                onClick={() => changeView("history")}
-              >
-                History <strong>{historyCount}</strong>
-              </button>
-            </div>
-            <input
-              className="input request-inbox-search"
-              aria-label="Search Inbox"
-              placeholder="Name, work, address…"
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-            <div className="request-inbox-toolbar-actions">
-              <button
-                className="btn btn-primary"
-                type="button"
-                onClick={() => setInternalRequestOpen(true)}
-              >
-                + New Request
-              </button>
-              <Link className="btn" to="/request">Open Public Form</Link>
-            </div>
-          </div>
+              {state.status === "loading" && <div className="notice">Loading Inbox…</div>}
+              {state.status === "error" && <div className="notice notice-error">{state.message}</div>}
 
-          {state.status === "loading" && <div className="notice">Loading Inbox…</div>}
-          {state.status === "error" && <div className="notice notice-error">{state.message}</div>}
+              {state.status === "ready" && (
+                <section className="inbox-clean-compose" id="inbox-work">
+                  <InternalRequestComposer
+                    clients={clients}
+                    onClose={() => setInternalRequestOpen(false)}
+                    onCreated={(request, createdClient) => {
+                      setState((current) => current.status === "ready"
+                        ? {
+                            ...current,
+                            requests: [request, ...current.requests],
+                            clients: createdClient
+                              ? [...current.clients, createdClient].sort((a, b) => a.name.localeCompare(b.name))
+                              : current.clients,
+                          }
+                        : current);
+                      setView("new");
+                      setSearch("");
+                      setSelectedId(request.id);
+                      setInternalRequestOpen(false);
+                    }}
+                  />
+                </section>
+              )}
+            </>
+          ) : (
+            <>
+              <WorkspaceHero
+                eyebrow="Incoming Work"
+                title="Inbox"
+                description="Type anything you remember — client, work, or service address. A Request stays a Request until you decide to turn it into a Job."
+                metrics={[
+                  { label: "New", value: openCount },
+                  { label: "History", value: historyCount },
+                  { label: "Total", value: requests.length },
+                ]}
+              />
 
-          {state.status === "ready" && (
-            <div className="request-inbox-shell" id="inbox-work">
-              <aside className="request-inbox-list" aria-label="Inbox items">
-                {visibleRequests.map((request) => (
-                  <button
-                    className={request.id === selectedId ? "request-inbox-row is-active" : "request-inbox-row"}
-                    key={request.id}
-                    type="button"
-                    onClick={() => setSelectedId(request.id)}
-                  >
-                    <span className={`request-inbox-dot request-inbox-dot-${request.status}`} />
-                    <span>
-                      <strong>{request.submittedName ?? request.clientName ?? "Unknown sender"}</strong>
-                      <span>{request.title}</span>
-                    </span>
-                    <small>{dateTime(request.submittedAt)}</small>
-                  </button>
-                ))}
-                {visibleRequests.length === 0 && (
-                  <div className="admin-empty-state">
-                    {view === "new" ? "Inbox is clear." : "No resolved items."}
+              {privateDemo && (
+                <section className="inbox-demo-start" aria-label="Private demo starting point">
+                  <div>
+                    <span>PRIVATE DEMO · START HERE</span>
+                    <strong>Two Requests are waiting. Open one and turn it into a Job.</strong>
+                    <p>One is a brand-new Client. One already exists. Review the Request, confirm the Client, then Create Job.</p>
                   </div>
-                )}
-              </aside>
+                  <Link to="/demo">GUIDED WALKTHROUGH →</Link>
+                </section>
+              )}
 
-              {internalRequestOpen ? (
-                <InternalRequestComposer
-                  clients={clients}
-                  onClose={() => setInternalRequestOpen(false)}
-                  onCreated={(request, createdClient) => {
-                    setState((current) => current.status === "ready"
-                      ? {
-                          ...current,
-                          requests: [request, ...current.requests],
-                          clients: createdClient
-                            ? [...current.clients, createdClient].sort((a, b) => a.name.localeCompare(b.name))
-                            : current.clients,
-                        }
-                      : current);
-                    setView("new");
-                    setSearch("");
-                    setSelectedId(request.id);
-                    setInternalRequestOpen(false);
-                  }}
-                />
-              ) : (
-              <section className="request-review-panel">
-                {!selected || !draft ? (
-                  <div className="admin-empty-state">
-                    {view === "new" ? "Nothing needs review." : "Select an item from History."}
-                  </div>
-                ) : (
-                  <>
-                    <header className="request-message-header">
-                      <div className="request-message-heading">
-                        <p className="eyebrow">Incoming work</p>
-                        <h2>{selected.title}</h2>
-                        <p>{selected.submittedName ?? selected.clientName ?? "Unknown sender"}</p>
-                      </div>
-                      <div className="request-message-meta">
-                        <span className={`admin-status-chip request-status-${selected.status}`}>
-                          {inboxStatusLabel(selected)}
-                        </span>
-                        <small>{dateTime(selected.submittedAt)}</small>
-                      </div>
-                    </header>
+              {state.status === "loading" && <div className="notice">Loading Inbox…</div>}
+              {state.status === "error" && <div className="notice notice-error">{state.message}</div>}
 
-                    <div className="request-evidence-grid">
+              {state.status === "ready" && (
+                <div className="inbox-clean-workspace" id="inbox-work">
+                  <section ref={requestListRef} className="clients-directory-shell" aria-label="Incoming requests">
+                    <div className="clients-directory-heading">
                       <div>
-                        <span>Requester</span>
-                        <strong>{selected.submittedName ?? selected.clientName ?? "Unknown sender"}</strong>
-                        <small>{selected.preferredContact ? `Prefers ${selected.preferredContact}` : "Contact information"}</small>
-                      </div>
-                      <div>
-                        <span>Contact</span>
-                        <strong>{selected.submittedPhone ?? selected.submittedEmail ?? "Not provided"}</strong>
-                        {selected.submittedPhone && selected.submittedEmail ? <small>{selected.submittedEmail}</small> : null}
-                      </div>
-                      <div className="request-evidence-address">
-                        <span>Service address</span>
-                        <strong>{requestAddress(selected) || "Not provided"}</strong>
-                        {selected.preferredTiming ? <small>{selected.preferredTiming}</small> : null}
+                        <p className="eyebrow">Requests</p>
+                        <h2>{view === "new" ? "New requests" : "Request history"}</h2>
                       </div>
                     </div>
 
-                    <section className="request-evidence-message" aria-label="Incoming request message">
-                      <p className="eyebrow">Request</p>
-                      <p>{selected.description ?? "No message provided."}</p>
-                    </section>
+                    <div className="clients-findbar">
+                      <label className="clients-search">
+                        <span className="clients-search-kicker">Find a request</span>
+                        <span className="clients-search-control">
+                          <input
+                            aria-label="Search Inbox"
+                            placeholder="Type a client, work item, or service address…"
+                            type="search"
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Escape" && search) {
+                                event.preventDefault();
+                                setSearch("");
+                              }
+                            }}
+                          />
+                          {search && (
+                            <button
+                              className="clients-search-clear"
+                              type="button"
+                              onClick={() => setSearch("")}
+                            >
+                              Clear ×
+                            </button>
+                          )}
+                        </span>
+                      </label>
 
-                    {selected.media.length > 0 && (
-                      <div className="request-photo-block">
-                        <div className="request-photo-heading">
-                          <p className="eyebrow">Photos</p>
-                          <span>{selected.media.length} attached</span>
-                        </div>
-                        <div className="request-photo-strip">
-                          {selected.media.map((photo) => (
-                            <a href={photo.url} key={photo.id} target="_blank" rel="noreferrer">
-                              <img src={photo.url} alt={photo.originalFilename ?? "Incoming work photo"} />
-                            </a>
-                          ))}
+                      <div className="inbox-directory-actions">
+                        <button
+                          className="btn btn-primary clients-findbar-add"
+                          type="button"
+                          onClick={() => {
+                            setView("new");
+                            setSearch("");
+                            setInternalRequestOpen(true);
+                          }}
+                        >
+                          + New Request
+                        </button>
+                        <Link className="btn clients-findbar-add inbox-public-form-action" to="/request">
+                          Public Form ↗
+                        </Link>
+                      </div>
+                    </div>
+
+                    <div className="clients-directory-tools">
+                      <div className="clients-view-control" aria-label="Inbox view">
+                        <span className="clients-tool-label">View</span>
+                        <div className="admin-filter-tabs clients-filter-tabs" aria-label="Inbox view filter">
+                          <button
+                            aria-pressed={view === "new"}
+                            className={view === "new" ? "is-active" : undefined}
+                            type="button"
+                            onClick={() => changeView("new")}
+                          >
+                            <span>New</span>
+                            <strong>{openCount}</strong>
+                          </button>
+                          <button
+                            aria-pressed={view === "history"}
+                            className={view === "history" ? "is-active" : undefined}
+                            type="button"
+                            onClick={() => changeView("history")}
+                          >
+                            <span>History</span>
+                            <strong>{historyCount}</strong>
+                          </button>
                         </div>
                       </div>
-                    )}
 
-                    {selected.status === "open" ? (
-                      <form className="request-approval-form" onSubmit={(event) => void approve(event)}>
-                        <div className="request-approval-heading">
-                          <div>
-                            <p className="eyebrow">Create Job</p>
-                            <h2>Confirm the work</h2>
-                            <p>Keep the incoming request intact. Confirm only what becomes the Job.</p>
-                          </div>
-                          <span className={draftClient ? "request-ready-state is-ready" : "request-ready-state"}>
-                            {draftClient ? "Client ready" : "Client needed"}
-                          </span>
+                      <button
+                        className="clients-most-recent"
+                        type="button"
+                        onClick={() => setSearch("")}
+                      >
+                        Most recent first
+                        <span aria-hidden="true">↓</span>
+                      </button>
+                    </div>
+
+                    <div className="clients-directory-content">
+                      <div className="clients-directory-count">
+                        <span>
+                          {visibleRequests.length} {view === "new" ? "new" : "history"} request{visibleRequests.length === 1 ? "" : "s"}
+                        </span>
+                        <span>
+                          {search.trim() ? `matching “${search.trim()}”` : "Most recently submitted first"}
+                        </span>
+                      </div>
+
+                      {visibleRequests.length === 0 ? (
+                        <div className="clients-empty inbox-directory-empty">
+                          <strong>{view === "new" ? "Inbox clear." : "No history yet."}</strong>
+                          <span>{search ? "Try a different search." : view === "new" ? "New requests will appear here." : "Resolved requests will appear here."}</span>
                         </div>
-
-                        <section className="request-client-choice">
-                          <div className="request-client-choice-copy">
-                            <p className="eyebrow">Client record</p>
-                            {draftClient ? (
-                              <>
-                                <strong>{draftClient.name}</strong>
-                                <span>Existing client selected for this Job.</span>
-                              </>
-                            ) : suggestedClient ? (
-                              <>
-                                <strong>Possible match: {suggestedClient.name}</strong>
-                                <span>{selected.matchReason ?? "Vizow found an existing client that may match this request."}</span>
-                              </>
-                            ) : (
-                              <>
-                                <strong>New client · {selected.submittedName ?? "Unnamed requester"}</strong>
-                                <span>No existing client is linked to this request.</span>
-                              </>
-                            )}
+                      ) : (
+                        <>
+                          <div className="clients-directory-columns" aria-hidden="true">
+                            <span>Client</span>
+                            <span>Request</span>
+                            <span>Service property</span>
+                            <span>Submitted</span>
+                            <span />
                           </div>
 
-                          <div className="request-client-choice-actions">
-                            {!draftClient && suggestedClient ? (
-                              <button
-                                className="btn btn-primary"
-                                disabled={busy !== null}
-                                type="button"
-                                onClick={() => {
-                                  updateDraft("clientId", suggestedClient.id);
-                                  setClientPickerOpen(false);
-                                  setMessage(null);
-                                }}
-                              >
-                                Use {suggestedClient.name}
-                              </button>
-                            ) : null}
+                          <div className="clients-directory-grid">
+                            {visibleRequests.map((request) => {
+                              const sender = request.submittedName ?? request.clientName ?? "Unknown sender";
+                              return (
+                                <button
+                                  className={request.id === selectedId
+                                    ? "client-directory-card inbox-directory-card is-selected"
+                                    : "client-directory-card inbox-directory-card"}
+                                  key={request.id}
+                                  type="button"
+                                  onClick={() => openRequest(request.id)}
+                                >
+                                  <div className="client-directory-identity">
+                                    <strong>{sender}</strong>
+                                  </div>
 
-                            {!draftClient && !suggestedClient ? (
-                              <button
-                                className="btn btn-primary"
-                                disabled={busy !== null}
-                                type="button"
-                                onClick={() => void createClientFromRequest()}
-                              >
-                                {busy === "client" ? "Creating…" : "Create Client"}
-                              </button>
-                            ) : null}
+                                  <div className="client-directory-contact">
+                                    <strong>{request.title}</strong>
+                                    <span>{inboxStatusLabel(request)}</span>
+                                  </div>
 
+                                  <div className="client-directory-property">
+                                    <strong>{requestAddress(request) || request.description?.trim() || "No service address"}</strong>
+                                  </div>
+
+                                  <div className="client-directory-updated">
+                                    <span>Submitted</span>
+                                    <strong>{dateTime(request.submittedAt)}</strong>
+                                  </div>
+
+                                  <span className="client-directory-open">Open →</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </section>
+
+                  {!selected || !draft ? null : (
+                    <div ref={detailRef} className="inbox-clean-detail-focus">
+                      {jobComposerOpen && selected.status === "open" ? (
+                    <form className="inbox-clean-detail inbox-clean-job" onSubmit={(event) => void approve(event)}>
+                      <header className="inbox-clean-detail-head">
+                        <div>
+                          <p className="eyebrow">Create Job</p>
+                          <h2>{selected.title}</h2>
+                          <p>Confirm only what should become the Job. The original Request remains unchanged.</p>
+                        </div>
+                        <button
+                          className="btn"
+                          type="button"
+                          onClick={() => {
+                            setJobComposerOpen(false);
+                            setClientPickerOpen(false);
+                            setMessage(null);
+                          }}
+                        >
+                          ← Request
+                        </button>
+                      </header>
+
+                      <div className="inbox-clean-job-client">
+                        <div>
+                          <span>Client</span>
+                          {draftClient ? (
+                            <><strong>{draftClient.name}</strong><small>Confirmed client record</small></>
+                          ) : suggestedClient ? (
+                            <><strong>{suggestedClient.name}</strong><small>{selected.matchReason ?? "Possible existing client match"}</small></>
+                          ) : (
+                            <><strong>{selected.submittedName ?? "Client needed"}</strong><small>Choose or create a Client before creating the Job.</small></>
+                          )}
+                        </div>
+                        <div className="inbox-clean-inline-actions">
+                          {!draftClient && suggestedClient ? (
                             <button
-                              className="btn"
+                              className="btn btn-primary"
                               disabled={busy !== null}
                               type="button"
-                              onClick={() => setClientPickerOpen((current) => !current)}
-                            >
-                              {clientPickerOpen ? "Close Client List" : draftClient ? "Change Client" : "Choose Another"}
-                            </button>
-                          </div>
-                        </section>
-
-                        {clientPickerOpen ? (
-                          <label className="field request-client-picker">
-                            Choose existing client
-                            <select
-                              className="select"
-                              value={draft.clientId}
-                              onChange={(event) => {
-                                updateDraft("clientId", event.target.value);
-                                if (event.target.value) setClientPickerOpen(false);
+                              onClick={() => {
+                                updateDraft("clientId", suggestedClient.id);
+                                setClientPickerOpen(false);
+                                setMessage(null);
                               }}
                             >
-                              <option value="">Choose Client…</option>
-                              {clients.map((client) => (
-                                <option key={client.id} value={client.id}>{client.name}</option>
-                              ))}
-                            </select>
-                          </label>
-                        ) : null}
-
-                        <div className="request-approval-grid">
-                          <label className="field request-field-wide">Job title
-                            <input
-                              className="input"
-                              required
-                              value={draft.title}
-                              onChange={(event) => updateDraft("title", event.target.value)}
-                            />
-                          </label>
-                          <label className="field request-field-wide">Scope
-                            <textarea
-                              className="textarea"
-                              rows={4}
-                              value={draft.description ?? ""}
-                              onChange={(event) => updateDraft("description", event.target.value)}
-                            />
-                          </label>
-                        </div>
-
-                        {message && <div className="notice request-review-notice">{message}</div>}
-                        <div className="request-decision-row">
-                          <button
-                            className="btn btn-primary"
-                            disabled={busy !== null || !draft.clientId || !draft.title.trim()}
-                            type="submit"
-                          >
-                            {busy === "approve" ? "Creating Job…" : "Create Job"}
-                          </button>
+                              Use {suggestedClient.name}
+                            </button>
+                          ) : null}
+                          {!draftClient && !suggestedClient ? (
+                            <button
+                              className="btn btn-primary"
+                              disabled={busy !== null}
+                              type="button"
+                              onClick={() => void createClientFromRequest()}
+                            >
+                              {busy === "client" ? "Creating…" : "Create Client"}
+                            </button>
+                          ) : null}
                           <button
                             className="btn"
                             disabled={busy !== null}
                             type="button"
-                            onClick={() => void decline()}
+                            onClick={() => setClientPickerOpen((current) => !current)}
                           >
-                            {busy === "decline" ? "Declining…" : "Decline"}
+                            {clientPickerOpen ? "Close" : draftClient ? "Change Client" : "Choose Client"}
                           </button>
                         </div>
-                      </form>
-                    ) : (
-                      <div className="request-resolution">
-                        <p className="eyebrow">{selected.status === "approved" ? "Job created" : "Declined"}</p>
-                        <h2>{selected.title}</h2>
-                        <p>{selected.description}</p>
-                        {selected.approvedJobId && (
-                          <Link className="btn btn-primary" to={`/jobs/${selected.approvedJobId}`}>Open Job</Link>
-                        )}
-                        {selected.declineReason && <div className="notice">Reason: {selected.declineReason}</div>}
                       </div>
-                    )}
-                  </>
-                )}
-              </section>
+
+                      {clientPickerOpen ? (
+                        <label className="field inbox-clean-client-picker">Existing client
+                          <select
+                            className="select"
+                            value={draft.clientId}
+                            onChange={(event) => {
+                              updateDraft("clientId", event.target.value);
+                              if (event.target.value) setClientPickerOpen(false);
+                            }}
+                          >
+                            <option value="">Choose Client…</option>
+                            {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+                          </select>
+                        </label>
+                      ) : null}
+
+                      <div className="inbox-clean-job-fields">
+                        <label className="field">Job title
+                          <input
+                            className="input"
+                            required
+                            value={draft.title}
+                            onChange={(event) => updateDraft("title", event.target.value)}
+                          />
+                        </label>
+                        <label className="field">Scope
+                          <textarea
+                            className="textarea"
+                            rows={3}
+                            value={draft.description ?? ""}
+                            onChange={(event) => updateDraft("description", event.target.value)}
+                          />
+                        </label>
+                      </div>
+
+                      <div className="inbox-clean-facts inbox-clean-carryover">
+                        <div><span>Service address</span><strong>{requestAddress(selected) || "Not provided"}</strong></div>
+                        <div><span>Preferred timing</span><strong>{selected.preferredTiming || "No preference"}</strong></div>
+                      </div>
+
+                      {message && <div className="notice request-review-notice">{message}</div>}
+
+                      <footer className="inbox-clean-detail-footer">
+                        <div>
+                          <strong>Create one Job from this Request.</strong>
+                          <span>The Request stays in Inbox history as the source record.</span>
+                        </div>
+                        <button
+                          className="btn btn-primary"
+                          disabled={busy !== null || !draft.clientId || !draft.title.trim()}
+                          type="submit"
+                        >
+                          {busy === "approve" ? "Creating Job…" : "Create Job →"}
+                        </button>
+                      </footer>
+                    </form>
+                  ) : (
+                    <article className="inbox-clean-detail">
+                      <header className="inbox-clean-detail-head">
+                        <div>
+                          <p className="eyebrow">{selected.status === "open" ? "Selected Request" : "Request History"}</p>
+                          <h2>{selected.title}</h2>
+                          <p>{selected.submittedName ?? selected.clientName ?? "Unknown sender"} · {dateTime(selected.submittedAt)}</p>
+                        </div>
+                        <div className="inbox-clean-detail-nav">
+                          <span className={`inbox-clean-status request-status-${selected.status}`}>{inboxStatusLabel(selected)}</span>
+                          <button className="btn" type="button" onClick={returnToRequests}>← Back to Requests</button>
+                        </div>
+                      </header>
+
+                      <div className="inbox-clean-facts">
+                        <div>
+                          <span>Contact</span>
+                          <strong>{selected.submittedPhone || "No phone"}</strong>
+                          <small>{selected.submittedEmail || "No email"}</small>
+                        </div>
+                        <div>
+                          <span>Service address</span>
+                          <strong>{requestAddress(selected) || "Not provided"}</strong>
+                        </div>
+                        <div>
+                          <span>Preferred timing</span>
+                          <strong>{selected.preferredTiming || "No preference"}</strong>
+                          {selected.preferredContact ? <small>Prefers {selected.preferredContact}</small> : null}
+                        </div>
+                      </div>
+
+                      <section className="inbox-clean-request-copy">
+                        <span>Request</span>
+                        <p>{selected.description ?? "No message provided."}</p>
+                      </section>
+
+                      {selected.media.length > 0 ? (
+                        <section className="inbox-clean-photos">
+                          <div><span>Photos</span><strong>{selected.media.length} attached</strong></div>
+                          <div className="request-photo-strip">
+                            {selected.media.map((photo) => (
+                              <a href={photo.url} key={photo.id} target="_blank" rel="noreferrer">
+                                <img src={photo.url} alt={photo.originalFilename ?? "Incoming work photo"} />
+                              </a>
+                            ))}
+                          </div>
+                        </section>
+                      ) : null}
+
+                      {selected.status === "open" ? (
+                        <footer className="inbox-clean-detail-footer">
+                          <div>
+                            <strong>Request only · no Job yet.</strong>
+                            <span>Review what came in, then decide whether to take the work.</span>
+                          </div>
+                          <div className="inbox-clean-inline-actions">
+                            <button
+                              className="btn"
+                              disabled={busy !== null}
+                              type="button"
+                              onClick={() => void decline()}
+                            >
+                              {busy === "decline" ? "Declining…" : "Decline"}
+                            </button>
+                            <button
+                              className="btn btn-primary"
+                              type="button"
+                              onClick={() => {
+                                setJobComposerOpen(true);
+                                setMessage(null);
+                              }}
+                            >
+                              Create Job →
+                            </button>
+                          </div>
+                        </footer>
+                      ) : (
+                        <footer className="inbox-clean-detail-footer inbox-clean-detail-footer-history">
+                          <div>
+                            <strong>{selected.status === "approved" ? "Job created" : "Request declined"}</strong>
+                            <span>{selected.declineReason ? `Reason: ${selected.declineReason}` : "This Request is resolved."}</span>
+                          </div>
+                          {selected.approvedJobId ? <Link className="btn btn-primary" to={`/app/jobs/${selected.approvedJobId}`}>Open Job →</Link> : null}
+                        </footer>
+                      )}
+                    </article>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>

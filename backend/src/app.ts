@@ -1,11 +1,17 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import cors from "cors";
 import express from "express";
 
 import { pool } from "./db/pool.js";
 import { env } from "./env.js";
+import { requireOrganizationScope } from "./organizationScope.js";
 import { adminSampleDataRouter } from "./routes/adminSampleData.js";
 import { addressAutocompleteRouter } from "./routes/addressAutocomplete.js";
 import { calendarRouter, publicCalendarRouter } from "./routes/calendar.js";
+import { demoSessionRouter } from "./routes/demoSession.js";
 import { clientsRouter } from "./routes/clients.js";
 import { jobsRouter } from "./routes/jobs.js";
 import { mediaLibraryRouter } from "./routes/mediaLibrary.js";
@@ -21,6 +27,7 @@ export const app = express();
 app.use(
   cors({
     origin: env.FRONTEND_ORIGIN,
+    credentials: true,
   }),
 );
 
@@ -60,15 +67,36 @@ app.use(
   "/api/address-autocomplete",
   addressAutocompleteRouter,
 );
-app.use("/api/admin/sample-data", adminSampleDataRouter);
-app.use("/api/organization", organizationRouter);
-app.use("/api/clients", clientsRouter);
-app.use("/api/calendar", calendarRouter);
-app.use("/api/public/calendar", publicCalendarRouter);
-app.use("/api/jobs", jobsRouter);
-app.use("/api/jobs", jobPhotosRouter);
-app.use("/api/jobs", jobVowsRouter);
-app.use("/api/media", mediaLibraryRouter);
-app.use("/api/public/requests", publicRequestsRouter);
-app.use("/api/requests", requestsRouter);
-app.use("/api/vows", vowsRouter);
+app.use("/api/demo/session", demoSessionRouter);
+
+app.use("/api/admin/sample-data", requireOrganizationScope, adminSampleDataRouter);
+app.use("/api/organization", requireOrganizationScope, organizationRouter);
+app.use("/api/clients", requireOrganizationScope, clientsRouter);
+app.use("/api/calendar", requireOrganizationScope, calendarRouter);
+app.use("/api/public/calendar", requireOrganizationScope, publicCalendarRouter);
+app.use("/api/jobs", requireOrganizationScope, jobsRouter);
+app.use("/api/jobs", requireOrganizationScope, jobPhotosRouter);
+app.use("/api/jobs", requireOrganizationScope, jobVowsRouter);
+app.use("/api/media", requireOrganizationScope, mediaLibraryRouter);
+app.use("/api/public/requests", requireOrganizationScope, publicRequestsRouter);
+app.use("/api/requests", requireOrganizationScope, requestsRouter);
+app.use("/api/vows", requireOrganizationScope, vowsRouter);
+
+const frontendDistDirectory = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../frontend/dist",
+);
+const frontendIndexFile = path.join(frontendDistDirectory, "index.html");
+
+if (existsSync(frontendIndexFile)) {
+  app.use(express.static(frontendDistDirectory));
+
+  app.get("/{*splat}", (request, response, next) => {
+    if (request.path.startsWith("/api/") || request.path.startsWith("/health")) {
+      next();
+      return;
+    }
+
+    response.sendFile(frontendIndexFile);
+  });
+}

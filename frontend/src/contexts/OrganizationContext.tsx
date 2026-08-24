@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { fetchOrganization } from "../api/organization";
+import { DemoSessionRequiredError, fetchOrganization } from "../api/organization";
 
 type OrganizationStatus =
   | "loading"
@@ -98,6 +98,20 @@ export function OrganizationProvider({
             caughtError.name === "AbortError"
           ) {
             return;
+          }
+
+          if (caughtError instanceof DemoSessionRequiredError) {
+            const publicDemoRoute =
+              window.location.pathname === "/demo" ||
+              window.location.pathname.startsWith("/demo/");
+
+            if (!publicDemoRoute) {
+              window.location.replace("/demo");
+              return;
+            }
+
+            lastError = caughtError;
+            break;
           }
 
           lastError = caughtError;

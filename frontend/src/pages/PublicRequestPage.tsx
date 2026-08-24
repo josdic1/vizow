@@ -9,6 +9,7 @@ import {
   uploadPublicRequestPhoto,
 } from "../api/publicRequests";
 import { AddressAutocomplete } from "../components/AddressAutocomplete";
+import "../styles/public-intake.css";
 
 function preferredDateLabel(value: string | null): string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
@@ -152,174 +153,228 @@ export function PublicRequestPage() {
           <p className="eyebrow">Request Service</p>
           <h1>What can we help with?</h1>
           <p>
-            Send the details and optional photos. The contractor will review the request and follow up before anything is scheduled.
+            Tell us what you need. Add photos if they help. The contractor will review everything and follow up before anything is scheduled.
           </p>
         </header>
 
         <aside className="public-intake-availability">
           <div>
-            <p className="eyebrow">Timing reference</p>
+            <p className="eyebrow">Before you request</p>
             <strong>Want to check availability first?</strong>
             <span>
-              The public calendar shows what the contractor wants customers to see. It does not reserve a visit.
+              See the contractor&apos;s public availability without exposing their private schedule. Checking a date does not reserve a visit.
             </span>
           </div>
           <Link className="btn" to="/availability">View availability →</Link>
         </aside>
 
         <form
-          className="form-stack"
+          className="public-request-form"
           onSubmit={handleSubmit}
         >
-          <div className="form-grid">
-            <label className="field">
-              Name
-              <input
-                className="input"
-                name="name"
-                type="text"
-                autoComplete="name"
-                required
-              />
-            </label>
+          <section className="public-request-section">
+            <header className="public-request-section-heading">
+              <span>01</span>
+              <div>
+                <h2>Your contact</h2>
+                <p>Who should the contractor follow up with?</p>
+              </div>
+            </header>
+
+            <div className="form-grid public-request-contact-grid">
+              <label className="field">
+                Name
+                <input
+                  className="input"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  required
+                />
+              </label>
+
+              <label className="field">
+                Phone
+                <input
+                  className="input"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                />
+              </label>
+
+              <label className="field request-field-wide">
+                Email
+                <input
+                  className="input"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="public-request-section public-request-section-work">
+            <header className="public-request-section-heading">
+              <span>02</span>
+              <div>
+                <h2>The work</h2>
+                <p>Describe the problem in your own words.</p>
+              </div>
+            </header>
 
             <label className="field">
-              Phone
-              <input
-                className="input"
-                name="phone"
-                type="tel"
-                autoComplete="tel"
-              />
-            </label>
-
-            <label className="field">
-              Email
-              <input
-                className="input"
-                name="email"
-                type="email"
-                autoComplete="email"
-              />
-            </label>
-
-            <label className="field request-field-wide">
               What do you need help with?
               <textarea
-                className="textarea"
+                className="textarea public-request-description"
                 name="description"
                 rows={5}
                 required
-                placeholder="Tell us what happened, what you need, or what you noticed."
+                placeholder="What happened? What needs attention? Anything the contractor should know before following up?"
               />
             </label>
+          </section>
 
-            <div className="field">
-              <label htmlFor="public-request-address-line1">
-                Service address
+          <section className="public-request-section">
+            <header className="public-request-section-heading">
+              <span>03</span>
+              <div>
+                <h2>Service location</h2>
+                <p>Where is the work?</p>
+              </div>
+            </header>
+
+            <div className="public-request-address-grid">
+              <div className="field public-request-address-main">
+                <label htmlFor="public-request-address-line1">
+                  Service address
+                </label>
+                <AddressAutocomplete
+                  id="public-request-address-line1"
+                  name="addressLine1"
+                  required
+                  placeholder="Start typing your address"
+                  value={addressDraft.addressLine1}
+                  onValueChange={(value) => {
+                    updateAddressField("addressLine1", value);
+
+                    if (!value) {
+                      setAddressDraft(emptyAddressDraft);
+                    }
+                  }}
+                  onSelect={(suggestion) => {
+                    setAddressDraft({
+                      addressLine1: suggestion.addressLine1,
+                      city: suggestion.city,
+                      state: suggestion.state,
+                      postalCode: suggestion.postalCode,
+                    });
+                  }}
+                />
+              </div>
+
+              <label className="field">
+                Apt / unit / suite
+                <input
+                  className="input"
+                  name="addressLine2"
+                  type="text"
+                  autoComplete="address-line2"
+                />
               </label>
-              <AddressAutocomplete
-                id="public-request-address-line1"
-                name="addressLine1"
-                required
-                placeholder="Start typing your address"
-                value={addressDraft.addressLine1}
-                onValueChange={(value) => {
-                  updateAddressField("addressLine1", value);
 
-                  if (!value) {
-                    setAddressDraft(emptyAddressDraft);
+              <label className="field public-request-city">
+                City
+                <input
+                  className="input"
+                  name="city"
+                  type="text"
+                  autoComplete="address-level2"
+                  required
+                  value={addressDraft.city}
+                  onChange={(event) =>
+                    updateAddressField("city", event.target.value)
                   }
-                }}
-                onSelect={(suggestion) => {
-                  setAddressDraft({
-                    addressLine1: suggestion.addressLine1,
-                    city: suggestion.city,
-                    state: suggestion.state,
-                    postalCode: suggestion.postalCode,
-                  });
-                }}
-              />
+                />
+              </label>
+
+              <label className="field">
+                State
+                <input
+                  className="input"
+                  name="state"
+                  type="text"
+                  autoComplete="address-level1"
+                  required
+                  value={addressDraft.state}
+                  onChange={(event) =>
+                    updateAddressField("state", event.target.value)
+                  }
+                />
+              </label>
+
+              <label className="field">
+                ZIP / postal code
+                <input
+                  className="input"
+                  name="postalCode"
+                  type="text"
+                  autoComplete="postal-code"
+                  required
+                  value={addressDraft.postalCode}
+                  onChange={(event) =>
+                    updateAddressField("postalCode", event.target.value)
+                  }
+                />
+              </label>
             </div>
+          </section>
 
-            <label className="field">
-              Apt / unit / suite
-              <input
-                className="input"
-                name="addressLine2"
-                type="text"
-                autoComplete="address-line2"
-              />
-            </label>
+          <section className="public-request-section">
+            <header className="public-request-section-heading">
+              <span>04</span>
+              <div>
+                <h2>Timing & follow-up</h2>
+                <p>Helpful context, not a booking.</p>
+              </div>
+            </header>
 
-            <label className="field">
-              City
-              <input
-                className="input"
-                name="city"
-                type="text"
-                autoComplete="address-level2"
-                required
-                value={addressDraft.city}
-                onChange={(event) =>
-                  updateAddressField("city", event.target.value)
-                }
-              />
-            </label>
+            <div className="form-grid">
+              <label className="field">
+                Preferred timing
+                <input
+                  className="input"
+                  name="preferredTiming"
+                  type="text"
+                  defaultValue={preferredDate}
+                  placeholder="Tomorrow morning, this week, flexible…"
+                />
+              </label>
 
-            <label className="field">
-              State
-              <input
-                className="input"
-                name="state"
-                type="text"
-                autoComplete="address-level1"
-                required
-                value={addressDraft.state}
-                onChange={(event) =>
-                  updateAddressField("state", event.target.value)
-                }
-              />
-            </label>
+              <label className="field">
+                Best way to reach you
+                <input
+                  className="input"
+                  name="preferredContact"
+                  type="text"
+                  placeholder="Call, text, email…"
+                />
+              </label>
+            </div>
+          </section>
 
-            <label className="field">
-              ZIP / postal code
-              <input
-                className="input"
-                name="postalCode"
-                type="text"
-                autoComplete="postal-code"
-                required
-                value={addressDraft.postalCode}
-                onChange={(event) =>
-                  updateAddressField("postalCode", event.target.value)
-                }
-              />
-            </label>
+          <section className="public-request-section public-request-photo-section">
+            <header className="public-request-section-heading">
+              <span>05</span>
+              <div>
+                <h2>Photos</h2>
+                <p>Optional. Add anything that helps explain the work.</p>
+              </div>
+            </header>
 
-            <label className="field">
-              Preferred timing
-              <input
-                className="input"
-                name="preferredTiming"
-                type="text"
-                defaultValue={preferredDate}
-                placeholder="Tomorrow morning, this week, flexible…"
-              />
-            </label>
-
-            <label className="field">
-              Best way to reach you
-              <input
-                className="input"
-                name="preferredContact"
-                type="text"
-                placeholder="Call, text, email…"
-              />
-            </label>
-
-            <label className="field request-field-wide">
-              Photos
+            <label className="field public-request-file-field">
+              Add photos
               <input
                 className="input"
                 type="file"
@@ -335,42 +390,48 @@ export function PublicRequestPage() {
               />
               <span className="request-field-note">
                 {photos.length === 0
-                  ? "Optional"
+                  ? "No photos selected"
                   : `${photos.length} photo${
                       photos.length === 1 ? "" : "s"
                     } selected`}
               </span>
             </label>
-          </div>
+          </section>
 
-          <button
-            className="btn btn-primary"
-            type="submit"
-            disabled={status === "working"}
-          >
-            {status === "working"
-              ? "Sending…"
-              : "Send Request"}
-          </button>
+          {status === "success" && (
+            <div
+              className="notice notice-success"
+              role="status"
+            >
+              {message}
+            </div>
+          )}
+
+          {status === "error" && (
+            <div
+              className="notice notice-error"
+              role="alert"
+            >
+              {message}
+            </div>
+          )}
+
+          <footer className="public-request-submit-row">
+            <div>
+              <strong>Ready to send?</strong>
+              <span>Nothing is scheduled until the contractor follows up.</span>
+            </div>
+            <button
+              className="btn btn-primary"
+              type="submit"
+              disabled={status === "working"}
+            >
+              {status === "working"
+                ? "Sending…"
+                : "Send Request →"}
+            </button>
+          </footer>
         </form>
-
-        {status === "success" && (
-          <div
-            className="notice notice-success"
-            role="status"
-          >
-            {message}
-          </div>
-        )}
-
-        {status === "error" && (
-          <div
-            className="notice notice-error"
-            role="alert"
-          >
-            {message}
-          </div>
-        )}
       </section>
     </main>
   );

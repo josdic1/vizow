@@ -61,7 +61,7 @@ export function NailedItPage() {
         <div className="nailed-it-header-top">
           <Link
             className="nailed-it-back"
-            to="/field"
+            to="/app/field"
           >
             <ArrowLeft aria-hidden="true" />
             Field Mode

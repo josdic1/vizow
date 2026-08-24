@@ -9,7 +9,7 @@ export function DemoCompare() {
 
   return (
     <div className="demo-compare">
-      <button type="button" className="demo-back-link" onClick={backToList}>← Back to your list</button>
+      <button type="button" className="demo-back-link" onClick={backToList}>← All walkthroughs</button>
 
       <header className="demo-compare-head">
         <p className="eyebrow">{issue.short}</p>
@@ -45,7 +45,7 @@ export function DemoCompare() {
       </figure>
 
       <div className="demo-compare-cta">
-        <button type="button" className="btn btn-primary" onClick={showGuided}>Show me →</button>
+        <button type="button" className="btn btn-primary" onClick={showGuided}>Walk me through it →</button>
       </div>
     </div>
   );

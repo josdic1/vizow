@@ -15,8 +15,8 @@ import {
   fetchClients,
 } from "../api/clients";
 import { AddressAutocomplete } from "../components/AddressAutocomplete";
-import { AdminPageHeader } from "../components/AdminPageHeader";
 import { AppLayout } from "../layouts/AppLayout";
+import { WorkspaceHero } from "../components/WorkspaceHero";
 import "../styles/clients-workspace.css";
 
 type ClientsState =
@@ -35,6 +35,8 @@ type MutationState =
     };
 
 type ClientFilter = "active" | "archived";
+type ClientSortKey = "name" | "property" | "updated";
+type SortDirection = "asc" | "desc";
 
 type ClientDraft = {
   name: string;
@@ -103,6 +105,8 @@ export function ClientsPage() {
   const [filter, setFilter] =
     useState<ClientFilter>("active");
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortKey, setSortKey] = useState<ClientSortKey>("updated");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [newClientOpen, setNewClientOpen] =
     useState(false);
   const [draft, setDraft] = useState<ClientDraft>(() => ({
@@ -155,7 +159,7 @@ export function ClientsPage() {
   const visibleClients = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
 
-    return clients.filter((client) => {
+    const matches = clients.filter((client) => {
       const matchesFilter =
         filter === "active"
           ? client.archivedAt === null
@@ -181,7 +185,45 @@ export function ClientsPage() {
         .toLowerCase()
         .includes(search);
     });
-  }, [clients, filter, searchTerm]);
+
+    return [...matches].sort((first, second) => {
+      let comparison = 0;
+
+      if (sortKey === "updated") {
+        comparison =
+          new Date(first.archivedAt ?? first.updatedAt).getTime() -
+          new Date(second.archivedAt ?? second.updatedAt).getTime();
+      } else if (sortKey === "property") {
+        comparison = formatAddress(first).localeCompare(formatAddress(second));
+      } else {
+        comparison = first.name.localeCompare(second.name);
+      }
+
+      if (comparison === 0) {
+        comparison = first.name.localeCompare(second.name);
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [clients, filter, searchTerm, sortDirection, sortKey]);
+
+  function changeSort(nextKey: ClientSortKey) {
+    if (nextKey === sortKey) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortKey(nextKey);
+    setSortDirection(nextKey === "updated" ? "desc" : "asc");
+  }
+
+  function sortArrow(key: ClientSortKey) {
+    if (key !== sortKey) {
+      return "";
+    }
+
+    return sortDirection === "asc" ? " ↑" : " ↓";
+  }
 
   function updateDraft(
     field: keyof ClientDraft,
@@ -367,94 +409,128 @@ export function ClientsPage() {
       sections={[{ id: "clients-list", label: "Clients" }]}
     >
       <div className="page">
-        <div className="admin-page clients-page">
-          <AdminPageHeader
-            eyebrow="Visual of Work"
+        <div className="admin-page clients-page workspace-canonical-page">
+          <WorkspaceHero
+            eyebrow="Client Directory"
             title="Clients"
-            description="Manage Client records, service Properties, Jobs, and retained history."
-            meta={
-              state.status === "ready" ? (
-                <>
-                  <span>{activeCount} active</span>
-                  <span>{archivedCount} archived</span>
-                </>
-              ) : undefined
+            description={
+              <>
+                Type anything you remember — name, phone, email, or service
+                address. Open the record when you find it.
+              </>
+            }
+            metrics={
+              state.status === "ready"
+                ? [
+                    { label: "Active", value: activeCount },
+                    { label: "Archived", value: archivedCount },
+                    { label: "Total", value: activeCount + archivedCount },
+                  ]
+                : []
             }
           />
 
-          <div className="clients-toolbar">
-            <div
-              className="admin-filter-tabs"
-              aria-label="Client status filter"
-            >
-              <button
-                aria-pressed={filter === "active"}
-                className={
-                  filter === "active"
-                    ? "is-active"
-                    : undefined
-                }
-                type="button"
-                onClick={() => {
-                  setFilter("active");
-                  setMutation({ status: "idle" });
-                }}
-              >
-                <span>Active</span>
-                <strong>{activeCount}</strong>
-              </button>
+          <section className="clients-directory-shell" id="clients-list">
+            <div className="clients-directory-heading">
+              <div>
+                <p className="eyebrow">Directory</p>
+                <h2>
+                  {filter === "active" ? "Active clients" : "Archived clients"}
+                </h2>
+              </div>
 
-              <button
-                aria-pressed={filter === "archived"}
-                className={
-                  filter === "archived"
-                    ? "is-active"
-                    : undefined
-                }
-                type="button"
-                onClick={() => {
-                  setFilter("archived");
-                  setMutation({ status: "idle" });
-                }}
-              >
-                <span>Archived</span>
-                <strong>{archivedCount}</strong>
-              </button>
+
             </div>
 
-            <div className="clients-toolbar-actions">
+            <div className="clients-findbar">
+              <label className="clients-search">
+                <span className="clients-search-kicker">Find a client</span>
+                <span className="clients-search-control">
+                  <input
+                    aria-label="Search Clients"
+                    placeholder="Type a name, phone, email, or address…"
+                    type="search"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape" && searchTerm) {
+                        event.preventDefault();
+                        setSearchTerm("");
+                      }
+                    }}
+                  />
+                  {searchTerm && (
+                    <button
+                      className="clients-search-clear"
+                      type="button"
+                      onClick={() => setSearchTerm("")}
+                    >
+                      Clear ×
+                    </button>
+                  )}
+                </span>
+              </label>
+
               <button
-                className="btn btn-primary"
+                className="btn btn-primary clients-findbar-add"
                 type="button"
                 disabled={mutation.status === "working"}
                 onClick={() => {
-                  setNewClientOpen(
-                    (current) => !current,
-                  );
+                  setNewClientOpen((current) => !current);
                   setMutation({ status: "idle" });
                 }}
               >
-                {newClientOpen
-                  ? "Close"
-                  : "+ New Client"}
+                {newClientOpen ? "Close" : "+ New Client"}
               </button>
-
-              <label className="clients-search">
-                <span className="sr-only">
-                  Search Clients
-                </span>
-                <input
-                  placeholder="Name, phone, email, Property…"
-                  type="search"
-                  value={searchTerm}
-                  onChange={(event) =>
-                    setSearchTerm(event.target.value)
-                  }
-                />
-              </label>
             </div>
-          </div>
 
+            <div className="clients-directory-tools">
+              <div className="clients-view-control" aria-label="Client view">
+                <span className="clients-tool-label">View</span>
+                <div
+                  className="admin-filter-tabs clients-filter-tabs"
+                  aria-label="Client status filter"
+                >
+                  <button
+                    aria-pressed={filter === "active"}
+                    className={filter === "active" ? "is-active" : undefined}
+                    type="button"
+                    onClick={() => {
+                      setFilter("active");
+                      setMutation({ status: "idle" });
+                    }}
+                  >
+                    <span>Active</span>
+                    <strong>{activeCount}</strong>
+                  </button>
+
+                  <button
+                    aria-pressed={filter === "archived"}
+                    className={filter === "archived" ? "is-active" : undefined}
+                    type="button"
+                    onClick={() => {
+                      setFilter("archived");
+                      setMutation({ status: "idle" });
+                    }}
+                  >
+                    <span>Archived</span>
+                    <strong>{archivedCount}</strong>
+                  </button>
+                </div>
+              </div>
+
+              <button
+                className="clients-most-recent"
+                type="button"
+                onClick={() => {
+                  setSortKey("updated");
+                  setSortDirection("desc");
+                }}
+              >
+                Most recent first
+                <span aria-hidden="true">↓</span>
+              </button>
+            </div>
           {newClientOpen && (
             <form
               className="clients-create-panel"
@@ -706,80 +782,88 @@ export function ClientsPage() {
           )}
 
           {state.status === "ready" && (
-            <section className="clients-list" id="clients-list">
+            <div className="clients-directory-content">
+              <div className="clients-directory-count">
+                <span>
+                  {visibleClients.length} {filter} client{visibleClients.length === 1 ? "" : "s"}
+                </span>
+                <span>
+                  {searchTerm.trim()
+                    ? `matching “${searchTerm.trim()}”`
+                    : sortKey === "updated" && sortDirection === "desc"
+                      ? "Most recently updated first"
+                      : "Click a column heading to sort"}
+                </span>
+              </div>
+
               {visibleClients.length === 0 ? (
                 <div className="clients-empty">
                   No {filter} Clients match this search.
                 </div>
               ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Client</th>
-                      <th>Contact</th>
-                      <th>Default Property</th>
-                      <th>
-                        {filter === "active"
-                          ? "Updated"
-                          : "Archived"}
-                      </th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
+                <>
+                  <div className="clients-directory-columns">
+                    <button
+                      className={sortKey === "name" ? "is-active" : undefined}
+                      type="button"
+                      onClick={() => changeSort("name")}
+                    >
+                      Client{sortArrow("name")}
+                    </button>
+                    <span>Contact</span>
+                    <button
+                      className={sortKey === "property" ? "is-active" : undefined}
+                      type="button"
+                      onClick={() => changeSort("property")}
+                    >
+                      Service property{sortArrow("property")}
+                    </button>
+                    <button
+                      className={sortKey === "updated" ? "is-active" : undefined}
+                      type="button"
+                      onClick={() => changeSort("updated")}
+                    >
+                      Updated{sortArrow("updated")}
+                    </button>
+                    <span />
+                  </div>
+                  <div className="clients-directory-grid">
+                  {visibleClients.map((client) => (
+                    <Link
+                      className="client-directory-card"
+                      key={client.id}
+                      to={`/app/clients/${client.id}`}
+                    >
+                      <div className="client-directory-identity">
+                        <strong>{client.name}</strong>
+                        {client.archivedAt && (
+                          <span className="clients-status-line">Archived</span>
+                        )}
+                      </div>
 
-                  <tbody>
-                    {visibleClients.map((client) => (
-                      <tr key={client.id}>
-                        <td data-label="Client">
-                          <strong>{client.name}</strong>
-                          {client.archivedAt && (
-                            <small className="clients-status-line">
-                              Archived
-                            </small>
-                          )}
-                        </td>
+                      <div className="client-directory-contact">
+                        <strong>{client.phone ?? "No phone"}</strong>
+                        <span>{client.email ?? "No email"}</span>
+                      </div>
 
-                        <td data-label="Contact">
-                          <span>
-                            {client.phone ?? "No phone"}
-                          </span>
-                          <small>
-                            {client.email ?? "No email"}
-                          </small>
-                        </td>
+                      <div className="client-directory-property">
+                        <strong>{formatAddress(client)}</strong>
+                      </div>
 
-                        <td data-label="Default Property">
-                          {formatAddress(client)}
-                        </td>
+                      <div className="client-directory-updated">
+                        <span>{filter === "active" ? "Updated" : "Archived"}</span>
+                        <strong>{formatDate(client.archivedAt ?? client.updatedAt)}</strong>
+                      </div>
 
-                        <td
-                          data-label={
-                            filter === "active"
-                              ? "Updated"
-                              : "Archived"
-                          }
-                        >
-                          {formatDate(
-                            client.archivedAt ??
-                              client.updatedAt,
-                          )}
-                        </td>
-
-                        <td data-label="Action">
-                          <Link
-                            className="clients-open-link"
-                            to={`/clients/${client.id}`}
-                          >
-                            Open →
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                      <span className="client-directory-open">Open →</span>
+                    </Link>
+                  ))}
+                  </div>
+                </>
               )}
-            </section>
+            </div>
           )}
+          </section>
         </div>
       </div>
     </AppLayout>

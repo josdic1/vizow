@@ -21,7 +21,7 @@ export function AppLayout({
     <main>
       <div className="app-header">
         <header className="site-header shell">
-          <Link className="brand-lockup" to="/" aria-label="VIZOW Home">
+          <Link className="brand-lockup" to="/app" aria-label="VIZOW Home">
             <img className="brand-mark" src="/icons/vizow-icon.svg" alt="" />
             <span className="brand-copy">
               <strong>VIZOW</strong>
@@ -33,7 +33,8 @@ export function AppLayout({
               className={({ isActive }) =>
                 `site-nav-link${isActive ? " site-nav-link-active" : ""}`
               }
-              to="/inbox"
+              to="/app"
+              end
             >
               Inbox
             </NavLink>
@@ -41,7 +42,15 @@ export function AppLayout({
               className={({ isActive }) =>
                 `site-nav-link${isActive ? " site-nav-link-active" : ""}`
               }
-              to="/jobs"
+              to="/app/today"
+            >
+              Today
+            </NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                `site-nav-link${isActive ? " site-nav-link-active" : ""}`
+              }
+              to="/app/jobs"
             >
               Jobs
             </NavLink>
@@ -49,7 +58,7 @@ export function AppLayout({
               className={({ isActive }) =>
                 `site-nav-link${isActive ? " site-nav-link-active" : ""}`
               }
-              to="/calendar"
+              to="/app/calendar"
             >
               Calendar
             </NavLink>
@@ -57,24 +66,14 @@ export function AppLayout({
               className={({ isActive }) =>
                 `site-nav-link${isActive ? " site-nav-link-active" : ""}`
               }
-              to="/clients"
+              to="/app/clients"
             >
               Clients
             </NavLink>
             <MediaNavMenu />
-          </nav>
-
-          <div className="header-actions">
-            <NavLink
-              className={({ isActive }) =>
-                `site-nav-link demo-nav-link${isActive ? " site-nav-link-active" : ""}`
-              }
-              to="/demo"
-            >
-              Demo
-            </NavLink>
+            <span className="site-nav-separator" aria-hidden="true" />
             <AdminSampleDataMenu />
-          </div>
+          </nav>
         </header>
       </div>
 

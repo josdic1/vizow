@@ -8,7 +8,7 @@ import multer from "multer";
 import { z } from "zod";
 
 import { pool } from "../db/pool.js";
-import { env } from "../env.js";
+import { getOrganizationSlug } from "../organizationScope.js";
 import {
   deleteRequestPhoto,
   uploadRequestPhoto,
@@ -137,7 +137,7 @@ publicRequestsRouter.post("/", async (request, response) => {
         RETURNING id
       `,
       [
-        env.ORGANIZATION_SLUG,
+        getOrganizationSlug(),
         inboxTitle,
         input.description,
         input.serviceAddressLine1 ?? null,
@@ -172,7 +172,7 @@ publicRequestsRouter.post("/", async (request, response) => {
         FROM organizations
         WHERE slug = $1
       `,
-      [env.ORGANIZATION_SLUG, createdRequest.id],
+      [getOrganizationSlug(), createdRequest.id],
     );
 
     await databaseClient.query("COMMIT");
@@ -214,7 +214,7 @@ publicRequestsRouter.post(
           WHERE organization.slug = $1 AND work_request.id = $2
           FOR UPDATE OF work_request
         `,
-        [env.ORGANIZATION_SLUG, requestIdResult.data],
+        [getOrganizationSlug(), requestIdResult.data],
       );
       const selected = selectedResult.rows[0];
 

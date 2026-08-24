@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { fetchMediaLibrary } from "../api/media";
-import { AdminPageHeader } from "../components/AdminPageHeader";
+import { WorkspaceHero } from "../components/WorkspaceHero";
 import { AppLayout } from "../layouts/AppLayout";
 import "../styles/media-library.css";
 
@@ -449,6 +449,8 @@ export function MediaLibraryPage() {
       .sort((a, b) => a[1].title.localeCompare(b[1].title));
   }, [media, clientId]);
 
+  const jobCount = useMemo(() => new Set(media.map((item) => item.jobId)).size, [media]);
+
   useEffect(() => {
     if (jobId === "all") return;
     if (!jobs.some(([id]) => id === jobId)) setJobId("all");
@@ -526,111 +528,145 @@ export function MediaLibraryPage() {
       ]}
     >
       <div className="page">
-        <div className="admin-page media-library-page">
-          <AdminPageHeader
-            eyebrow="Media"
-            title="Media Library"
-            description="Search, inspect, or select Job photos. Selected media can become a post, email, work sample, PDF, customer message, or invoice entry point."
-            meta={<span>{media.length} photos</span>}
+        <div className="media-library-page workspace-canonical-page">
+          <WorkspaceHero
+            eyebrow="Media library"
+            title="Media"
+            description="Find the Job photos already in Vizow, inspect the work, then select anything worth reusing."
+            metrics={[
+              { label: "Photos in view", value: state.status === "ready" ? visibleMedia.length : "—" },
+              { label: "Jobs", value: state.status === "ready" ? jobCount : "—" },
+              { label: "Selected", value: selectedMedia.length },
+            ]}
           />
 
-          <section className="media-library-controls" id="media-filters" aria-label="Media filters">
-            <div className="media-library-search-row">
-              <label className="admin-search-field media-library-search">
-                <span className="sr-only">Search Media Library</span>
-                <input
-                  placeholder="Search photos…"
-                  value={search}
-                  onChange={(event) => setSearch(event.currentTarget.value)}
-                />
-              </label>
+          <section className="media-library-shell" aria-label="Project media library">
+            <header className="media-library-shell-heading">
+              <div>
+                <p className="workspace-eyebrow">Library</p>
+                <h2>Project photos</h2>
+              </div>
+              <strong>{state.status === "ready" ? `${visibleMedia.length} shown` : "Loading"}</strong>
+            </header>
 
-              <select value={clientId} onChange={(event) => setClientId(event.currentTarget.value)} aria-label="Filter by client">
-                <option value="all">All clients</option>
-                {clients.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-              </select>
+            <section className="media-library-controls" id="media-filters" aria-label="Media filters">
+              <div className="media-library-search-band">
+                <label className="media-library-search">
+                  <span>Find media</span>
+                  <div className="media-library-search-control">
+                    <input
+                      placeholder="Type a client, Job, address, caption, or note…"
+                      value={search}
+                      onChange={(event) => setSearch(event.currentTarget.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") setSearch("");
+                      }}
+                    />
+                    {search && (
+                      <button type="button" onClick={() => setSearch("")} aria-label="Clear media search">
+                        Clear ×
+                      </button>
+                    )}
+                  </div>
+                </label>
+              </div>
 
-              <select value={jobId} onChange={(event) => setJobId(event.currentTarget.value)} aria-label="Filter by Job">
-                <option value="all">All Jobs</option>
-                {jobs.map(([id, value]) => <option key={id} value={id}>{value.title}</option>)}
-              </select>
+              <div className="media-library-view-strip">
+                <div className="media-stage-picks" role="group" aria-label="Photo stage">
+                  <span className="media-library-view-label">View</span>
+                  {(["all", "before", "during", "after"] as const).map((value) => (
+                    <button
+                      className={stage === value ? "is-active" : ""}
+                      key={value}
+                      type="button"
+                      onClick={() => setStage(value)}
+                    >
+                      <span>{value === "all" ? "All" : formatStage(value)}</span>
+                      <strong>{stageCounts[value]}</strong>
+                    </button>
+                  ))}
+                </div>
 
-              <select value={sortOrder} onChange={(event) => setSortOrder(event.currentTarget.value as SortOrder)} aria-label="Sort media">
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-              </select>
-            </div>
+                <div className="media-library-filter-tools">
+                  <select value={clientId} onChange={(event) => setClientId(event.currentTarget.value)} aria-label="Filter by client">
+                    <option value="all">All clients</option>
+                    {clients.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                  </select>
 
-            <div className="media-stage-picks" role="group" aria-label="Photo stage">
-              {(["all", "before", "during", "after"] as const).map((value) => (
-                <button
-                  className={stage === value ? "is-active" : ""}
-                  key={value}
-                  type="button"
-                  onClick={() => setStage(value)}
-                >
-                  <span>{value === "all" ? "All" : formatStage(value)}</span>
-                  <strong>{stageCounts[value]}</strong>
-                </button>
-              ))}
+                  <select value={jobId} onChange={(event) => setJobId(event.currentTarget.value)} aria-label="Filter by Job">
+                    <option value="all">All Jobs</option>
+                    {jobs.map(([id, value]) => <option key={id} value={id}>{value.title}</option>)}
+                  </select>
+
+                  <button
+                    className="media-library-sort-toggle"
+                    type="button"
+                    onClick={() => setSortOrder((current) => current === "newest" ? "oldest" : "newest")}
+                  >
+                    {sortOrder === "newest" ? "Most recent first ↓" : "Oldest first ↑"}
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <div className="media-library-content" id="media-library">
+              {state.status === "loading" && <div className="notice">Loading Media Library…</div>}
+              {state.status === "error" && <div className="notice notice-error" role="alert">{state.message}</div>}
+
+              {state.status === "ready" && visibleMedia.length === 0 && (
+                <div className="admin-empty-state admin-empty-state-large">
+                  <strong>No photos match this view.</strong>
+                  <span>Clear a filter or add photos to a Job.</span>
+                </div>
+              )}
+
+              {visibleMedia.length > 0 && (
+                <section className="media-library-grid" aria-label="Media Library results">
+                  {visibleMedia.map((item) => {
+                    const isSelected = selectedIds.includes(item.id);
+                    return (
+                      <article className={`media-library-card${isSelected ? " is-selected" : ""}`} key={item.id}>
+                        <button
+                          className="media-library-card-open"
+                          type="button"
+                          onClick={() => setFocused(item)}
+                          aria-label={`Open ${item.jobTitle} photo details`}
+                        >
+                          <div className="media-library-photo-button">
+                            <img src={item.url} alt={item.caption ?? `${formatStage(item.stage)} photo from ${item.jobTitle}`} />
+                            <span className={`media-stage-tag media-stage-${item.stage}`}>{formatStage(item.stage)}</span>
+                          </div>
+
+                          <div className="media-library-card-body">
+                            <div>
+                              <p className="eyebrow">{item.clientName}</p>
+                              <h2>{item.jobTitle}</h2>
+                            </div>
+                          </div>
+
+                          <div className="media-library-card-meta">
+                            <span>Cycle {item.cycleNumber}</span>
+                            <span>{formatDate(item.capturedAt ?? item.createdAt)}</span>
+                          </div>
+                          {item.caption && <p className="media-library-caption">{item.caption}</p>}
+                        </button>
+
+                        <button
+                          className="media-library-select-toggle"
+                          type="button"
+                          aria-pressed={isSelected}
+                          aria-label={isSelected ? "Remove photo from selection" : "Select photo"}
+                          onClick={() => toggleSelected(item.id)}
+                        >
+                          {isSelected && <Check aria-hidden="true" />}
+                        </button>
+                      </article>
+                    );
+                  })}
+                </section>
+              )}
             </div>
           </section>
-
-          {state.status === "loading" && <div className="notice">Loading Media Library…</div>}
-          {state.status === "error" && <div className="notice notice-error" role="alert">{state.message}</div>}
-
-          {state.status === "ready" && visibleMedia.length === 0 && (
-            <div className="admin-empty-state admin-empty-state-large" id="media-library">
-              <strong>No photos match this view.</strong>
-              <span>Clear a filter or add photos to a Job.</span>
-            </div>
-          )}
-
-          {visibleMedia.length > 0 && (
-            <section className="media-library-grid" id="media-library" aria-label="Media Library results">
-              {visibleMedia.map((item) => {
-                const isSelected = selectedIds.includes(item.id);
-                return (
-                  <article className={`media-library-card${isSelected ? " is-selected" : ""}`} key={item.id}>
-                    <button
-                      className="media-library-card-open"
-                      type="button"
-                      onClick={() => setFocused(item)}
-                      aria-label={`Open ${item.jobTitle} photo details`}
-                    >
-                      <div className="media-library-photo-button">
-                        <img src={item.url} alt={item.caption ?? `${formatStage(item.stage)} photo from ${item.jobTitle}`} />
-                        <span className={`media-stage-tag media-stage-${item.stage}`}>{formatStage(item.stage)}</span>
-                      </div>
-
-                      <div className="media-library-card-body">
-                        <div>
-                          <p className="eyebrow">{item.clientName}</p>
-                          <h2>{item.jobTitle}</h2>
-                        </div>
-                      </div>
-
-                      <div className="media-library-card-meta">
-                        <span>Cycle {item.cycleNumber}</span>
-                        <span>{formatDate(item.capturedAt ?? item.createdAt)}</span>
-                      </div>
-                      {item.caption && <p className="media-library-caption">{item.caption}</p>}
-                    </button>
-
-                    <button
-                      className="media-library-select-toggle"
-                      type="button"
-                      aria-pressed={isSelected}
-                      aria-label={isSelected ? "Remove photo from selection" : "Select photo"}
-                      onClick={() => toggleSelected(item.id)}
-                    >
-                      {isSelected && <Check aria-hidden="true" />}
-                    </button>
-                  </article>
-                );
-              })}
-            </section>
-          )}
 
           {selectedMedia.length > 0 && (
             <div className="media-selection-bar" role="region" aria-label="Selected media actions">
@@ -643,7 +679,6 @@ export function MediaLibraryPage() {
           )}
         </div>
       </div>
-
       {focused && (
         <div className="media-detail-backdrop" role="presentation" onMouseDown={() => setFocused(null)}>
           <section className="media-detail-panel" role="dialog" aria-modal="true" aria-label="Photo details" onMouseDown={(event) => event.stopPropagation()}>
@@ -666,8 +701,8 @@ export function MediaLibraryPage() {
               {focused.attachedNote && <div className="media-detail-note"><strong>Attached note</strong><p>{focused.attachedNote}</p></div>}
 
               <div className="media-detail-actions">
-                <Link className="btn btn-secondary" to={`/jobs/${focused.jobId}`}><ExternalLink aria-hidden="true" /> Open Job</Link>
-                <Link className="btn btn-primary" to={`/jobs/${focused.jobId}/vow`}><ExternalLink aria-hidden="true" /> Open VOW</Link>
+                <Link className="btn btn-secondary" to={`/app/jobs/${focused.jobId}`}><ExternalLink aria-hidden="true" /> Open Job</Link>
+                <Link className="btn btn-primary" to={`/app/jobs/${focused.jobId}/vow`}><ExternalLink aria-hidden="true" /> Open VOW</Link>
               </div>
             </div>
           </section>
@@ -767,7 +802,7 @@ function MediaCreateDialog({
               <Copy aria-hidden="true" /> {copied ? "Copied" : "Copy Draft"}
             </button>
           ) : mode === "invoice" && singleJob ? (
-            <Link className="btn btn-primary" to={`/jobs/${singleJob.jobId}/vow`}>
+            <Link className="btn btn-primary" to={`/app/jobs/${singleJob.jobId}/vow`}>
               <ExternalLink aria-hidden="true" /> Open Job VOW for Invoice
             </Link>
           ) : (

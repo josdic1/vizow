@@ -8,7 +8,7 @@ import {
 import { Router } from "express";
 
 import { pool } from "../db/pool.js";
-import { env } from "../env.js";
+import { getOrganizationSlug } from "../organizationScope.js";
 
 export const vowsRouter = Router();
 
@@ -87,7 +87,7 @@ vowsRouter.get("/", async (request, response) => {
         ORDER BY vow.created_at DESC, vow.id
       `,
       [
-        env.ORGANIZATION_SLUG,
+        getOrganizationSlug(),
         jobIdResult?.success ? jobIdResult.data : null,
       ],
     );
@@ -138,7 +138,7 @@ vowsRouter.get("/:vowId", async (request, response) => {
         WHERE organization.slug = $1
           AND vow.id = $2
       `,
-      [env.ORGANIZATION_SLUG, vowIdResult.data],
+      [getOrganizationSlug(), vowIdResult.data],
     );
 
     const vow = result.rows[0];

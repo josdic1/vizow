@@ -5,6 +5,7 @@ import { useEffect,
   useMemo,
   useState } from "react";
 import { Link,
+  Navigate,
   Route,
   Routes,
   useParams,
@@ -28,16 +29,18 @@ import {
   unarchiveJob,
 } from "./api/jobs";
 import { AdminPageHeader } from "./components/AdminPageHeader";
+import { WorkspaceHero } from "./components/WorkspaceHero";
 import { useActiveJob } from "./contexts/ActiveJobContext";
 import { AppLayout } from "./layouts/AppLayout";
 import { Today } from "./pages/Today";
 import { CalendarPage } from "./pages/CalendarPage";
 import { MediaLibraryPage } from "./pages/MediaLibraryPage";
-import { DemoPage } from "./pages/DemoPage";
 import { ReportingPage } from "./pages/ReportingPage";
 import { BusinessDataPage } from "./pages/BusinessDataPage";
-import { DemoProvider } from "./demo/DemoProvider";
 import { FieldModePage } from "./pages/FieldModePage";
+import { Eli5Page } from "./pages/Eli5Page";
+import { DemoPage } from "./pages/DemoPage";
+import { DemoProvider } from "./demo/DemoProvider";
 import { NailedItPage } from "./pages/NailedItPage";
 import { InboxPage } from "./pages/RequestsPage";
 import { JobPage } from "./pages/JobPage";
@@ -146,9 +149,9 @@ function JobsPage() {
   >("ACTIVE");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortKey, setSortKey] = useState<
-    "client" | "job" | "address" | "status" | "cycle"
-  >("client");
-  const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("ASC");
+    "client" | "job" | "address" | "updated"
+  >("updated");
+  const [sortDirection, setSortDirection] = useState<"ASC" | "DESC">("DESC");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -262,6 +265,8 @@ function JobsPage() {
   useEffect(() => {
     setJobStatusFilter("ACTIVE");
     setSearchTerm("");
+    setSortKey("updated");
+    setSortDirection("DESC");
   }, [scopedClientId]);
 
   const visibleJobs = useMemo(() => {
@@ -289,30 +294,25 @@ function JobsPage() {
     });
 
     nextJobs.sort((first, second) => {
-      let firstValue: string | number;
-      let secondValue: string | number;
+      let result = 0;
 
       if (sortKey === "client") {
-        firstValue = first.clientName;
-        secondValue = second.clientName;
+        result = first.clientName.localeCompare(second.clientName);
       } else if (sortKey === "job") {
-        firstValue = first.title;
-        secondValue = second.title;
+        result = first.title.localeCompare(second.title);
       } else if (sortKey === "address") {
-        firstValue = formatAddress(first) ?? "";
-        secondValue = formatAddress(second) ?? "";
-      } else if (sortKey === "status") {
-        firstValue = getJobDisplayStatus(first);
-        secondValue = getJobDisplayStatus(second);
+        result = (formatAddress(first) ?? "").localeCompare(
+          formatAddress(second) ?? "",
+        );
       } else {
-        firstValue = first.currentCycle.cycleNumber;
-        secondValue = second.currentCycle.cycleNumber;
+        result =
+          new Date(first.updatedAt).getTime() -
+          new Date(second.updatedAt).getTime();
       }
 
-      const result =
-        typeof firstValue === "number" && typeof secondValue === "number"
-          ? firstValue - secondValue
-          : String(firstValue).localeCompare(String(secondValue));
+      if (result === 0) {
+        result = first.clientName.localeCompare(second.clientName);
+      }
 
       return sortDirection === "ASC" ? result : result * -1;
     });
@@ -334,7 +334,7 @@ function JobsPage() {
     }
 
     setSortKey(nextSortKey);
-    setSortDirection("ASC");
+    setSortDirection(nextSortKey === "updated" ? "DESC" : "ASC");
   }
 
   function getSortLabel(column: typeof sortKey) {
@@ -382,9 +382,9 @@ function JobsPage() {
       ]}
     >
       <div className="page">
-        <div className="admin-page jobs-page">
-          <AdminPageHeader
-            eyebrow="Visual of Work"
+        <div className="admin-page clients-page workspace-canonical-page">
+          <WorkspaceHero
+            eyebrow="Job Directory"
             title={
               scopedClientId
                 ? `${scopedClientLabel} Jobs`
@@ -393,17 +393,16 @@ function JobsPage() {
             description={
               scopedClientId
                 ? `Jobs belonging to ${scopedClientLabel}.`
-                : "Review each Job’s status, service address, and current work cycle."
+                : "Type anything you remember — client, job, or service address. Open the record when you find it."
             }
-            meta={
-              state.status === "ready" ? (
-                <>
-                  <span>{activeJobCount} active</span>
-                  <span>{completedJobCount} completed</span>
-                  <span>{cancelledJobCount} cancelled</span>
-                  <span>{archivedJobCount} archived</span>
-                </>
-              ) : undefined
+            metrics={
+              state.status === "ready"
+                ? [
+                    { label: "Active", value: activeJobCount },
+                    { label: "Archived", value: archivedJobCount },
+                    { label: "Total", value: scopedJobs.length },
+                  ]
+                : []
             }
           />
 
@@ -421,20 +420,20 @@ function JobsPage() {
                 <Link
                   aria-current="page"
                   className="btn btn-primary"
-                  to={`/jobs?clientId=${encodeURIComponent(
+                  to={`/app/jobs?clientId=${encodeURIComponent(
                     scopedClientId,
                   )}`}
                 >
                   This Client
                 </Link>
 
-                <Link className="btn" to="/jobs">
+                <Link className="btn" to="/app/jobs">
                   All Jobs
                 </Link>
 
                 <Link
                   className="btn"
-                  to={`/clients/${scopedClientId}`}
+                  to={`/app/clients/${scopedClientId}`}
                 >
                   Client Record
                 </Link>
@@ -442,191 +441,215 @@ function JobsPage() {
             </nav>
           )}
 
-          {state.status === "ready" && (
-            <div className="admin-toolbar jobs-toolbar" id="jobs-filters">
-              <div
-                className="admin-filter-tabs"
-                aria-label="Job status filter"
-              >
-                {[
-                  ["ACTIVE", "Active", activeJobCount],
-                  ["COMPLETED", "Completed", completedJobCount],
-                  ["CANCELLED", "Cancelled", cancelledJobCount],
-                  ["ARCHIVED", "Archived", archivedJobCount],
-                  ["ALL", "All", scopedJobs.length],
-                ].map(([value, label, count]) => (
-                  <button
-                    aria-pressed={jobStatusFilter === value}
-                    className={
-                      jobStatusFilter === value
-                        ? "is-active"
-                        : undefined
-                    }
-                    key={value}
-                    type="button"
-                    onClick={() => {
-                      setJobStatusFilter(
-                        value as
-                          | "ACTIVE"
-                          | "COMPLETED"
-                          | "CANCELLED"
-                          | "ARCHIVED"
-                          | "ALL",
-                      );
-                    }}
-                  >
-                    <span>{label}</span>
-                    <strong>{count}</strong>
-                  </button>
-                ))}
+          <section className="clients-directory-shell" id="jobs-list">
+            <div className="clients-directory-heading">
+              <div>
+                <p className="eyebrow">Directory</p>
+                <h2>
+                  {jobStatusFilter === "ALL"
+                    ? "All jobs"
+                    : `${formatLabel(jobStatusFilter)} jobs`}
+                </h2>
               </div>
+            </div>
 
-              <div className="admin-toolbar-end">
-                <label className="admin-search-field">
-                  <span className="sr-only">Search jobs</span>
+            <div className="clients-findbar">
+              <label className="clients-search">
+                <span className="clients-search-kicker">Find a job</span>
+                <span className="clients-search-control">
                   <input
-                    placeholder="Client, job, address…"
+                    aria-label="Search jobs"
+                    placeholder="Type a client, job, or service address…"
                     type="search"
                     value={searchTerm}
                     onChange={(event) => setSearchTerm(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape" && searchTerm) {
+                        event.preventDefault();
+                        setSearchTerm("");
+                      }
+                    }}
                   />
-                </label>
+                  {searchTerm && (
+                    <button
+                      className="clients-search-clear"
+                      type="button"
+                      onClick={() => setSearchTerm("")}
+                    >
+                      Clear ×
+                    </button>
+                  )}
+                </span>
+              </label>
+
+              <Link
+                className="btn btn-primary clients-findbar-add"
+                to="/app"
+              >
+                + New Request
+              </Link>
+            </div>
+
+            <div className="clients-directory-tools" id="jobs-filters">
+              <div className="clients-view-control" aria-label="Job view">
+                <span className="clients-tool-label">View</span>
+                <div
+                  className="admin-filter-tabs clients-filter-tabs"
+                  aria-label="Job status filter"
+                >
+                  {[
+                    ["ACTIVE", "Active", activeJobCount],
+                    ["COMPLETED", "Completed", completedJobCount],
+                    ["CANCELLED", "Cancelled", cancelledJobCount],
+                    ["ARCHIVED", "Archived", archivedJobCount],
+                    ["ALL", "All", scopedJobs.length],
+                  ].map(([value, label, count]) => (
+                    <button
+                      aria-pressed={jobStatusFilter === value}
+                      className={
+                        jobStatusFilter === value
+                          ? "is-active"
+                          : undefined
+                      }
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setJobStatusFilter(
+                          value as
+                            | "ACTIVE"
+                            | "COMPLETED"
+                            | "CANCELLED"
+                            | "ARCHIVED"
+                            | "ALL",
+                        );
+                      }}
+                    >
+                      <span>{label}</span>
+                      <strong>{count}</strong>
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              <button
+                className="clients-most-recent"
+                type="button"
+                onClick={() => {
+                  setSortKey("updated");
+                  setSortDirection("DESC");
+                }}
+              >
+                Most recent first
+                <span aria-hidden="true">↓</span>
+              </button>
             </div>
-          )}
 
-          {state.status === "loading" && (
-            <div className="notice">Loading jobs…</div>
-          )}
+            {state.status === "loading" && (
+              <section className="clients-message">
+                Loading Jobs…
+              </section>
+            )}
 
-          {state.status === "error" && (
-            <div className="notice notice-error" role="alert">
-              <strong>Jobs could not be loaded.</strong>
-              <p>{state.message}</p>
-            </div>
-          )}
+            {state.status === "error" && (
+              <section className="clients-message clients-message-error" role="alert">
+                {state.message}
+              </section>
+            )}
 
-          {state.status === "ready" && visibleJobs.length > 0 && (
-            <div className="admin-table-wrap">
-              <table className="admin-table jobs-table" id="jobs-list">
-                <thead>
-                  <tr>
-                    <th>
+            {state.status === "ready" && (
+              <div className="clients-directory-content">
+                <div className="clients-directory-count">
+                  <span>
+                    {visibleJobs.length} {jobStatusFilter.toLowerCase()} job{visibleJobs.length === 1 ? "" : "s"}
+                  </span>
+                  <span>
+                    {searchTerm.trim()
+                      ? `matching “${searchTerm.trim()}”`
+                      : sortKey === "updated" && sortDirection === "DESC"
+                        ? "Most recently updated first"
+                        : "Click a column heading to sort"}
+                  </span>
+                </div>
+
+                {visibleJobs.length === 0 ? (
+                  <div className="clients-empty">
+                    No Jobs match this view.
+                  </div>
+                ) : (
+                  <>
+                    <div className="clients-directory-columns">
                       <button
+                        className={sortKey === "client" ? "is-active" : undefined}
                         type="button"
                         onClick={() => handleSort("client")}
                       >
                         Client{getSortLabel("client")}
                       </button>
-                    </th>
-
-                    <th>
                       <button
+                        className={sortKey === "job" ? "is-active" : undefined}
                         type="button"
                         onClick={() => handleSort("job")}
                       >
                         Job{getSortLabel("job")}
                       </button>
-                    </th>
-
-                    <th>
                       <button
+                        className={sortKey === "address" ? "is-active" : undefined}
                         type="button"
                         onClick={() => handleSort("address")}
                       >
-                        Service address{getSortLabel("address")}
+                        Service property{getSortLabel("address")}
                       </button>
-                    </th>
-
-                    <th>
                       <button
+                        className={sortKey === "updated" ? "is-active" : undefined}
                         type="button"
-                        onClick={() => handleSort("status")}
+                        onClick={() => handleSort("updated")}
                       >
-                        Status{getSortLabel("status")}
+                        Updated{getSortLabel("updated")}
                       </button>
-                    </th>
+                      <span />
+                    </div>
 
-                    <th>
-                      <button
-                        type="button"
-                        onClick={() => handleSort("cycle")}
-                      >
-                        Cycle{getSortLabel("cycle")}
-                      </button>
-                    </th>
+                    <div className="clients-directory-grid">
+                      {visibleJobs.map((job) => {
+                        const address = formatAddress(job);
+                        const displayStatus = getJobDisplayStatus(job);
 
-                    <th aria-label="Open job" />
-                  </tr>
-                </thead>
+                        return (
+                          <Link
+                            className="client-directory-card"
+                            key={job.id}
+                            to={`/app/jobs/${job.id}`}
+                          >
+                            <div className="client-directory-identity">
+                              <strong>{job.clientName}</strong>
+                            </div>
 
-                <tbody>
-                  {visibleJobs.map((job) => {
-                    const address = formatAddress(job);
-                    const displayStatus =
-                      getJobDisplayStatus(job);
-                    const stageClass =
-                      `admin-status-chip project-status-${displayStatus.toLowerCase()}`;
+                            <div className="client-directory-contact">
+                              <strong>{job.title}</strong>
+                              <span>
+                                {formatLabel(displayStatus)} · Cycle {job.currentCycle.cycleNumber}
+                              </span>
+                            </div>
 
-                    return (
-                      <tr key={job.id}>
-                        <td data-label="Client">
-                          <strong>{job.clientName}</strong>
-                        </td>
+                            <div className="client-directory-property">
+                              <strong>{address ?? "No service property"}</strong>
+                            </div>
 
-                        <td data-label="Job">
-                          <Link to={`/jobs/${job.id}`}>{job.title}</Link>
-                          <small>
-                            Cycle {job.currentCycle.cycleNumber}
-                            {" · "}
-                            {formatLabel(job.currentCycle.reason)}
-                          </small>
-                        </td>
+                            <div className="client-directory-updated">
+                              <span>Updated</span>
+                              <strong>{formatJourneyDate(job.updatedAt)}</strong>
+                            </div>
 
-                        <td data-label="Service address">
-                          {address ?? "—"}
-                        </td>
-
-                        <td data-label="Status">
-                          <span className={stageClass}>
-                            {formatLabel(displayStatus)}
-                          </span>
-                        </td>
-
-                        <td data-label="Cycle">
-                          {job.currentCycle.cycleNumber}
-                        </td>
-
-                        <td className="admin-table-action">
-                          <Link to={`/jobs/${job.id}`}>Open →</Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {state.status === "ready" && visibleJobs.length === 0 && (
-            <div className="admin-empty-state admin-empty-state-large">
-              <strong>
-                No Jobs match this view.
-              </strong>
-              <span>
-                Choose another status or clear the search.
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setJobStatusFilter("ALL");
-                  setSearchTerm("");
-                }}
-              >
-                Clear filters
-              </button>
-            </div>
-          )}
+                            <span className="client-directory-open">Open →</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </section>
         </div>
       </div>
     </AppLayout>
@@ -968,14 +991,14 @@ function JobDetailContent({
         }
         actions={
           <div className="cluster">
-            <Link className="btn" to="/jobs">
+            <Link className="btn" to="/app/jobs">
               ← Jobs
             </Link>
 
             {canOpenField && (
               <Link
                 className="btn btn-primary"
-                to="/field"
+                to="/app/field"
                 onClick={() => {
                   selectActiveJob(job.id);
                 }}
@@ -1137,7 +1160,7 @@ function JobDetailContent({
             <h2>VOW Snapshots</h2>
           </div>
 
-          <Link className="btn" to="/vows">
+          <Link className="btn" to="/app/vows">
             VOW Library
           </Link>
         </div>
@@ -1166,7 +1189,7 @@ function JobDetailContent({
                 <Link
                   className="btn btn-primary"
                   key={vow.id}
-                  to={`/vows/${vow.id}`}
+                  to={`/app/vows/${vow.id}`}
                 >
                   View Cycle {vow.snapshot.cycle.cycleNumber} VOW
                 </Link>
@@ -1595,7 +1618,7 @@ function JobDetailContent({
                         {vowId && (
                           <Link
                             className="btn"
-                            to={`/vows/${vowId}`}
+                            to={`/app/vows/${vowId}`}
                           >
                             Open VOW
                           </Link>
@@ -1864,7 +1887,7 @@ export function ArchivedJobDetailPage() {
           {state.status === "error" && (
             <>
               <div className="cluster">
-                <Link className="btn" to="/jobs">
+                <Link className="btn" to="/app/jobs">
                   ← Jobs
                 </Link>
               </div>
@@ -1899,7 +1922,7 @@ function NotFoundPage() {
           <p className="eyebrow">Navigation</p>
           <h1>Page not found</h1>
           <div className="cluster">
-            <Link className="btn btn-primary" to="/inbox">
+            <Link className="btn btn-primary" to="/app">
               Return to Inbox
             </Link>
           </div>
@@ -1909,31 +1932,52 @@ function NotFoundPage() {
   );
 }
 
+function DemoHub() {
+  const [mode, setMode] = useState<"tour" | "guide">("tour");
+
+  return (
+    <DemoProvider>
+      {mode === "tour" ? (
+        <Eli5Page onGuidedWalkthrough={() => setMode("guide")} />
+      ) : (
+        <DemoPage onTour={() => setMode("tour")} />
+      )}
+    </DemoProvider>
+  );
+}
+
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Today />} />
-      <Route path="/nailed-it" element={<NailedItPage />} />
+      <Route path="/" element={<Navigate to="/demo" replace />} />
+
+      <Route path="/demo" element={<DemoHub />} />
+      <Route path="/demo/guide" element={<Navigate to="/demo" replace />} />
+      <Route path="/demo/eli5" element={<Navigate to="/demo" replace />} />
+      <Route path="/demo/walkthrough" element={<Navigate to="/demo" replace />} />
+      <Route path="/eli5" element={<Navigate to="/demo" replace />} />
+
+      <Route path="/app" element={<InboxPage />} />
+      <Route path="/app/inbox" element={<Navigate to="/app" replace />} />
+      <Route path="/app/today" element={<Today />} />
+      <Route path="/app/nailed-it" element={<NailedItPage />} />
+      <Route path="/app/calendar" element={<CalendarPage />} />
+      <Route path="/app/media" element={<MediaLibraryPage />} />
+      <Route path="/app/reporting" element={<ReportingPage />} />
+      <Route path="/app/data" element={<BusinessDataPage />} />
+      <Route path="/app/field" element={<FieldModePage />} />
+      <Route path="/app/jobs" element={<JobsPage />} />
+      <Route path="/app/jobs/:jobId" element={<JobPage />} />
+      <Route path="/app/jobs/:jobId/vow" element={<JobVowPage />} />
+      <Route path="/app/vows" element={<VowsPage />} />
+      <Route path="/app/vows/:vowId" element={<VowDetailPage />} />
+      <Route path="/app/clients" element={<ClientsPage />} />
+      <Route path="/app/clients/:clientId" element={<ClientDetailPage />} />
+
       <Route path="/request" element={<PublicRequestPage />} />
       <Route path="/availability" element={<PublicCalendarPage />} />
-      <Route path="/inbox" element={<InboxPage />} />
-      <Route path="/calendar" element={<CalendarPage />} />
-      <Route path="/media" element={<MediaLibraryPage />} />
-      <Route path="/reporting" element={<ReportingPage />} />
-      <Route path="/data" element={<BusinessDataPage />} />
-      <Route path="/demo" element={<DemoProvider><DemoPage /></DemoProvider>} />
-      <Route path="/field" element={<FieldModePage />} />
-      <Route path="/jobs" element={<JobsPage />} />
-      <Route path="/jobs/:jobId" element={<JobPage />} />
-      <Route path="/jobs/:jobId/vow" element={<JobVowPage />} />
-      <Route path="/vows" element={<VowsPage />} />
-      <Route path="/vows/:vowId" element={<VowDetailPage />} />
+
       <Route path="*" element={<NotFoundPage />} />
-          <Route path="/clients" element={<ClientsPage />} />
-      <Route
-        path="/clients/:clientId"
-        element={<ClientDetailPage />}
-      />
     </Routes>
   );
 }

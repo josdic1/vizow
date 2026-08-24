@@ -1,0 +1,361 @@
+/* Public request form: compact customer-facing surface, intentionally outside contractor section-rail chrome. */
+.public-intake-shell {
+  --section-rail-gutter: 0px;
+  min-height: 100vh;
+  padding: clamp(22px, 3vw, 36px) 24px 42px !important;
+}
+
+.public-intake-card {
+  width: min(900px, 100%);
+  margin: 0 auto;
+}
+
+.public-intake-header {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: var(--border-heavy);
+}
+
+.public-intake-header h1 {
+  max-width: 13ch;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 5.25vw, 4.15rem);
+  line-height: 0.88;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.public-intake-header > p:last-child {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--color-ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.42;
+}
+
+.public-intake-availability {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  margin: 0 0 16px;
+  border: var(--border-normal);
+  border-left: 6px solid var(--color-orange);
+  background: var(--color-paper-soft);
+  padding: 11px 14px;
+}
+
+.public-intake-availability > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 12px;
+  row-gap: 2px;
+}
+
+.public-intake-availability .eyebrow {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.public-intake-availability strong {
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.public-intake-availability span {
+  color: var(--color-ink-soft);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.public-intake-availability .btn {
+  min-height: 40px;
+  padding-inline: 14px;
+  white-space: nowrap;
+}
+
+.public-request-form {
+  display: grid;
+  border: var(--border-heavy);
+  background: color-mix(in srgb, var(--color-paper-soft) 58%, transparent);
+}
+
+/* Desktop: sections are horizontal bands. Repeated section headers no longer consume a full row. */
+.public-request-section {
+  display: grid;
+  grid-template-columns: 164px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px 18px;
+  padding: 13px 16px;
+  border-bottom: var(--border-normal);
+}
+
+.public-request-section-heading {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+}
+
+.public-request-section-heading > span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: var(--border-normal);
+  background: var(--color-orange);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.public-request-section-heading h2 {
+  margin: 1px 0 0;
+  font-size: 0.98rem;
+  line-height: 1.12;
+}
+
+.public-request-section-heading p {
+  margin: 3px 0 0;
+  color: var(--color-ink-soft);
+  font-size: 0.66rem;
+  line-height: 1.3;
+}
+
+.public-request-section > :not(.public-request-section-heading) {
+  grid-column: 2;
+}
+
+.public-request-form .field {
+  gap: 5px;
+  font-size: 0.68rem;
+  letter-spacing: 0.075em;
+}
+
+.public-request-form .input,
+.public-request-form .textarea {
+  min-height: 40px;
+  border: var(--border-normal);
+  background: var(--color-paper-soft);
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.public-request-form .textarea {
+  min-height: 92px;
+  line-height: 1.45;
+}
+
+.public-request-description {
+  min-height: 104px !important;
+}
+
+.public-request-contact-grid {
+  gap: 10px 12px;
+}
+
+.public-request-contact-grid .request-field-wide {
+  grid-column: 1 / -1;
+}
+
+.public-request-address-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(130px, 0.58fr) minmax(90px, 0.4fr);
+  gap: 10px 12px;
+}
+
+.public-request-address-main {
+  grid-column: span 2;
+}
+
+.public-request-city {
+  grid-column: span 1;
+}
+
+.public-request-section .form-grid {
+  gap: 12px;
+}
+
+.public-request-photo-section {
+  background: color-mix(in srgb, var(--color-paper) 70%, var(--color-orange) 3%);
+}
+
+.public-request-file-field input[type="file"] {
+  min-height: 42px;
+  padding: 5px 7px;
+  cursor: pointer;
+}
+
+.public-request-file-field input[type="file"]::file-selector-button {
+  min-height: 30px;
+  margin-right: 10px;
+  border: var(--border-normal);
+  background: var(--color-paper);
+  padding: 0 10px;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.public-request-form .request-field-note {
+  color: var(--color-ink-soft);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.public-request-form .notice {
+  margin: 12px 16px 0;
+}
+
+.public-request-submit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 58px;
+  padding: 10px 16px;
+  background: var(--color-ink);
+  color: var(--color-paper-soft);
+}
+
+.public-request-submit-row > div {
+  display: grid;
+  gap: 2px;
+}
+
+.public-request-submit-row strong {
+  font-size: 0.88rem;
+}
+
+.public-request-submit-row span {
+  color: color-mix(in srgb, var(--color-paper-soft) 72%, transparent);
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
+.public-request-submit-row .btn-primary {
+  min-width: 180px;
+  min-height: 40px;
+  padding-inline: 16px;
+  font-size: 0.74rem;
+}
+
+@media (max-width: 760px) {
+  .public-intake-shell {
+    padding: 24px 14px 48px !important;
+  }
+
+  .public-intake-header {
+    gap: 9px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+  }
+
+  .public-intake-header h1 {
+    font-size: clamp(3rem, 15vw, 4.6rem);
+  }
+
+  .public-intake-header > p:last-child {
+    font-size: 0.95rem;
+  }
+
+  .public-intake-availability,
+  .public-request-submit-row {
+    grid-template-columns: 1fr;
+  }
+
+  .public-intake-availability {
+    gap: 14px;
+    margin-bottom: 22px;
+    padding: 16px;
+  }
+
+  .public-intake-availability > div {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .public-intake-availability .btn,
+  .public-request-submit-row .btn-primary {
+    width: 100%;
+  }
+
+  .public-request-section {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 20px 16px;
+  }
+
+  .public-request-section-heading {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .public-request-section-heading > span {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  .public-request-section-heading h2 {
+    font-size: 1.08rem;
+  }
+
+  .public-request-section-heading p {
+    font-size: 0.76rem;
+  }
+
+  .public-request-section > :not(.public-request-section-heading) {
+    grid-column: 1;
+  }
+
+  .public-request-form .field {
+    font-size: 0.72rem;
+  }
+
+  .public-request-form .input,
+  .public-request-form .textarea {
+    min-height: 46px;
+    padding: 10px 11px;
+    font-size: 0.94rem;
+  }
+
+  .public-request-description {
+    min-height: 150px !important;
+  }
+
+  .public-request-address-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .public-request-address-main,
+  .public-request-city {
+    grid-column: auto;
+  }
+
+  .public-request-form .notice {
+    margin: 18px 16px 0;
+  }
+
+  .public-request-submit-row {
+    gap: 14px;
+    min-height: 0;
+    padding: 18px 16px;
+  }
+}

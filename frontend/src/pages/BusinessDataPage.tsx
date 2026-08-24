@@ -2,6 +2,7 @@ import type { Job, MediaLibraryItem } from "@vizow/shared";
 import { useEffect, useMemo, useState } from "react";
 import { fetchJobs } from "../api/jobs";
 import { fetchMediaLibrary } from "../api/media";
+import { WorkspaceHero } from "../components/WorkspaceHero";
 import { AppLayout } from "../layouts/AppLayout";
 import "../styles/reporting-data.css";
 
@@ -323,19 +324,24 @@ export function BusinessDataPage() {
       next={`${filteredJobs.length} Jobs`}
     >
       <div className="page">
-        <div className="shell insights-page data-storyboard">
-          <header className="insights-title data-storyboard-title">
-            <div>
-              <p className="eyebrow">Media · Data</p>
-              <h1>See the business you have been too busy to see.</h1>
-            </div>
-            <p>Every chart is the same Jobs and evidence, viewed from a different angle. Click anything to narrow the whole board.</p>
-          </header>
+        <div className="shell workspace-canonical-page insights-page data-storyboard data-canonical-page">
+          <WorkspaceHero
+            eyebrow="Media · Data"
+            title="Data"
+            description="See the business you have been too busy to see. Every chart is the same Jobs and evidence viewed from a different angle."
+            metrics={[
+              { label: "Jobs in view", value: filteredJobs.length },
+              { label: "Clients", value: uniqueClients },
+              { label: "Media", value: filteredMedia.length },
+            ]}
+          />
 
           {state.status === "loading" ? <div className="panel">Loading business data…</div> : null}
           {state.status === "error" ? <div className="notice notice-error">{state.message}</div> : null}
           {state.status === "ready" ? <>
-            <section className="data-command-bar" aria-label="Business data filters">
+            <section className="data-filter-surface" aria-label="Business data filters">
+              <header className="data-filter-heading"><div><p className="workspace-eyebrow">Explore</p><h2>Filter the business</h2></div><span>{filteredJobs.length} Jobs in view</span></header>
+              <div className="data-command-bar">
               <label>Client<select className="select" value={client} onChange={(event) => setClient(event.target.value)}><option value="all">All clients</option>{clientOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
               <label>Town<select className="select" value={city} onChange={(event) => setCity(event.target.value)}><option value="all">All towns</option>{cityOptions.map((value) => <option key={value}>{value}</option>)}</select></label>
               <label>Status<select className="select" value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All</option><option value="active">Active</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option><option value="archived">Archived</option></select></label>
@@ -343,6 +349,7 @@ export function BusinessDataPage() {
               <label>From<input className="input" type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></label>
               <label>To<input className="input" type="date" value={to} onChange={(event) => setTo(event.target.value)} /></label>
               <button className="btn data-clear" type="button" onClick={reset} disabled={!hasFilters}>Clear</button>
+              </div>
             </section>
 
             <div className={`data-active-filters${hasFilters ? "" : " is-empty"}`} aria-hidden={!hasFilters}>
@@ -356,13 +363,11 @@ export function BusinessDataPage() {
               {from || to ? <button type="button" onClick={() => { setFrom(""); setTo(""); }}>Dates ×</button> : null}
             </div>
 
-            <section className="data-kpi-ribbon">
-              <article><span>Jobs</span><strong>{filteredJobs.length}</strong><small>{completed} completed</small></article>
-              <article><span>Clients</span><strong>{uniqueClients}</strong><small>{repeatClients} repeat</small></article>
-              <article><span>Completion</span><strong>{completionRate}%</strong><small>of this view</small></article>
+            <section className="data-kpi-ribbon data-kpi-ribbon-secondary">
+              <article><span>Completion</span><strong>{completionRate}%</strong><small>{completed} completed</small></article>
               <article><span>Evidence ready</span><strong>{evidenceRate}%</strong><small>Before + After</small></article>
-              <article><span>Multi-cycle</span><strong>{multiCycle}</strong><small>Jobs reopened / extended</small></article>
-              <article><span>Media</span><strong>{filteredMedia.length}</strong><small>photos attached</small></article>
+              <article><span>Repeat clients</span><strong>{repeatClients}</strong><small>more than one Job</small></article>
+              <article><span>Multi-cycle</span><strong>{multiCycle}</strong><small>reopened / extended</small></article>
             </section>
 
             <section className="data-visual-board">

@@ -267,14 +267,14 @@ export function FieldModePage() {
           className="site-mode-tile"
           type="button"
           disabled={!activeJobIsWritable}
-          onClick={() => navigate("/nailed-it")}
+          onClick={() => navigate("/app/nailed-it")}
         >
           <Calculator aria-hidden="true" strokeWidth={1.4} />
           <span>Nailed-It</span>
         </button>
       </section>
 
-      <button className="site-mode-exit" type="button" onClick={() => navigate("/")}>
+      <button className="site-mode-exit" type="button" onClick={() => navigate("/app/today")}>
         <LogOut aria-hidden="true" strokeWidth={1.4} />
         <span>Exit Field Mode</span>
       </button>

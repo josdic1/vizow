@@ -384,24 +384,24 @@ export function JobVowPage() {
         {state.status === "ready" && view && (
           <div className={`live-vow-shell live-vow-mode-${outputMode}`}>
             <div className="live-vow-controls no-print" id="vow-outputs">
-              <div>
+              <div className="live-vow-control-copy">
                 <p className="eyebrow">Create from VOW</p>
-                <p className="live-vow-create-note">The VOW stays unchanged. Choose a useful output.</p>
-                <div className="live-vow-view-tabs" role="group" aria-label="VOW output view">
-                  {outputOptions.map((option) => (
-                    <button
-                      className={option.mode === outputMode ? "is-active" : ""}
-                      key={option.mode}
-                      type="button"
-                      onClick={() => setOutputMode(option.mode)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
+                <p className="live-vow-create-note">Choose an output. The living VOW stays unchanged.</p>
               </div>
+              <label className="live-vow-output-picker">
+                <span>Output</span>
+                <select
+                  aria-label="VOW output view"
+                  value={outputMode}
+                  onChange={(event) => setOutputMode(event.target.value as OutputMode)}
+                >
+                  {outputOptions.map((option) => (
+                    <option key={option.mode} value={option.mode}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
               <div className="live-vow-control-actions">
-                <Link className="btn" to={`/jobs/${state.job.id}`}>← Job</Link>
+                <Link className="btn" to={`/app/jobs/${state.job.id}`}>← Job</Link>
                 {(["full", "marketing", "one-sheet", "work-sample", "invoice"] as OutputMode[]).includes(outputMode) && (
                   <button className="btn btn-primary" type="button" onClick={() => void downloadPdf()} disabled={pdfBusy}>
                     <Download aria-hidden="true" /> {pdfBusy ? "Building PDF…" : "Download PDF"}
@@ -411,29 +411,34 @@ export function JobVowPage() {
             </div>
 
             {outputMode === "full" && (
-              <article className="live-vow-document" id="vow-record">
-                <VowHeader job={state.job} outputLabel="Full Visual of Work" />
-                <VowMeta
+              <article className="live-vow-document live-vow-full-document" id="vow-record">
+                <FullVowHeader job={state.job} />
+                <FullVowOverview
                   job={state.job}
                   cycles={view.cycleNumbers.length}
-                  photoCount={state.media.length}
+                  events={view.visibleEvents.length}
+                  revisions={state.revisions.length}
+                  visits={state.visits.length}
+                  photos={state.media.length}
+                  before={view.before}
+                  after={view.after}
                   completionDate={view.completionDate}
                   finalPrice={view.finalPrice}
                 />
                 <BeforeAfter before={view.before} after={view.after} />
 
-                <section className="live-vow-section">
-                  <SectionHeading eyebrow="Job record" title="Project Timeline" meta={`${view.visibleEvents.length} events`} />
-                  <div className="live-vow-timeline">
+                <section className="live-vow-section live-vow-timeline-section">
+                  <SectionHeading eyebrow="Job record" title="Project Timeline" meta={`${view.visibleEvents.length} ${view.visibleEvents.length === 1 ? "event" : "events"}`} />
+                  <div className={`live-vow-timeline${view.visibleEvents.length === 1 ? " is-single" : ""}`}>
                     {view.visibleEvents.map((event) => (
                       <TimelineEvent key={event.id} event={event} cycleNumber={event.jobCycleId ? view.cycleMap.get(event.jobCycleId) : undefined} />
                     ))}
                   </div>
                 </section>
 
-                <section className="live-vow-section">
-                  <SectionHeading eyebrow="Changes" title="Scope Revisions" meta={`${state.revisions.length} revisions`} />
-                  {state.revisions.length ? (
+                {state.revisions.length > 0 && (
+                  <section className="live-vow-section">
+                    <SectionHeading eyebrow="Changes" title="Scope Revisions" meta={`${state.revisions.length} revisions`} />
                     <div className="live-vow-ledger">
                       {state.revisions.map((revision) => (
                         <div className="live-vow-ledger-row" key={revision.id}>
@@ -449,12 +454,12 @@ export function JobVowPage() {
                         </div>
                       ))}
                     </div>
-                  ) : <p className="live-vow-empty">No scope revisions recorded.</p>}
-                </section>
+                  </section>
+                )}
 
-                <section className="live-vow-section">
-                  <SectionHeading eyebrow="Field work" title="Visits" meta={`${state.visits.length} visits`} />
-                  {state.visits.length ? (
+                {state.visits.length > 0 && (
+                  <section className="live-vow-section">
+                    <SectionHeading eyebrow="Field work" title="Visits" meta={`${state.visits.length} visits`} />
                     <div className="live-vow-visit-list">
                       {state.visits.map((visit) => (
                         <article key={visit.id}>
@@ -465,10 +470,12 @@ export function JobVowPage() {
                         </article>
                       ))}
                     </div>
-                  ) : <p className="live-vow-empty">No visits recorded.</p>}
-                </section>
+                  </section>
+                )}
 
-                <PhotoRecord mediaByStage={view.mediaByStage} cycleMap={view.cycleMap} />
+                {state.media.length > 0 && (
+                  <PhotoRecord mediaByStage={view.mediaByStage} cycleMap={view.cycleMap} />
+                )}
               </article>
             )}
 
@@ -671,6 +678,78 @@ function GeneratedCopyOutput({
   );
 }
 
+function FullVowHeader({ job }: { job: Job }) {
+  return (
+    <header className="live-vow-full-header">
+      <div className="live-vow-full-heading">
+        <div className="live-vow-full-kicker">
+          <strong>VIZOW</strong>
+          <span>Visual of Work</span>
+        </div>
+        <p className="eyebrow">Full visual of work</p>
+        <h1>{job.title}</h1>
+        <p className="live-vow-full-location">{job.clientName} · {formatAddress(job)}</p>
+      </div>
+      <div className="live-vow-full-status">
+        <strong>{statusLabel(job)}</strong>
+        <span>Cycle {job.currentCycle.cycleNumber}</span>
+      </div>
+    </header>
+  );
+}
+
+function FullVowOverview({
+  job,
+  cycles,
+  events,
+  revisions,
+  visits,
+  photos,
+  before,
+  after,
+  completionDate,
+  finalPrice,
+}: {
+  job: Job;
+  cycles: number;
+  events: number;
+  revisions: number;
+  visits: number;
+  photos: number;
+  before: Media | null;
+  after: Media | null;
+  completionDate: string | null;
+  finalPrice: number | null;
+}) {
+  const evidenceLabel = before && after ? "Before + after captured" : photos > 0 ? "Photo evidence started" : "No photo evidence yet";
+  const outcomeLabel = completionDate ? `Completed ${formatDate(completionDate)}` : statusLabel(job);
+
+  return (
+    <section className="live-vow-full-overview" aria-label="VOW record summary">
+      <div>
+        <span>Record</span>
+        <strong>{cycles} {cycles === 1 ? "cycle" : "cycles"}</strong>
+        <small>{events} timeline {events === 1 ? "event" : "events"}</small>
+      </div>
+      <div>
+        <span>Field work</span>
+        <strong>{visits} {visits === 1 ? "visit" : "visits"}</strong>
+        <small>{revisions} scope {revisions === 1 ? "revision" : "revisions"}</small>
+      </div>
+      <div>
+        <span>Evidence</span>
+        <strong>{photos} {photos === 1 ? "photo" : "photos"}</strong>
+        <small>{evidenceLabel}</small>
+      </div>
+      <div>
+        <span>Outcome</span>
+        <strong>{outcomeLabel}</strong>
+        <small>{finalPrice === null ? "Price not recorded" : formatMoney(finalPrice)}</small>
+      </div>
+    </section>
+  );
+}
+
 function VowHeader({ job, outputLabel, hideClient = false }: { job: Job; outputLabel: string; hideClient?: boolean }) {
   return (
     <header className="live-vow-header">
@@ -682,18 +761,6 @@ function VowHeader({ job, outputLabel, hideClient = false }: { job: Job; outputL
       </div>
       <div className="live-vow-status-stamp"><strong>{statusLabel(job)}</strong><span>Cycle {job.currentCycle.cycleNumber}</span></div>
     </header>
-  );
-}
-
-function VowMeta({ job, cycles, photoCount, completionDate, finalPrice }: { job: Job; cycles: number; photoCount: number; completionDate: string | null; finalPrice: number | null }) {
-  return (
-    <div className="live-vow-meta">
-      <div><span>Client</span><strong>{job.clientName}</strong></div>
-      <div><span>Cycles</span><strong>{cycles}</strong></div>
-      <div><span>Photos</span><strong>{photoCount}</strong></div>
-      <div><span>Completed</span><strong>{formatDate(completionDate)}</strong></div>
-      <div><span>Final price</span><strong>{formatMoney(finalPrice)}</strong></div>
-    </div>
   );
 }
 

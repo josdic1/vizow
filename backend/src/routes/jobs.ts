@@ -37,6 +37,7 @@ jobResponseSchema,
 import { Router } from "express";
 
 import { pool } from "../db/pool.js";
+import { getOrganizationSlug } from "../organizationScope.js";
 import { env } from "../env.js";
 
 export const jobsRouter = Router();
@@ -106,7 +107,7 @@ async function loadJobs(
   queryClient: JobQueryClient = pool,
   includeArchived = false,
 ): Promise<Job[]> {
-  const parameters: string[] = [env.ORGANIZATION_SLUG];
+  const parameters: string[] = [getOrganizationSlug()];
   let jobFilter = includeArchived
     ? ""
     : "AND j.archived_at IS NULL";
@@ -252,7 +253,7 @@ ON organization.id = job.organization_id
 WHERE job.id = $1
 AND organization.slug = $2
 `,
-[jobIdResult.data, env.ORGANIZATION_SLUG],
+[jobIdResult.data, getOrganizationSlug()],
 );
 
 if (!jobResult.rows[0]) {
@@ -359,7 +360,7 @@ WHERE event.job_id = $1
 AND organization.slug = $2
 ORDER BY event.created_at ASC, event.id ASC
 `,
-[jobIdResult.data, env.ORGANIZATION_SLUG],
+[jobIdResult.data, getOrganizationSlug()],
 );
 
 const events = eventResult.rows.map((row) =>
@@ -441,7 +442,7 @@ jobsRouter.get(
             summary.latest_event_at,
             summary.generated_at
         `,
-        [jobIdResult.data, env.ORGANIZATION_SLUG],
+        [jobIdResult.data, getOrganizationSlug()],
       );
 
       const row = result.rows[0];
@@ -526,7 +527,7 @@ jobsRouter.post(
           WHERE job.id = $1
             AND organization.slug = $2
         `,
-        [jobIdResult.data, env.ORGANIZATION_SLUG],
+        [jobIdResult.data, getOrganizationSlug()],
       );
 
       const job = jobResult.rows[0];
@@ -636,7 +637,7 @@ LEFT JOIN vows vow
               AND organization.slug = $2
             ORDER BY event.created_at ASC, event.id ASC
           `,
-          [jobIdResult.data, env.ORGANIZATION_SLUG],
+          [jobIdResult.data, getOrganizationSlug()],
         );
 
       const journey = eventResult.rows.map((event) => ({
@@ -766,7 +767,7 @@ LEFT JOIN vows vow
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
           summary,
           env.OLLAMA_MODEL,
           eventCount,
@@ -976,7 +977,7 @@ jobsRouter.get(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 
@@ -1019,7 +1020,7 @@ jobsRouter.get(
           `,
           [
             jobIdResult.data,
-            env.ORGANIZATION_SLUG,
+            getOrganizationSlug(),
           ],
         );
 
@@ -1057,7 +1058,7 @@ jobsRouter.get(
           `,
           [
             jobIdResult.data,
-            env.ORGANIZATION_SLUG,
+            getOrganizationSlug(),
           ],
         );
 
@@ -1168,7 +1169,7 @@ jobsRouter.post(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 
@@ -1426,7 +1427,7 @@ jobsRouter.patch(
         [
           visitIdResult.data,
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 
@@ -1686,7 +1687,7 @@ jobsRouter.post(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 
@@ -1855,7 +1856,7 @@ jobsRouter.get(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 
@@ -1917,7 +1918,7 @@ jobsRouter.get(
           `,
           [
             jobIdResult.data,
-            env.ORGANIZATION_SLUG,
+            getOrganizationSlug(),
           ],
         );
 
@@ -2007,7 +2008,7 @@ jobsRouter.post(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 
@@ -2547,7 +2548,7 @@ jobsRouter.patch(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 
@@ -3037,7 +3038,7 @@ jobsRouter.post(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 
@@ -3375,7 +3376,7 @@ jobsRouter.post(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 
@@ -3648,7 +3649,7 @@ jobsRouter.post(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 
@@ -3883,7 +3884,7 @@ jobsRouter.post(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 
@@ -4068,7 +4069,7 @@ jobsRouter.post(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 

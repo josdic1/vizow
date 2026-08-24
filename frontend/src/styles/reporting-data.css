@@ -579,3 +579,86 @@
   .reporting-v3-selection-bar > div:last-child { width:100%; }
   .reporting-v3-selection-bar > div:last-child > * { flex:1; }
 }
+
+/* --------------------------------------------------------------------------
+   Today-canonical Media: Reporting + Data
+   Shared outer grammar; each tool keeps its native workflow inside.
+   -------------------------------------------------------------------------- */
+.reporting-canonical-page,
+.data-canonical-page {
+  width: 100%;
+  max-width: 77.5rem;
+  margin: 0 auto;
+  padding-top: 0;
+  padding-bottom: 72px;
+}
+
+.reporting-canonical-page > .panel,
+.reporting-canonical-page > .reporting-canonical-surface,
+.data-canonical-page > .data-filter-surface {
+  margin-top: 16px;
+}
+
+.reporting-canonical-surface,
+.data-filter-surface {
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper-soft);
+  box-shadow: none;
+}
+
+.reporting-v3-filters.reporting-canonical-surface,
+.reporting-v3-results.reporting-canonical-surface {
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.reporting-v3-filter-head,
+.reporting-v3-results-head,
+.data-filter-heading {
+  min-height: 68px;
+  margin: 0;
+  padding: 11px 14px 11px 16px;
+  border-bottom: 2px solid var(--color-ink);
+  border-left: 5px solid var(--color-orange);
+  background: var(--color-paper-soft);
+}
+
+.reporting-v3-filter-head { align-items: center; }
+.reporting-v3-filter-head > div { display: block; }
+.reporting-v3-filter-head .eyebrow { margin-bottom: 2px; }
+.reporting-v3-filter-head strong { display: block; font-size: clamp(1.45rem, 2.2vw, 1.9rem); line-height: 1; }
+.reporting-v3-filter-head span { display: block; margin-top: 5px; }
+.reporting-v3-filter-head .btn { min-height: 38px; box-shadow: none; }
+.reporting-v3-filter-grid { padding: 12px; }
+
+.reporting-v3-results { margin-top: 16px; }
+.reporting-v3-results-head { align-items: center; }
+.reporting-v3-results-head h2 { margin: 2px 0; font-size: clamp(1.45rem, 2.2vw, 1.9rem); line-height: 1; }
+.reporting-v3-results-actions .btn { min-height: 38px; box-shadow: none; }
+.reporting-v3-report-meta { margin: 0 12px; padding: 10px 0; }
+.reporting-v3-field-library,
+.reporting-v3-selection-bar,
+.reporting-v3-document-studio,
+.reporting-v3-table-wrap,
+.reporting-v3-results > .report-empty-fields,
+.reporting-v3-results > .report-preview-note { margin-left: 12px; margin-right: 12px; }
+.reporting-v3-selection-bar { box-shadow: none; }
+.reporting-v3-table-wrap { margin-bottom: 12px; }
+
+.data-filter-surface { margin-top: 16px; overflow: hidden; }
+.data-filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.data-filter-heading h2,
+.data-filter-heading p { margin: 0; }
+.data-filter-heading h2 { margin-top: 2px; font-size: clamp(1.45rem, 2.2vw, 1.9rem); line-height: 1; }
+.data-filter-heading > span { color: var(--color-steel); font-size: .64rem; font-weight: 950; letter-spacing: .09em; text-transform: uppercase; }
+.data-command-bar { margin: 0; padding: 11px 12px 12px; border: 0; box-shadow: none; background: color-mix(in srgb, var(--color-paper) 60%, transparent); }
+.data-active-filters { padding: 7px 0 0; }
+.data-kpi-ribbon.data-kpi-ribbon-secondary { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 12px 0; border-width: 1px; }
+.data-kpi-ribbon.data-kpi-ribbon-secondary article { min-height: 76px; padding: 9px 11px; }
+.data-kpi-ribbon.data-kpi-ribbon-secondary strong { font-size: clamp(1.6rem, 2.5vw, 2.5rem); }
+.data-chart-card { border: 1px solid var(--color-ink); box-shadow: none; }
+.data-chart-card:hover { outline: 1px solid color-mix(in srgb, var(--color-orange) 70%, transparent); outline-offset: 1px; }
+
+@media (max-width: 900px) {
+  .data-kpi-ribbon.data-kpi-ribbon-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router";
+import { startPrivateDemo } from "../api/demoSession";
 import { DemoCompare } from "../demo/DemoCompare";
 import { DemoGuided } from "../demo/DemoGuided";
 import { DemoList } from "../demo/DemoList";
@@ -7,32 +9,80 @@ import { useDemo } from "../demo/useDemo";
 import "../styles/demo.css";
 
 function stageLabel(stage: "list" | "compare" | "guided"): string {
-  if (stage === "list") return "What Vizow fixes";
+  if (stage === "list") return "Guided Walkthrough";
   if (stage === "compare") return "Before ↔ With Vizow";
-  if (stage === "guided") return "Show me the fix";
-  return "Show me the fix";
+  if (stage === "guided") return "Walkthrough";
+  return "Walkthrough";
 }
 
-export function DemoPage() {
+export function DemoPage({ onTour }: { onTour: () => void }) {
   const { stage, activeIssueId, completedIssueIds, reset } = useDemo();
   const activeIssue = demoIssues.find((issue) => issue.id === activeIssueId) ?? demoIssues[0];
   const stageTitle = stage === "compare" || stage === "guided" ? activeIssue.short : stageLabel(stage);
+  const isList = stage === "list";
+  const canReset = completedIssueIds.length > 0;
+  const [startingDemo, setStartingDemo] = useState(false);
+
+  async function openPrivateDemo() {
+    if (startingDemo) return;
+    setStartingDemo(true);
+
+    try {
+      await startPrivateDemo();
+      window.location.assign("/app");
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to start a private Vizow demo.",
+      );
+      setStartingDemo(false);
+    }
+  }
 
   return (
-    <main className="demo-shell">
+    <main className={`demo-shell demo-shell-${stage}`}>
       <header className="demo-masthead">
-        <Link className="brand-lockup" to="/" aria-label="VIZOW Home">
+        <Link
+          className="brand-lockup"
+          to="/demo"
+          aria-label="VIZOW 60-second tour"
+          onClick={(event) => {
+            event.preventDefault();
+            onTour();
+          }}
+        >
           <img className="brand-mark" src="/icons/vizow-icon.svg" alt="" />
           <span className="brand-copy"><strong>VIZOW</strong></span>
         </Link>
+
         <div className="demo-masthead-label">
-          <span>Public demo</span>
-          <strong>{stageTitle}</strong>
-          <small>{completedIssueIds.length} / {demoIssues.length} fixes tried</small>
+          {isList ? (
+            <>
+              <span>Demo</span>
+              <strong>Guided Walkthrough</strong>
+              <small>Choose a workflow · drag the comparison · walk through it</small>
+            </>
+          ) : (
+            <>
+              <span>{stageLabel(stage)}</span>
+              <strong>{stageTitle}</strong>
+              <small>{completedIssueIds.length} / {demoIssues.length} tried</small>
+            </>
+          )}
         </div>
+
         <div className="demo-masthead-actions">
-          <button type="button" onClick={reset}>Reset Demo</button>
-          <Link to="/">Exit Vizow →</Link>
+          {canReset ? <button type="button" onClick={reset}>Reset Walkthrough</button> : null}
+          <button type="button" onClick={onTour}>60-Second Tour</button>
+          <button
+            className="demo-enter-live"
+            type="button"
+            disabled={startingDemo}
+            onClick={() => void openPrivateDemo()}
+          >
+            {startingDemo ? "Building…" : "Try Live Vizow →"}
+          </button>
         </div>
       </header>
 

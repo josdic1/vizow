@@ -13,7 +13,7 @@ import {
 import { Router } from "express";
 
 import { pool } from "../db/pool.js";
-import { env } from "../env.js";
+import { getOrganizationSlug } from "../organizationScope.js";
 
 export const requestsRouter = Router();
 
@@ -249,7 +249,7 @@ requestsRouter.get("/", async (_request, response) => {
           END,
           request.submitted_at DESC
       `,
-      [env.ORGANIZATION_SLUG],
+      [getOrganizationSlug()],
     );
 
     response.json({
@@ -302,7 +302,7 @@ requestsRouter.post("/", async (request, response) => {
           AND organization.slug = $2
         FOR SHARE OF client
       `,
-      [input.clientId, env.ORGANIZATION_SLUG],
+      [input.clientId, getOrganizationSlug()],
     );
 
     const selectedClient = clientResult.rows[0];
@@ -453,7 +453,7 @@ requestsRouter.patch("/:requestId/review", async (request, response) => {
         WHERE organization.slug = $1 AND client.id = $2
         FOR SHARE OF client
       `,
-      [env.ORGANIZATION_SLUG, input.clientId],
+      [getOrganizationSlug(), input.clientId],
     );
     const selectedClient = clientResult.rows[0];
 
@@ -607,7 +607,7 @@ requestsRouter.post("/:requestId/approve", async (request, response) => {
           AND organization.slug = $2
         FOR UPDATE OF work_request
       `,
-      [requestIdResult.data, env.ORGANIZATION_SLUG],
+      [requestIdResult.data, getOrganizationSlug()],
     );
 
     const selectedRequest = selectedRequestResult.rows[0];
@@ -959,7 +959,7 @@ requestsRouter.post("/:requestId/decline", async (request, response) => {
           AND organization.slug = $2
         FOR UPDATE OF work_request
       `,
-      [requestIdResult.data, env.ORGANIZATION_SLUG],
+      [requestIdResult.data, getOrganizationSlug()],
     );
 
     const selectedRequest = selectedRequestResult.rows[0];

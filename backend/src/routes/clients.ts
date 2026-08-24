@@ -25,7 +25,7 @@ import type {
 } from "pg";
 
 import { pool } from "../db/pool.js";
-import { env } from "../env.js";
+import { getOrganizationSlug } from "../organizationScope.js";
 
 type DatabaseExecutor = Pool | PoolClient;
 type DateValue = Date | string;
@@ -251,7 +251,7 @@ async function loadClientRecord(
           AND client.id = $2
       `,
       [
-        env.ORGANIZATION_SLUG,
+        getOrganizationSlug(),
         clientId,
       ],
     );
@@ -282,7 +282,7 @@ async function loadClientRecord(
           property.created_at
       `,
       [
-        env.ORGANIZATION_SLUG,
+        getOrganizationSlug(),
         clientId,
       ],
     );
@@ -328,7 +328,7 @@ async function loadClientRecord(
           request.submitted_at DESC
       `,
       [
-        env.ORGANIZATION_SLUG,
+        getOrganizationSlug(),
         clientId,
       ],
     );
@@ -377,7 +377,7 @@ async function loadClientRecord(
         ORDER BY job.updated_at DESC, job.created_at DESC
       `,
       [
-        env.ORGANIZATION_SLUG,
+        getOrganizationSlug(),
         clientId,
       ],
     );
@@ -418,7 +418,7 @@ async function lockClient(
       FOR UPDATE OF client
     `,
     [
-      env.ORGANIZATION_SLUG,
+      getOrganizationSlug(),
       clientId,
     ],
   );
@@ -461,7 +461,7 @@ async function lockProperty(
       FOR UPDATE OF property, client
     `,
     [
-      env.ORGANIZATION_SLUG,
+      getOrganizationSlug(),
       clientId,
       propertyId,
     ],
@@ -590,7 +590,7 @@ clientsRouter.get("/", async (request, response) => {
           client.created_at
       `,
       [
-        env.ORGANIZATION_SLUG,
+        getOrganizationSlug(),
         includeArchived,
       ],
     );
@@ -685,7 +685,7 @@ clientsRouter.post("/", async (request, response) => {
         FROM organizations
         WHERE slug = $1
       `,
-      [env.ORGANIZATION_SLUG],
+      [getOrganizationSlug()],
     );
 
     const organization = organizationResult.rows[0];

@@ -157,7 +157,7 @@ export function JobPage() {
   function enterFieldMode(): void {
     if (!job || !canEnterFieldMode) return;
     selectActiveJob(job.id);
-    navigate("/field");
+    navigate("/app/field");
   }
 
   async function saveQuickNote(): Promise<void> {
@@ -236,7 +236,7 @@ export function JobPage() {
 
         {state.status === "error" && (
           <section className="job-page-error">
-            <Link className="btn" to="/jobs">← Jobs</Link>
+            <Link className="btn" to="/app/jobs">← Jobs</Link>
             <div className="notice notice-error">{state.message}</div>
           </section>
         )}
@@ -245,7 +245,7 @@ export function JobPage() {
           <div className="job-page-shell">
             <header className="job-page-command-bar">
               <div className="job-page-identity">
-                <Link className="job-page-back" to="/jobs">← Jobs</Link>
+                <Link className="job-page-back" to="/app/jobs">← Jobs</Link>
                 <div>
                   <h1>{state.job.title}</h1>
                   <p className="job-page-subline">
@@ -260,7 +260,7 @@ export function JobPage() {
               <nav className="job-page-actions" aria-label="Job records and tools">
                 <Link
                   className="job-page-record-link"
-                  to={`/clients/${state.job.clientId}`}
+                  to={`/app/clients/${state.job.clientId}`}
                 >
                   <span>Client record</span>
                   <strong>{state.job.clientName}</strong>
@@ -268,7 +268,7 @@ export function JobPage() {
 
                 <Link
                   className="job-page-record-link"
-                  to={`/jobs/${state.job.id}/vow`}
+                  to={`/app/jobs/${state.job.id}/vow`}
                 >
                   <span>Visual of Work</span>
                   <strong>View VOW →</strong>

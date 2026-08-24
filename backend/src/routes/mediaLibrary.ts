@@ -5,7 +5,7 @@ import {
 import { Router } from "express";
 
 import { pool } from "../db/pool.js";
-import { env } from "../env.js";
+import { getOrganizationSlug } from "../organizationScope.js";
 
 export const mediaLibraryRouter = Router();
 
@@ -86,7 +86,7 @@ mediaLibraryRouter.get("/", async (_request, response) => {
           media.created_at DESC,
           media.id
       `,
-      [env.ORGANIZATION_SLUG],
+      [getOrganizationSlug()],
     );
 
     const payload = mediaLibraryResponseSchema.parse({

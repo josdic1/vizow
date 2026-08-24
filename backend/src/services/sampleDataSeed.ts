@@ -1,3 +1,6 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+import { createHash } from "node:crypto";
+
 import type { PoolClient } from "pg";
 
 import {
@@ -8,8 +11,9 @@ import {
   type SampleProject,
 } from "../data/sampleProjects.js";
 import { env } from "../env.js";
+import { getOrganizationSlug } from "../organizationScope.js";
 
-export type SampleRange = "day" | "week" | "month";
+export type SampleRange = "day" | "week" | "month" | "demo";
 
 export type SampleProfile = {
   days: number;
@@ -47,6 +51,14 @@ export const realisticSampleProfiles: Record<
     jobs: 21,
     visits: 21,
     vows: 5,
+  },
+  demo: {
+    days: 7,
+    clients: 3,
+    requests: 5,
+    jobs: 3,
+    visits: 5,
+    vows: 1,
   },
 };
 
@@ -191,11 +203,32 @@ type Counters = {
   requestMedia: number;
 };
 
-function sampleId(kind: number, index: number): string {
-  const group = kind.toString(16).padStart(4, "0");
-  const tail = (index + 1).toString(16).padStart(12, "0");
+const sampleNamespace = new AsyncLocalStorage<string>();
 
-  return `f17a5eed-${group}-4000-8000-${tail}`;
+function sampleId(kind: number, index: number): string {
+  const namespace = sampleNamespace.getStore();
+
+  if (!namespace) {
+    const group = kind.toString(16).padStart(4, "0");
+    const tail = (index + 1).toString(16).padStart(12, "0");
+
+    return `f17a5eed-${group}-4000-8000-${tail}`;
+  }
+
+  const digest = createHash("sha256")
+    .update(`${namespace}:${kind}:${index}`, "utf8")
+    .digest("hex");
+  const variant = ["8", "9", "a", "b"][
+    Number.parseInt(digest[16] ?? "0", 16) % 4
+  ];
+
+  return [
+    digest.slice(0, 8),
+    digest.slice(8, 12),
+    `4${digest.slice(13, 16)}`,
+    `${variant}${digest.slice(17, 20)}`,
+    digest.slice(20, 32),
+  ].join("-");
 }
 
 function addDays(value: Date, days: number): Date {
@@ -583,11 +616,94 @@ async function seedExtraRequests(
   counters: Counters,
   organizationId: string,
   clients: SeededClient[],
+  range: SampleRange,
   totalRequests: number,
   now: Date,
 ): Promise<void> {
+  const firstExtraRequestIndex = counters.request;
+
   while (counters.request < totalRequests) {
     const index = counters.request;
+
+    if (range === "demo") {
+      const demoIndex = index - firstExtraRequestIndex;
+      const existingClient = demoIndex === 1 ? clients[0] : null;
+      const submittedName =
+        demoIndex === 0 ? "Alex Rivera" : existingClient?.name ?? "Mara Collins";
+      const title =
+        demoIndex === 0
+          ? "Kitchen sink slow drain"
+          : "Loose stair handrail";
+      const description =
+        demoIndex === 0
+          ? "Kitchen sink has been draining slower every day. Looking for someone to diagnose it before it backs up completely."
+          : "The stair handrail has started pulling away from the wall near the bottom bracket. It moves when you grab it.";
+      const submittedAt = addHours(now, demoIndex === 0 ? -3 : -1);
+      const addressLine1 = existingClient?.addressLine1 ?? "54 Oak Street";
+      const city = existingClient?.city ?? "Maplewood";
+      const state = existingClient?.state ?? "NJ";
+      const postalCode = existingClient?.postalCode ?? "07040";
+
+      await client.query(
+        `
+          INSERT INTO requests (
+            id,
+            organization_id,
+            client_id,
+            title,
+            description,
+            service_address_line_1,
+            service_address_line_2,
+            service_city,
+            service_state,
+            service_postal_code,
+            submitted_name,
+            submitted_email,
+            submitted_phone,
+            preferred_timing,
+            preferred_contact,
+            status,
+            approved_job_id,
+            decline_reason,
+            submitted_at,
+            decided_at,
+            created_at,
+            updated_at
+          )
+          VALUES (
+            $1, $2, $3, $4, $5, $6, NULL, $7, $8, $9,
+            $10, $11, $12, $13, $14,
+            'open'::request_status, NULL, NULL, $15, NULL, $15, $16
+          )
+        `,
+        [
+          sampleId(7, index),
+          organizationId,
+          existingClient?.id ?? null,
+          title,
+          description,
+          addressLine1,
+          city,
+          state,
+          postalCode,
+          submittedName,
+          demoIndex === 0
+            ? "alex.rivera@example.test"
+            : `returning-${index + 1}@example.test`,
+          demoIndex === 0 ? "973-555-0142" : "973-555-0188",
+          demoIndex === 0
+            ? "Tomorrow afternoon if possible."
+            : "Any weekday after 2 PM.",
+          demoIndex === 0 ? "Text message" : "Email",
+          submittedAt,
+          now,
+        ],
+      );
+
+      counters.request += 1;
+      continue;
+    }
+
     const seededClient = clients[index % clients.length];
     const title =
       sampleIntakeRequests[
@@ -795,6 +911,7 @@ export async function seedRealisticSampleData(
     client: PoolClient,
     organizationId: string,
   ) => Promise<void>,
+  organizationSlug = getOrganizationSlug(),
 ): Promise<SampleProfile> {
   const profile = realisticSampleProfiles[range];
   const now = new Date();
@@ -804,16 +921,19 @@ export async function seedRealisticSampleData(
       FROM organizations
       WHERE slug = $1
     `,
-    [env.ORGANIZATION_SLUG],
+    [organizationSlug],
   );
   const organizationId = organizationResult.rows[0]?.id;
 
   if (!organizationId) {
     throw new Error(
-      `Organization ${env.ORGANIZATION_SLUG} was not found.`,
+      `Organization ${organizationSlug} was not found.`,
     );
   }
 
+  return sampleNamespace.run(
+    organizationSlug === env.ORGANIZATION_SLUG ? "" : organizationId,
+    async () => {
   await clearSampleData(client, organizationId);
 
   const counters: Counters = {
@@ -842,6 +962,7 @@ export async function seedRealisticSampleData(
   }> = [];
   const summaryByJob = new Map<string, string>();
   const intakeMediaByJobIndex: Array<SnapshotMedia | null> = [];
+  let demoScheduledVisitIndex = 0;
 
   for (let index = 0; index < profile.jobs; index += 1) {
     const project = sampleJobScenarios[index];
@@ -1072,9 +1193,11 @@ export async function seedRealisticSampleData(
           ? cycleTwoOpenedAt
           : createdAt;
       const scheduledStart =
-        visit.dayOffset < 0
-          ? addDays(now, Math.abs(visit.dayOffset))
-          : addDays(cycleOpenedAt, visit.dayOffset);
+        range === "demo" && visit.status === "scheduled"
+          ? addHours(addDays(now, demoScheduledVisitIndex++), 1)
+          : visit.dayOffset < 0
+            ? addDays(now, Math.abs(visit.dayOffset))
+            : addDays(cycleOpenedAt, visit.dayOffset);
       const scheduledEnd = addHours(scheduledStart, 2);
       const visitCreatedAt =
         visit.status === "scheduled"
@@ -1441,6 +1564,7 @@ export async function seedRealisticSampleData(
     counters,
     organizationId,
     clients,
+    range,
     profile.requests,
     now,
   );
@@ -1458,7 +1582,11 @@ export async function seedRealisticSampleData(
       counters,
       organizationId,
       entry.candidate,
-      index % 4 === 0 ? "draft" : "published",
+      range === "demo"
+        ? "published"
+        : index % 4 === 0
+          ? "draft"
+          : "published",
       now,
     );
   }
@@ -1513,4 +1641,6 @@ export async function seedRealisticSampleData(
     visits: counters.visit,
     vows: counters.vow,
   };
+    },
+  );
 }

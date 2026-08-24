@@ -9,7 +9,6 @@ html {
  */
 main {
   --section-rail-gutter: 48px;
-  padding-left: var(--section-rail-gutter);
 }
 
 .section-rail {
@@ -217,4 +216,70 @@ main {
     width: 13px;
     height: 13px;
   }
+}
+
+/* --------------------------------------------------------------------------
+   Section rail discoverability
+   It is local page navigation: active section is always named, hover reveals any
+   destination, and the icon stack reads as one connected navigation control.
+   -------------------------------------------------------------------------- */
+
+.section-rail nav {
+  position: relative;
+}
+
+.section-rail nav::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -8px;
+  bottom: -8px;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--color-ink) 18%, transparent);
+}
+
+.section-rail button {
+  background: color-mix(in srgb, var(--color-paper-soft) 98%, transparent);
+}
+
+.section-rail button[aria-current="location"] {
+  background: var(--color-paper);
+}
+
+/* Always expose the current destination on roomy screens. */
+@media (min-width: 921px) {
+  .section-rail button[aria-current="location"]::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* The active section gets a tiny directional notch toward the page. */
+.section-rail button[aria-current="location"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  width: 6px;
+  height: 2px;
+  transform: translateY(-50%);
+  background: var(--color-orange);
+}
+
+.section-rail button[data-label="Top"][aria-current="location"]::before {
+  content: "↑";
+  inset: 0;
+  width: auto;
+  height: auto;
+  transform: none;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  color: currentColor;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
 }

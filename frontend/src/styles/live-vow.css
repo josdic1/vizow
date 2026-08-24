@@ -751,3 +751,471 @@
     font-size: 8pt !important;
   }
 }
+
+/* Today-canonical VOW detail refinement ----------------------------------- */
+.live-vow-shell {
+  width: min(77.5rem, calc(100% - 32px));
+  padding-top: 18px;
+}
+
+.live-vow-controls {
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--vow-ink);
+  box-shadow: none;
+  background: color-mix(in srgb, var(--color-paper-soft) 78%, transparent);
+}
+
+.live-vow-controls .eyebrow {
+  margin-bottom: 5px;
+}
+
+.live-vow-create-note {
+  margin: 0 0 8px;
+}
+
+.live-vow-view-tabs {
+  gap: 0;
+}
+
+.live-vow-view-tabs button {
+  min-height: 34px;
+  padding: 7px 10px;
+  border-width: 1px 1px 1px 0;
+}
+
+.live-vow-view-tabs button:first-child {
+  border-left-width: 1px;
+}
+
+.live-vow-document {
+  border: 2px solid var(--vow-ink);
+  box-shadow: none;
+}
+
+.live-vow-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: end;
+  padding: 0 24px 22px;
+  border-bottom: 2px solid var(--vow-ink);
+}
+
+.live-vow-brand {
+  grid-column: 1 / -1;
+  margin: 0 -24px 20px;
+  padding: 11px 24px;
+  border-bottom: 1px solid var(--vow-ink);
+  background: transparent;
+  color: var(--vow-ink);
+}
+
+.live-vow-brand strong {
+  font-size: 20px;
+}
+
+.live-vow-header h1 {
+  margin: 5px 0 8px;
+  font-size: clamp(38px, 5.4vw, 64px);
+}
+
+.live-vow-status-stamp {
+  position: static;
+  width: auto;
+  height: auto;
+  min-width: 112px;
+  padding: 10px 12px;
+  border: 1px solid var(--vow-ink);
+  border-radius: 0;
+  transform: none;
+}
+
+.live-vow-meta {
+  border-bottom: 1px solid var(--vow-ink);
+}
+
+.live-vow-meta > div {
+  min-height: 62px;
+  padding: 11px 14px;
+}
+
+.live-vow-coverage {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 150px)) minmax(0, 1fr);
+  align-items: stretch;
+  border-bottom: 2px solid var(--vow-ink);
+  background: color-mix(in srgb, var(--color-paper-soft) 76%, transparent);
+}
+
+.live-vow-coverage > div {
+  display: flex;
+  min-height: 58px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-right: 1px solid var(--vow-ink);
+}
+
+.live-vow-coverage span {
+  color: var(--vow-soft);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.live-vow-coverage strong {
+  font-family: var(--font-display);
+  font-size: 25px;
+  line-height: .9;
+}
+
+.live-vow-coverage > p {
+  align-self: center;
+  margin: 0;
+  padding: 10px 16px;
+  color: var(--vow-soft);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.live-vow-section,
+.live-vow-before-after {
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--vow-ink);
+}
+
+.live-vow-section-heading {
+  margin-bottom: 14px;
+}
+
+.live-vow-section-heading h2,
+.live-vow-marketing-copy h2,
+.live-vow-one-sheet h2,
+.live-vow-work-sample h2 {
+  font-size: 27px;
+}
+
+.live-vow-timeline-event {
+  padding-bottom: 16px;
+}
+
+.live-vow-timeline-event > img {
+  width: 68px;
+  height: 68px;
+}
+
+.live-vow-copy-output,
+.live-vow-social-card {
+  box-shadow: none;
+}
+
+@media (max-width: 780px) {
+  .live-vow-header {
+    display: block;
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .live-vow-brand {
+    margin-right: -20px;
+    margin-left: -20px;
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .live-vow-status-stamp {
+    margin-top: 14px;
+  }
+
+  .live-vow-coverage {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .live-vow-coverage > p {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--vow-ink);
+  }
+}
+
+/* Full VOW composition pass ------------------------------------------------ */
+.live-vow-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 280px) auto;
+  align-items: end;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 0 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--vow-ink);
+  background: transparent;
+}
+
+.live-vow-control-copy .eyebrow {
+  margin: 0 0 3px;
+}
+
+.live-vow-create-note {
+  margin: 0;
+  color: var(--vow-soft);
+  font-size: 11px;
+}
+
+.live-vow-output-picker {
+  display: grid;
+  gap: 5px;
+}
+
+.live-vow-output-picker > span {
+  color: var(--vow-soft);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.live-vow-output-picker select {
+  width: 100%;
+  height: 40px;
+  padding: 0 34px 0 12px;
+  border: 1px solid var(--vow-ink);
+  border-radius: 0;
+  background: var(--color-paper);
+  color: var(--vow-ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.live-vow-control-actions {
+  align-items: stretch;
+}
+
+.live-vow-control-actions .btn {
+  min-height: 40px;
+  box-shadow: none;
+}
+
+.live-vow-full-document {
+  border-width: 1px;
+  background: color-mix(in srgb, var(--vow-paper) 96%, white);
+}
+
+.live-vow-full-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 28px;
+  align-items: end;
+  padding: 22px 26px 20px;
+  border-bottom: 1px solid var(--vow-ink);
+}
+
+.live-vow-full-kicker {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.live-vow-full-kicker strong {
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1;
+  letter-spacing: .025em;
+}
+
+.live-vow-full-kicker span {
+  color: var(--vow-orange);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.live-vow-full-heading > .eyebrow {
+  margin: 0 0 5px;
+}
+
+.live-vow-full-heading h1 {
+  max-width: 17ch;
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: clamp(36px, 4.4vw, 54px);
+  line-height: .92;
+  text-transform: uppercase;
+}
+
+.live-vow-full-location {
+  margin: 0;
+  color: var(--vow-soft);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.live-vow-full-status {
+  min-width: 118px;
+  margin-bottom: 2px;
+  padding: 6px 0 6px 13px;
+  border-left: 3px solid var(--vow-orange);
+  text-transform: uppercase;
+}
+
+.live-vow-full-status strong,
+.live-vow-full-status span {
+  display: block;
+}
+
+.live-vow-full-status strong {
+  color: var(--vow-orange);
+  font-size: 11px;
+  letter-spacing: .09em;
+}
+
+.live-vow-full-status span {
+  margin-top: 4px;
+  color: var(--vow-soft);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.live-vow-full-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--vow-ink);
+}
+
+.live-vow-full-overview > div {
+  min-width: 0;
+  padding: 11px 14px 12px;
+}
+
+.live-vow-full-overview > div + div {
+  border-left: 1px solid var(--vow-rule);
+}
+
+.live-vow-full-overview span,
+.live-vow-full-overview strong,
+.live-vow-full-overview small {
+  display: block;
+}
+
+.live-vow-full-overview span {
+  margin-bottom: 5px;
+  color: var(--vow-soft);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.live-vow-full-overview strong {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+}
+
+.live-vow-full-overview small {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--vow-soft);
+  font-size: 9px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+}
+
+.live-vow-timeline-section {
+  padding: 20px 26px 24px;
+}
+
+.live-vow-timeline-section .live-vow-section-heading {
+  margin-bottom: 12px;
+}
+
+.live-vow-timeline.is-single {
+  padding-left: 0;
+}
+
+.live-vow-timeline.is-single::before,
+.live-vow-timeline.is-single .live-vow-timeline-dot {
+  display: none;
+}
+
+.live-vow-timeline.is-single .live-vow-timeline-event {
+  padding: 12px 0 0;
+  border-top: 1px solid var(--vow-rule);
+}
+
+@media (max-width: 900px) {
+  .live-vow-controls {
+    grid-template-columns: 1fr auto;
+  }
+
+  .live-vow-control-copy {
+    grid-column: 1 / -1;
+  }
+
+  .live-vow-full-overview {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .live-vow-full-overview > div:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid var(--vow-rule);
+  }
+
+  .live-vow-full-overview > div:nth-child(4) {
+    border-top: 1px solid var(--vow-rule);
+  }
+}
+
+@media (max-width: 620px) {
+  .live-vow-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .live-vow-control-actions {
+    justify-content: stretch;
+  }
+
+  .live-vow-control-actions .btn {
+    flex: 1;
+  }
+
+  .live-vow-full-header {
+    display: block;
+    padding: 20px;
+  }
+
+  .live-vow-full-status {
+    margin-top: 16px;
+  }
+
+  .live-vow-full-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .live-vow-full-overview > div + div {
+    border-top: 1px solid var(--vow-rule);
+    border-left: 0;
+  }
+}
+
+@media print {
+  .live-vow-full-header {
+    padding: .18in .2in !important;
+  }
+
+  .live-vow-full-heading h1 {
+    font-size: 30pt !important;
+  }
+
+  .live-vow-full-overview > div {
+    padding: .08in .1in !important;
+  }
+}

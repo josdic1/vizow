@@ -176,13 +176,12 @@ export function Today() {
       />
       <div className="today-shell">
         <header className="today-header">
-          <Link className="today-mark" to="/">VIZOW</Link>
+          <Link className="today-mark" to="/app">VIZOW</Link>
           <div className="today-date"><span>Today</span><strong>{formatToday()}</strong></div>
           <nav className="today-nav" aria-label="Primary">
-            <Link to="/inbox">Inbox</Link>
-            <Link to="/jobs">Jobs</Link>
-            <Link className="today-nav-primary" to="/inbox?compose=request">Create Request</Link>
-            <Link className="today-nav-demo" to="/demo">Meet Vizow</Link>
+            <Link to="/app">Inbox</Link>
+            <Link to="/app/jobs">Jobs</Link>
+            <Link className="today-nav-primary" to="/app?compose=request">Create Request</Link>
             <AdminSampleDataMenu />
           </nav>
         </header>
@@ -194,9 +193,9 @@ export function Today() {
             <p>Review what needs attention, then confirm where you are working.</p>
           </div>
           <div className="today-metrics">
-            <Link to="/inbox"><span>New in Inbox</span><strong>{loading ? "—" : pendingRequests}</strong></Link>
-            <Link to="/calendar"><span>Visits today</span><strong>{loading ? "—" : todayVisits.length}</strong></Link>
-            <Link to="/jobs"><span>Jobs coming up</span><strong>{loading ? "—" : upcomingJobs}</strong></Link>
+            <Link to="/app"><span>New in Inbox</span><strong>{loading ? "—" : pendingRequests}</strong></Link>
+            <Link to="/app/calendar"><span>Visits today</span><strong>{loading ? "—" : todayVisits.length}</strong></Link>
+            <Link to="/app/jobs"><span>Jobs coming up</span><strong>{loading ? "—" : upcomingJobs}</strong></Link>
           </div>
         </section>
 
@@ -291,13 +290,13 @@ export function Today() {
                   <time dateTime={visit.scheduledStart}>{formatVisitTime(visit.scheduledStart)}</time>
                   <div className="today-visit-copy">
                     <span>{index === 0 ? "First stop" : `Stop ${index + 1}`}</span>
-                    <Link to={`/jobs/${job.id}`}>{job.title}</Link>
+                    <Link to={`/app/jobs/${job.id}`}>{job.title}</Link>
                     <p>{job.clientName} · {formatAddress(job)}</p>
                   </div>
                   <div className="today-visit-status">
                     <span>{visit.status}</span>
                     {isCurrent ? (
-                      <Link className="today-button today-button-primary" to="/field">Current Job</Link>
+                      <Link className="today-button today-button-primary" to="/app/field">Current Job</Link>
                     ) : (
                       <button type="button" onClick={() => selectActiveJob(job.id)}>
                         {isSuggested ? "Work here?" : "Make Current"}
@@ -318,8 +317,8 @@ export function Today() {
               <p>{activeJob.clientName} · {formatAddress(activeJob)}</p>
             </div>
             <div className="today-route-actions">
-              <Link className="today-button today-button-secondary" to={`/jobs/${activeJob.id}`}>Job Page</Link>
-              <Link className="today-button today-button-primary" to="/field">Enter Field Mode</Link>
+              <Link className="today-button today-button-secondary" to={`/app/jobs/${activeJob.id}`}>Job Page</Link>
+              <Link className="today-button today-button-primary" to="/app/field">Enter Field Mode</Link>
             </div>
           </section>
         )}

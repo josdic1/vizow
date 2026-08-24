@@ -14,7 +14,7 @@ import multer from "multer";
 import { z } from "zod";
 
 import { pool } from "../db/pool.js";
-import { env } from "../env.js";
+import { getOrganizationSlug } from "../organizationScope.js";
 import {
   deleteJobPhoto,
   uploadJobPhoto,
@@ -141,7 +141,7 @@ jobPhotosRouter.get(
             media.id
         `,
         [
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
           jobIdResult.data,
         ],
       );
@@ -254,7 +254,7 @@ jobPhotosRouter.post(
         `,
         [
           jobIdResult.data,
-          env.ORGANIZATION_SLUG,
+          getOrganizationSlug(),
         ],
       );
 

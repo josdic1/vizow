@@ -7,7 +7,6 @@ import type {
   Visit,
 } from "@vizow/shared";
 import {
-  CalendarDays,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -24,7 +23,7 @@ import {
   updatePublicCalendarSettings,
 } from "../api/calendar";
 import { fetchJobs, fetchVisits } from "../api/jobs";
-import { AdminPageHeader } from "../components/AdminPageHeader";
+import { WorkspaceHero } from "../components/WorkspaceHero";
 import { AppLayout } from "../layouts/AppLayout";
 import {
   calendarRange,
@@ -388,63 +387,74 @@ export function CalendarPage() {
       activeStep="action"
       resultTone={schedule.status === "error" ? "error" : "success"}
       sections={[
-        { id: "calendar-private", label: "Schedule" },
-        { id: "calendar-public", label: "Public View" },
+        { id: "calendar-private", label: "Booked work" },
+        { id: "calendar-public", label: "Public availability" },
       ]}
     >
-      <main className="page calendar-page">
-        <AdminPageHeader
+      <main className="page calendar-page workspace-canonical-page">
+        <WorkspaceHero
           eyebrow="Schedule"
           title="Calendar"
-          description="Your real schedule stays exact. Public availability starts from that schedule and only changes when you override it."
-          meta={viewMode === "week" ? "Week view" : "Month view"}
+          description="Your Job Visits are the schedule of record. Public availability follows that schedule unless you intentionally override a date."
+          metrics={[
+            {
+              label: "Visits in view",
+              value: schedule.status === "loading" ? "—" : privateVisitCount,
+            },
+            {
+              label: "Public",
+              value: publicState.status === "loading" ? "—" : publicSettings.enabled ? "On" : "Off",
+            },
+            {
+              label: "Overrides",
+              value: publicState.status === "loading" ? "—" : visibleOverrideDates.length,
+            },
+          ]}
         />
 
-        <section className="calendar-toolbar" aria-label="Calendar controls">
-          <div className="calendar-view-toggle" aria-label="Calendar view">
-            <button
-              className={viewMode === "week" ? "is-active" : undefined}
-              type="button"
-              onClick={() => setViewMode("week")}
-            >
-              Week
-            </button>
-            <button
-              className={viewMode === "month" ? "is-active" : undefined}
-              type="button"
-              onClick={() => setViewMode("month")}
-            >
-              Month
-            </button>
-          </div>
-
-          <div className="calendar-period-nav">
-            <button aria-label="Previous period" type="button" onClick={() => move(-1)}>
-              <ChevronLeft aria-hidden="true" />
-            </button>
-            <button type="button" onClick={showToday}>Today</button>
-            <button aria-label="Next period" type="button" onClick={() => move(1)}>
-              <ChevronRight aria-hidden="true" />
-            </button>
-          </div>
-
-          <strong className="calendar-period-title">
-            {calendarTitle(anchorDate, viewMode)}
-          </strong>
-        </section>
-
-        <section className="calendar-section" id="calendar-private">
-          <header className="calendar-section-heading">
+        <section className="calendar-canonical-section" id="calendar-private">
+          <header className="calendar-canonical-heading">
             <div>
-              <p className="eyebrow">Your calendar · source of truth</p>
+              <p className="workspace-eyebrow">Your calendar</p>
               <h2>Booked work</h2>
-              <p>Real Job Visits. Public settings never change this calendar.</p>
+              <p>Real Job Visits. Public settings never change this schedule.</p>
             </div>
-            <div className="calendar-truth-badge">
-              <CalendarDays aria-hidden="true" />
-              <span>{privateVisitCount} in view</span>
+            <div className="calendar-period-summary">
+              <span>{viewMode === "week" ? "Week view" : "Month view"}</span>
+              <strong>{calendarTitle(anchorDate, viewMode)}</strong>
             </div>
           </header>
+
+          <div className="calendar-canonical-tools" aria-label="Calendar controls">
+            <div className="calendar-view-toggle" aria-label="Calendar view">
+              <button
+                className={viewMode === "week" ? "is-active" : undefined}
+                type="button"
+                onClick={() => setViewMode("week")}
+              >
+                Week
+              </button>
+              <button
+                className={viewMode === "month" ? "is-active" : undefined}
+                type="button"
+                onClick={() => setViewMode("month")}
+              >
+                Month
+              </button>
+            </div>
+
+            <div className="calendar-period-nav">
+              <button aria-label="Previous period" type="button" onClick={() => move(-1)}>
+                <ChevronLeft aria-hidden="true" />
+              </button>
+              <button type="button" onClick={showToday}>Today</button>
+              <button aria-label="Next period" type="button" onClick={() => move(1)}>
+                <ChevronRight aria-hidden="true" />
+              </button>
+            </div>
+
+            <span className="calendar-tools-note">Source of truth · {privateVisitCount} {privateVisitCount === 1 ? "visit" : "visits"} in this view</span>
+          </div>
 
           {schedule.status === "error" ? (
             <div className="notice notice-error">{schedule.message}</div>
@@ -470,7 +480,7 @@ export function CalendarPage() {
 
                   <div className="calendar-day-events">
                     {dayVisits.map(({ job, visit }) => (
-                      <Link className="calendar-visit" key={visit.id} to={`/jobs/${job.id}`}>
+                      <Link className="calendar-visit" key={visit.id} to={`/app/jobs/${job.id}`}>
                         <time>{visitTimeRange(visit)}</time>
                         <strong>{job.title}</strong>
                         <span>{job.clientName}</span>
@@ -490,32 +500,40 @@ export function CalendarPage() {
           </div>
         </section>
 
-        <section className="calendar-section calendar-public-section" id="calendar-public">
-          <header className="calendar-section-heading calendar-public-heading">
+        <section className="calendar-canonical-section calendar-canonical-public" id="calendar-public">
+          <header className="calendar-canonical-heading">
             <div>
-              <p className="eyebrow">Public calendar</p>
+              <p className="workspace-eyebrow">Public availability</p>
               <h2>What customers see</h2>
-              <p>Starts from your real schedule. Change only the dates you want to override.</p>
+              <p>Same schedule underneath. Change only the dates customers should see differently.</p>
             </div>
-            <div className="calendar-public-heading-actions">
-              <div className="calendar-view-toggle" aria-label="Public calendar visibility">
-                <button
-                  className={publicSettings.enabled ? "is-active" : undefined}
-                  disabled={savingPublic}
-                  type="button"
-                  onClick={() => void setEnabled(true)}
-                >
-                  Public on
-                </button>
-                <button
-                  className={!publicSettings.enabled ? "is-active" : undefined}
-                  disabled={savingPublic}
-                  type="button"
-                  onClick={() => void setEnabled(false)}
-                >
-                  Public off
-                </button>
-              </div>
+            <div className="calendar-period-summary">
+              <span>Customer view</span>
+              <strong>{publicSettings.enabled ? "Public on" : "Public off"}</strong>
+            </div>
+          </header>
+
+          <div className="calendar-public-toolbar">
+            <div className="calendar-view-toggle" aria-label="Public calendar visibility">
+              <button
+                className={publicSettings.enabled ? "is-active" : undefined}
+                disabled={savingPublic}
+                type="button"
+                onClick={() => void setEnabled(true)}
+              >
+                Public on
+              </button>
+              <button
+                className={!publicSettings.enabled ? "is-active" : undefined}
+                disabled={savingPublic}
+                type="button"
+                onClick={() => void setEnabled(false)}
+              >
+                Public off
+              </button>
+            </div>
+
+            <div className="calendar-public-toolbar-actions">
               <button
                 className="btn"
                 disabled={savingPublic || !publicSettings.enabled}
@@ -523,7 +541,7 @@ export function CalendarPage() {
                 type="button"
                 onClick={() => void normalizeVisibleSchedule()}
               >
-                <RotateCcw aria-hidden="true" /> Normalize
+                <RotateCcw aria-hidden="true" /> Match schedule
               </button>
               <Link className="btn" to="/availability" target="_blank" rel="noreferrer">
                 <Eye aria-hidden="true" /> Preview
@@ -537,7 +555,7 @@ export function CalendarPage() {
                 {multiSelect ? "Done selecting" : "Select multiple"}
               </button>
             </div>
-          </header>
+          </div>
 
           {feedback ? <div className="calendar-feedback" role="status">{feedback}</div> : null}
           {publicState.status === "error" ? (
@@ -673,5 +691,6 @@ export function CalendarPage() {
         </section>
       </main>
     </AppLayout>
+
   );
 }
