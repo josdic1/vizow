@@ -1,25 +1,9 @@
-# Vizow
+# Vizow mobile Field Mode default
 
-Vizow is a contractor work-management app built as a Node/Express + PostgreSQL API, React/Vite frontend, and shared TypeScript package.
+Makes the mobile product entry device-aware without changing desktop behavior.
 
-## Public demo routes
-
-- `/demo` — 60-second tour and guided walkthrough
-- `/app` — live private demo workspace; lands in Inbox with two open Requests
-- `/app/today` — Today / transit view
-
-All product routes live under `/app/*`. Public request and availability forms remain `/request` and `/availability`.
-
-## Local build
-
-```bash
-npm run build
-```
-
-## Production start
-
-```bash
-npm start
-```
-
-`npm start` applies pending forward-only database migrations, then starts the Express server. When `frontend/dist` exists, Express serves the built SPA and `/api/*` from the same origin.
+- Phone `/app` defaults to `/app/field`.
+- `/demo` Try/Back to Vizow goes directly to Field Mode on phone.
+- Desktop `/app` remains the Site Mode Inbox.
+- `/app/inbox` is the explicit Site Mode Inbox so Field Mode can deliberately open it without redirecting back to Field Mode.
+- `/app?compose=request` remains Site Mode so Create Request still works on phone.

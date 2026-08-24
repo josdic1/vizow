@@ -176,10 +176,10 @@ export function Today() {
       />
       <div className="today-shell">
         <header className="today-header">
-          <Link className="today-mark" to="/app">VIZOW</Link>
+          <Link className="today-mark" to="/app/inbox">VIZOW</Link>
           <div className="today-date"><span>Today</span><strong>{formatToday()}</strong></div>
           <nav className="today-nav" aria-label="Primary">
-            <Link to="/app">Inbox</Link>
+            <Link to="/app/inbox">Inbox</Link>
             <Link to="/app/jobs">Jobs</Link>
             <Link className="today-nav-primary" to="/app?compose=request">Create Request</Link>
             <AdminSampleDataMenu />
@@ -193,7 +193,7 @@ export function Today() {
             <p>Review what needs attention, then confirm where you are working.</p>
           </div>
           <div className="today-metrics">
-            <Link to="/app"><span>New in Inbox</span><strong>{loading ? "—" : pendingRequests}</strong></Link>
+            <Link to="/app/inbox"><span>New in Inbox</span><strong>{loading ? "—" : pendingRequests}</strong></Link>
             <Link to="/app/calendar"><span>Visits today</span><strong>{loading ? "—" : todayVisits.length}</strong></Link>
             <Link to="/app/jobs"><span>Jobs coming up</span><strong>{loading ? "—" : upcomingJobs}</strong></Link>
           </div>

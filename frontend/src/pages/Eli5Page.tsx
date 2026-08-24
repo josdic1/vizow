@@ -5,6 +5,7 @@ import {
   resetPrivateDemo,
   startPrivateDemo,
 } from "../api/demoSession";
+import { defaultAppEntryPath } from "../utils/appEntry";
 import "../styles/eli5-workday.css";
 
 type StageId = "calendar" | "today" | "vow" | "marketing" | "notes" | "media" | "data" | "done";
@@ -678,7 +679,7 @@ export function Eli5Page({ onGuidedWalkthrough }: { onGuidedWalkthrough: () => v
 
     try {
       await startPrivateDemo();
-      window.location.assign("/app");
+      window.location.assign(defaultAppEntryPath());
     } catch (error) {
       window.alert(
         error instanceof Error

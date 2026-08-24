@@ -53,6 +53,7 @@ import {
   VowsPage,
 } from "./pages/VowsPage";
 import { fetchVows } from "./api/vows";
+import { shouldDefaultToFieldMode } from "./utils/appEntry";
 
 type JobsState =
   | { status: "loading" }
@@ -485,7 +486,7 @@ function JobsPage() {
 
               <Link
                 className="btn btn-primary clients-findbar-add"
-                to="/app"
+                to="/app/inbox"
               >
                 + New Request
               </Link>
@@ -1923,7 +1924,7 @@ function NotFoundPage() {
           <p className="eyebrow">Navigation</p>
           <h1>Page not found</h1>
           <div className="cluster">
-            <Link className="btn btn-primary" to="/app">
+            <Link className="btn btn-primary" to="/app/inbox">
               Return to Inbox
             </Link>
           </div>
@@ -1947,6 +1948,22 @@ function DemoHub() {
   );
 }
 
+function AppEntryPage() {
+  const location = useLocation();
+
+  // Bare /app is the device-aware product entry. Query-string actions are
+  // explicit Site Mode actions (for example /app?compose=request).
+  if (location.search) {
+    return <InboxPage />;
+  }
+
+  return shouldDefaultToFieldMode() ? (
+    <Navigate to="/app/field" replace />
+  ) : (
+    <InboxPage />
+  );
+}
+
 function App() {
   const location = useLocation();
   const isAppSurface =
@@ -1964,8 +1981,8 @@ function App() {
       <Route path="/demo/walkthrough" element={<Navigate to="/demo" replace />} />
       <Route path="/eli5" element={<Navigate to="/demo" replace />} />
 
-      <Route path="/app" element={<InboxPage />} />
-      <Route path="/app/inbox" element={<Navigate to="/app" replace />} />
+      <Route path="/app" element={<AppEntryPage />} />
+      <Route path="/app/inbox" element={<InboxPage />} />
       <Route path="/app/today" element={<Today />} />
       <Route path="/app/nailed-it" element={<NailedItPage />} />
       <Route path="/app/calendar" element={<CalendarPage />} />

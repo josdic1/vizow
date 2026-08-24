@@ -21,7 +21,7 @@ export function AppLayout({
     <main>
       <div className="app-header">
         <header className="site-header shell">
-          <Link className="brand-lockup" to="/app" aria-label="VIZOW Home">
+          <Link className="brand-lockup" to="/app/inbox" aria-label="VIZOW Home">
             <img className="brand-mark" src="/icons/vizow-icon.svg" alt="" />
             <span className="brand-copy">
               <strong>VIZOW</strong>
@@ -33,7 +33,7 @@ export function AppLayout({
               className={({ isActive }) =>
                 `site-nav-link${isActive ? " site-nav-link-active" : ""}`
               }
-              to="/app"
+              to="/app/inbox"
               end
             >
               Inbox

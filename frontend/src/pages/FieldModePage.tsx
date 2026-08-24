@@ -377,7 +377,7 @@ export function FieldModePage() {
       <button
         className={`site-mode-inbox-alert${openRequestCount === 0 ? " is-clear" : ""}`}
         type="button"
-        onClick={() => navigate("/app")}
+        onClick={() => navigate("/app/inbox")}
       >
         <span className="site-mode-inbox-icon">
           <BellRing aria-hidden="true" />

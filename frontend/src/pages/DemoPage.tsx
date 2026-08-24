@@ -6,6 +6,7 @@ import { DemoGuided } from "../demo/DemoGuided";
 import { DemoList } from "../demo/DemoList";
 import { demoIssues } from "../demo/demoReplacementIssues";
 import { useDemo } from "../demo/useDemo";
+import { defaultAppEntryPath } from "../utils/appEntry";
 import "../styles/demo.css";
 
 function stageLabel(stage: "list" | "compare" | "guided"): string {
@@ -29,7 +30,7 @@ export function DemoPage({ onTour }: { onTour: () => void }) {
 
     try {
       await startPrivateDemo();
-      window.location.assign("/app");
+      window.location.assign(defaultAppEntryPath());
     } catch (error) {
       window.alert(
         error instanceof Error
