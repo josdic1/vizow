@@ -133,12 +133,10 @@ export function JobPage() {
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("Unable to prepare Job Brief", error);
         setSummaryState({
           status: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Unable to load the Job summary.",
+          message: "Job Brief couldn't be prepared right now. Try again.",
         });
       });
 
@@ -187,12 +185,10 @@ export function JobPage() {
       const result = await summarizeJobJourney(job.id);
       setSummaryState({ status: "ready", summary: result.summary });
     } catch (error: unknown) {
+      console.error("Unable to update Job Brief", error);
       setSummaryState({
         status: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Unable to update the Job summary.",
+        message: "Job Brief couldn't be prepared right now. Try again.",
       });
     }
   }
@@ -305,19 +301,43 @@ export function JobPage() {
                         onClick={updateSummary}
                       >
                         {summaryState.status === "loading"
-                          ? "Updating…"
+                          ? "Preparing…"
                           : "Update summary →"}
                       </button>
                     </header>
 
                     {summaryState.status === "loading" && (
-                      <p className="job-page-summary-status">Building the current Job brief…</p>
+                      <div
+                        className="job-page-summary-loading"
+                        role="status"
+                        aria-live="polite"
+                        aria-label="Preparing Job Brief"
+                      >
+                        <div className="job-page-summary-loading-label">
+                          <span className="job-page-summary-loading-mark" aria-hidden="true">
+                            <span />
+                            <span />
+                            <span />
+                          </span>
+                          <span>Preparing Job Brief</span>
+                        </div>
+                        <div className="job-page-summary-skeleton" aria-hidden="true">
+                          <span />
+                          <span />
+                          <span />
+                          <span />
+                        </div>
+                      </div>
                     )}
                     {summaryState.status === "error" && (
-                      <p className="job-page-summary-error">{summaryState.message}</p>
+                      <p className="job-page-summary-error" role="alert">
+                        {summaryState.message}
+                      </p>
                     )}
                     {summaryState.status === "ready" && (
-                      <p className="job-page-summary-copy">{summaryState.summary}</p>
+                      <p className="job-page-summary-copy job-page-summary-copy-ready">
+                        {summaryState.summary}
+                      </p>
                     )}
                   </article>
 

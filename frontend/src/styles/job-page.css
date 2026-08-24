@@ -990,3 +990,117 @@
 .job-page-body {
   display: block;
 }
+
+/* Job Brief AI state: quiet, legible progress instead of an abrupt blank area. */
+.job-page-summary-loading {
+  position: relative;
+  overflow: hidden;
+  margin-top: 18px;
+  padding: 4px 0 2px;
+}
+
+.job-page-summary-loading::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 32%,
+    color-mix(in srgb, var(--color-orange) 9%, transparent) 48%,
+    transparent 64%
+  );
+  content: "";
+  pointer-events: none;
+  transform: translateX(-120%);
+  animation: job-brief-sheen 1.8s ease-in-out infinite;
+}
+
+.job-page-summary-loading-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--color-ink-soft);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.job-page-summary-loading-mark {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 18px;
+  height: 12px;
+}
+
+.job-page-summary-loading-mark > span {
+  width: 2px;
+  height: 5px;
+  background: var(--color-orange);
+  transform-origin: center bottom;
+  animation: job-brief-pulse 1.05s ease-in-out infinite;
+}
+
+.job-page-summary-loading-mark > span:nth-child(2) {
+  height: 10px;
+  animation-delay: 120ms;
+}
+
+.job-page-summary-loading-mark > span:nth-child(3) {
+  height: 7px;
+  animation-delay: 240ms;
+}
+
+.job-page-summary-skeleton {
+  display: grid;
+  gap: 9px;
+  max-width: 78ch;
+  margin-top: 19px;
+}
+
+.job-page-summary-skeleton > span {
+  display: block;
+  height: 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-ink) 10%, transparent);
+  opacity: 0.62;
+  animation: job-brief-breathe 1.8s ease-in-out infinite;
+}
+
+.job-page-summary-skeleton > span:nth-child(1) { width: 94%; }
+.job-page-summary-skeleton > span:nth-child(2) { width: 82%; animation-delay: 80ms; }
+.job-page-summary-skeleton > span:nth-child(3) { width: 88%; animation-delay: 160ms; }
+.job-page-summary-skeleton > span:nth-child(4) { width: 57%; animation-delay: 240ms; }
+
+.job-page-summary-copy-ready {
+  animation: job-brief-arrive 320ms ease-out both;
+}
+
+@keyframes job-brief-sheen {
+  0%, 18% { transform: translateX(-120%); }
+  72%, 100% { transform: translateX(120%); }
+}
+
+@keyframes job-brief-pulse {
+  0%, 100% { opacity: 0.34; transform: scaleY(0.55); }
+  50% { opacity: 1; transform: scaleY(1); }
+}
+
+@keyframes job-brief-breathe {
+  0%, 100% { opacity: 0.34; }
+  50% { opacity: 0.68; }
+}
+
+@keyframes job-brief-arrive {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .job-page-summary-loading::after,
+  .job-page-summary-loading-mark > span,
+  .job-page-summary-skeleton > span,
+  .job-page-summary-copy-ready {
+    animation: none;
+  }
+}
