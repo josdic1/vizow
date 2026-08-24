@@ -14,6 +14,19 @@ const environmentSchema = z.object({
     .min(1)
     .default("qwen3:8b"),
 
+  OPENAI_API_KEY: z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim() === ""
+        ? undefined
+        : value,
+    z.string().trim().min(1).optional(),
+  ),
+  OPENAI_MODEL: z
+    .string()
+    .trim()
+    .min(1)
+    .default("gpt-5-nano"),
+
   FRONTEND_ORIGIN: z
     .string()
     .url()

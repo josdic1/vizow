@@ -38,7 +38,11 @@ import { Router } from "express";
 
 import { pool } from "../db/pool.js";
 import { getOrganizationSlug } from "../organizationScope.js";
-import { env } from "../env.js";
+import {
+  generateJourneySummary,
+  JourneySummaryAiError,
+  type JourneySummaryAiResult,
+} from "../services/journeySummaryAi.js";
 
 export const jobsRouter = Router();
 
@@ -667,66 +671,23 @@ LEFT JOIN vows vow
         JSON.stringify(journey),
       ].join("\n");
 
-      let ollamaResponse: globalThis.Response;
+      let aiResult: JourneySummaryAiResult;
 
       try {
-        ollamaResponse = await fetch(
-          `${env.OLLAMA_URL}/api/generate`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify({
-              model: env.OLLAMA_MODEL,
-              prompt,
-              think: false,
-              stream: false,
-              keep_alive: "10m",
-              options: {
-                num_predict: 220,
-                temperature: 0.2,
-              },
-            }),
-            signal: AbortSignal.timeout(60_000),
-          },
-        );
-      } catch {
-        response.status(503).json({
-          ok: false,
-          error:
-            "Local AI is unavailable. Make sure Ollama is running.",
-        });
-        return;
+        aiResult = await generateJourneySummary(prompt);
+      } catch (error) {
+        if (error instanceof JourneySummaryAiError) {
+          response.status(error.status).json({
+            ok: false,
+            error: error.publicMessage,
+          });
+          return;
+        }
+
+        throw error;
       }
 
-      if (!ollamaResponse.ok) {
-        response.status(503).json({
-          ok: false,
-          error:
-            "Local AI could not generate the Journey summary.",
-        });
-        return;
-      }
-
-      const ollamaPayload: unknown = await ollamaResponse.json();
-
-      if (
-        typeof ollamaPayload !== "object" ||
-        ollamaPayload === null ||
-        !("response" in ollamaPayload) ||
-        typeof ollamaPayload.response !== "string" ||
-        ollamaPayload.response.trim() === ""
-      ) {
-        response.status(502).json({
-          ok: false,
-          error: "Local AI returned an invalid response.",
-        });
-        return;
-      }
-
-      const summary = ollamaPayload.response.trim();
+      const { summary, model } = aiResult;
       const eventCount = eventResult.rows.length;
       const latestEventAt =
         eventResult.rows.at(-1)?.createdAt ?? null;
@@ -769,7 +730,7 @@ LEFT JOIN vows vow
           jobIdResult.data,
           getOrganizationSlug(),
           summary,
-          env.OLLAMA_MODEL,
+          model,
           eventCount,
           latestEventAt,
         ],
@@ -787,7 +748,7 @@ LEFT JOIN vows vow
         jobJourneySummaryResponseSchema.parse({
           ok: true,
           summary,
-          model: env.OLLAMA_MODEL,
+          model,
           eventCount,
           latestEventAt:
             latestEventAt?.toISOString() ?? null,
