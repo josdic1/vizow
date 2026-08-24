@@ -24,6 +24,20 @@ function label(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function displayMediaUrl(value: string): string {
+  try {
+    const parsed = new URL(value);
+
+    if (parsed.pathname.startsWith("/sample-projects/")) {
+      return parsed.pathname;
+    }
+  } catch {
+    // Keep the API value when it is not an absolute URL.
+  }
+
+  return value;
+}
+
 export function FieldModeMediaLibrary({
   jobId,
   refreshKey,
@@ -114,7 +128,7 @@ export function FieldModeMediaLibrary({
               {items.map((item) => (
                 <figure key={item.id}>
                   <img
-                    src={item.url}
+                    src={displayMediaUrl(item.url)}
                     alt={
                       item.caption ??
                       `${label(stage)} job photo`

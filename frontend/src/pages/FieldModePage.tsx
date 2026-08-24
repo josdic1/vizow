@@ -1,16 +1,19 @@
 import type { MediaStage } from "@vizow/shared";
 import {
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
 } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
+  BellRing,
   Calculator,
   Camera,
+  ChevronRight,
   ClipboardList,
-  LogOut,
+  MapPin,
   NotebookPen,
   X,
 } from "lucide-react";
@@ -19,6 +22,7 @@ import {
   createFieldNote,
   uploadJobPhoto,
 } from "../api/jobs";
+import { fetchRequests } from "../api/requests";
 import { FieldModeMediaLibrary } from "../components/FieldModeMediaLibrary";
 import { useActiveJob } from "../contexts/ActiveJobContext";
 
@@ -28,11 +32,26 @@ function formatAddress(
   state: string | null,
   postalCode: string | null,
 ) {
-  const locality = [city, state].filter(Boolean).join(", ");
+  const locality = [city, state, postalCode]
+    .filter(Boolean)
+    .join(" ");
 
-  return [line1, locality, postalCode]
+  return [line1, locality]
     .filter(Boolean)
     .join(" · ");
+}
+
+function formatStartedAt(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
 
 export function FieldModePage() {
@@ -51,15 +70,39 @@ export function FieldModePage() {
     useState<string | null>(null);
 
   const [notesOpen, setNotesOpen] = useState(false);
-  const [mediaOpen, setMediaOpen] = useState(false);
-  const [mediaRefreshVersion, setMediaRefreshVersion] =
-    useState(0);
+  const [jobOpen, setJobOpen] = useState(false);
+  const [mediaRefreshVersion, setMediaRefreshVersion] = useState(0);
   const [noteText, setNoteText] = useState("");
   const [noteStatus, setNoteStatus] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
   const [noteMessage, setNoteMessage] =
     useState<string | null>(null);
+  const [openRequestCount, setOpenRequestCount] =
+    useState<number | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchRequests(controller.signal)
+      .then((requests) => {
+        setOpenRequestCount(
+          requests.filter((request) => request.status === "open").length,
+        );
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setOpenRequestCount(null);
+      });
+
+    return () => controller.abort();
+  }, []);
 
   const address = activeJob
     ? formatAddress(
@@ -76,6 +119,12 @@ export function FieldModePage() {
     activeJob.archivedAt === null &&
     activeJob.currentCycle.stage === "open";
 
+  const requestMessage =
+    openRequestCount === null
+      ? "CHECK INBOX"
+      : openRequestCount === 0
+        ? "INBOX CLEAR"
+        : `${openRequestCount} ${openRequestCount === 1 ? "REQUEST" : "REQUESTS"} WAITING`;
 
   function openCamera(): void {
     if (!activeJobIsWritable) {
@@ -204,79 +253,144 @@ export function FieldModePage() {
     <main className="site-mode">
       <header className="site-mode-header">
         <div className="site-mode-header-top">
-          <span className="site-mode-badge">
-            <span className="site-mode-dot" />
-            Field Mode
+          <Link className="site-mode-brand" to="/app/today">
+            <strong>VIZOW</strong>
+            <span>FIELD MODE</span>
+          </Link>
+
+          <span
+            className={`site-mode-active-badge${activeJobIsWritable ? " is-active" : ""}`}
+          >
+            <i />
+            {activeJobIsWritable ? "ACTIVE" : "STANDBY"}
           </span>
-
-          <div className="site-mode-current-job">
-            <strong>
-              {activeJob
-                ? activeJob.title
-                : status === "loading"
-                  ? "Loading job…"
-                  : "No active job"}
-            </strong>
-
-            <span>
-              {activeJob
-                ? address || activeJob.clientName
-                : "Choose a job to begin"}
-            </span>
-          </div>
         </div>
 
-        <div className="site-mode-ticks" />
+        <p className="site-mode-job-kicker">
+          {activeJob ? "ACTIVE JOB" : "FIELD WORK"}
+        </p>
+
+        <button
+          className="site-mode-job-hero"
+          type="button"
+          disabled={!activeJob}
+          onClick={() => {
+            if (activeJob) {
+              navigate(`/app/jobs/${encodeURIComponent(activeJob.id)}`);
+            }
+          }}
+        >
+          <span className="site-mode-job-title">
+            {activeJob
+              ? activeJob.title
+              : status === "loading"
+                ? "Loading job…"
+                : "No active job"}
+          </span>
+
+          <span className="site-mode-job-address">
+            <MapPin aria-hidden="true" />
+            {activeJob
+              ? address || activeJob.clientName
+              : "Open Today to choose the work in front of you."}
+          </span>
+        </button>
+
+        <div className="site-mode-job-meta" aria-label="Current job details">
+          <span>
+            <small>Client</small>
+            <strong>{activeJob?.clientName ?? "—"}</strong>
+          </span>
+          <span>
+            <small>Started</small>
+            <strong>
+              {activeJob
+                ? formatStartedAt(activeJob.currentCycle.openedAt)
+                : "—"}
+            </strong>
+          </span>
+          <span>
+            <small>Cycle</small>
+            <strong>
+              {activeJob
+                ? `#${activeJob.currentCycle.cycleNumber}`
+                : "—"}
+            </strong>
+          </span>
+        </div>
+
+        <div className="site-mode-hazard-rule" />
       </header>
 
       <section
         className="site-mode-grid"
-        aria-label="Site tools"
+        aria-label="Field tools"
       >
         <button
           className="site-mode-tile"
+          data-index="01"
+          type="button"
+          disabled={!activeJob}
+          onClick={() => setJobOpen(true)}
+        >
+          <ClipboardList aria-hidden="true" strokeWidth={1.65} />
+          <strong>Today / Job</strong>
+          <span>Schedule, details &amp; history</span>
+        </button>
+
+        <button
+          className="site-mode-tile"
+          data-index="02"
           type="button"
           disabled={!activeJobIsWritable}
           onClick={openCamera}
         >
-          <Camera aria-hidden="true" strokeWidth={1.4} />
-          <span>Camera</span>
+          <Camera aria-hidden="true" strokeWidth={1.65} />
+          <strong>Camera</strong>
+          <span>Take photos &amp; video</span>
         </button>
 
         <button
           className="site-mode-tile"
+          data-index="03"
           type="button"
           disabled={!activeJobIsWritable}
           onClick={openNotes}
         >
-          <NotebookPen aria-hidden="true" strokeWidth={1.4} />
-          <span>Notes</span>
+          <NotebookPen aria-hidden="true" strokeWidth={1.65} />
+          <strong>Notes</strong>
+          <span>Field notes &amp; observations</span>
         </button>
 
         <button
           className="site-mode-tile"
+          data-index="04"
           type="button"
-          disabled={!activeJob}
-          onClick={() => setMediaOpen(true)}
-        >
-          <ClipboardList aria-hidden="true" strokeWidth={1.4} />
-          <span>Job</span>
-        </button>
-
-        <button
-          className="site-mode-tile"
-          type="button"
-          disabled={!activeJobIsWritable}
           onClick={() => navigate("/app/nailed-it")}
         >
-          <Calculator aria-hidden="true" strokeWidth={1.4} />
-          <span>Nailed-It</span>
+          <Calculator aria-hidden="true" strokeWidth={1.65} />
+          <strong>Calculators</strong>
+          <span>Roofing, area, pitch &amp; more</span>
         </button>
       </section>
 
-      <button className="site-mode-exit" type="button" onClick={() => navigate("/app/today")}>
-        <LogOut aria-hidden="true" strokeWidth={1.4} />
-        <span>Exit Field Mode</span>
+      <button
+        className={`site-mode-inbox-alert${openRequestCount === 0 ? " is-clear" : ""}`}
+        type="button"
+        onClick={() => navigate("/app")}
+      >
+        <span className="site-mode-inbox-icon">
+          <BellRing aria-hidden="true" />
+        </span>
+        <span>
+          <small>
+            {openRequestCount && openRequestCount > 0
+              ? "ATTENTION REQUIRED"
+              : "INBOX"}
+          </small>
+          <strong>{requestMessage}</strong>
+        </span>
+        <ChevronRight aria-hidden="true" />
       </button>
 
       <input
@@ -288,36 +402,59 @@ export function FieldModePage() {
         onChange={handlePhotoSelected}
       />
 
-      {mediaOpen && activeJob ? (
+      {jobOpen && activeJob ? (
         <>
           <button
             className="site-mode-scrim"
             type="button"
-            aria-label="Close job media"
-            onClick={() => setMediaOpen(false)}
+            aria-label="Close current job"
+            onClick={() => setJobOpen(false)}
           />
 
           <section
-            className="site-mode-sheet site-mode-media-sheet"
-            aria-label="Job media"
+            className="site-mode-sheet site-mode-media-sheet site-mode-job-sheet"
+            aria-label="Current job"
           >
             <div className="site-mode-sheet-handle" />
 
             <header className="site-mode-sheet-header">
               <div>
-                <h2>Job Media</h2>
-                <p>{activeJob.title}</p>
+                <small className="site-mode-sheet-kicker">CURRENT JOB</small>
+                <h2>{activeJob.title}</h2>
+                <p>{address || activeJob.clientName}</p>
               </div>
 
               <button
                 className="site-mode-sheet-close"
                 type="button"
-                aria-label="Close job media"
-                onClick={() => setMediaOpen(false)}
+                aria-label="Close current job"
+                onClick={() => setJobOpen(false)}
               >
                 <X aria-hidden="true" />
               </button>
             </header>
+
+            <div className="site-mode-job-actions">
+              <button
+                type="button"
+                onClick={() => navigate(`/app/jobs/${encodeURIComponent(activeJob.id)}`)}
+              >
+                Open Job
+                <ChevronRight aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/app/today")}
+              >
+                Today
+                <ChevronRight aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="site-mode-job-media-heading">
+              <span>JOB MEDIA</span>
+              <small>Photos attached to this Job</small>
+            </div>
 
             <FieldModeMediaLibrary
               jobId={activeJob.id}

@@ -8,6 +8,7 @@ import { Link,
   Navigate,
   Route,
   Routes,
+  useLocation,
   useParams,
   useSearchParams,
 } from "react-router";
@@ -1947,8 +1948,14 @@ function DemoHub() {
 }
 
 function App() {
+  const location = useLocation();
+  const isAppSurface =
+    location.pathname === "/app" ||
+    location.pathname.startsWith("/app/");
+
   return (
-    <Routes>
+    <div className={isAppSurface ? "vizow-app-surface" : undefined}>
+      <Routes>
       <Route path="/" element={<Navigate to="/demo" replace />} />
 
       <Route path="/demo" element={<DemoHub />} />
@@ -1977,8 +1984,9 @@ function App() {
       <Route path="/request" element={<PublicRequestPage />} />
       <Route path="/availability" element={<PublicCalendarPage />} />
 
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </div>
   );
 }
 

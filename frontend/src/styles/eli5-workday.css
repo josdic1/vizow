@@ -700,3 +700,284 @@
 @media (max-width: 900px) {
   .eli5-walkthrough-link { display: none; }
 }
+
+/* ── Mobile /demo recomposition ───────────────────────────────────
+   Do not squeeze the desktop tour. On phones the same information is
+   deliberately reflowed into a readable, thumb-friendly document. */
+.eli5-contact {
+  width: min(1360px, calc(100% - 36px));
+  margin: 18px auto 0;
+  padding: 14px 0 4px;
+  border-top: 1px solid color-mix(in srgb, var(--e-ink) 28%, transparent);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  color: var(--e-muted);
+  font-size: 0.72rem;
+}
+.eli5-contact a {
+  color: var(--e-ink);
+  font-weight: 850;
+  text-decoration-color: var(--e-orange);
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .eli5-sixty-page,
+  .eli5-sixty-page:has(.eli5-campaign-scene) {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .eli5-sixty-page:has(.eli5-campaign-scene) .eli5-sixty-demo {
+    width: auto;
+    margin-left: 0;
+    transform: none;
+  }
+
+  .eli5-sixty-header {
+    min-height: 0;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 14px;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 16px;
+  }
+
+  .eli5-sixty-logo {
+    width: fit-content;
+    font-size: 1.2rem;
+  }
+
+  .eli5-sixty-promise {
+    display: grid;
+    gap: 5px;
+    align-items: start;
+  }
+
+  .eli5-sixty-promise span {
+    font-size: 0.65rem;
+  }
+
+  .eli5-sixty-promise strong {
+    max-width: 19ch;
+    font-size: clamp(1.65rem, 8.1vw, 2.25rem);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+  }
+
+  .eli5-demo-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: stretch;
+    gap: 7px;
+  }
+
+  .eli5-demo-actions .eli5-try-vizow {
+    order: -1;
+    flex: 1 0 100%;
+    min-height: 52px;
+    font-size: 0.72rem;
+  }
+
+  .eli5-demo-actions .eli5-walkthrough-link {
+    display: inline-flex;
+    flex: 1 1 140px;
+    min-height: 40px;
+    padding-inline: 9px;
+    font-size: 0.57rem;
+  }
+
+  .eli5-stage-rail {
+    width: 100%;
+    min-height: 52px;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(88px, max-content);
+    margin: 0;
+    padding: 0 10px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+
+  .eli5-stage-rail::-webkit-scrollbar { display: none; }
+  .eli5-stage-rail > button { min-width: 88px; padding-inline: 10px; }
+  .eli5-stage-rail span { font-size: 0.56rem; white-space: nowrap; }
+
+  .eli5-sixty-stage {
+    width: calc(100% - 24px);
+    padding-top: 16px;
+  }
+
+  .eli5-sixty-copy {
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    align-items: start;
+    padding: 6px 0 16px;
+  }
+
+  .eli5-slide-value h1,
+  .eli5-live-narration {
+    max-width: none !important;
+    font-size: clamp(1.65rem, 7.5vw, 2.25rem) !important;
+    line-height: 0.98 !important;
+  }
+
+  .eli5-live-narration:has(.eli5-vow-intro-name) {
+    display: block;
+    font-size: 1.25rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .eli5-vow-intro-lead { display: block; }
+  .eli5-live-narration .eli5-vow-intro-name {
+    margin-top: 7px;
+    font-size: clamp(2rem, 9vw, 2.7rem);
+    white-space: normal;
+  }
+
+  .eli5-slide-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+    justify-content: stretch;
+    gap: 6px;
+  }
+
+  .eli5-slide-clock {
+    min-width: 0;
+    grid-column: 1;
+    grid-row: 1;
+    justify-items: start;
+    align-content: center;
+    margin: 0;
+    padding: 4px 6px 4px 0;
+  }
+
+  .eli5-slide-clock b { font-size: 2rem; }
+
+  .eli5-speed-control {
+    grid-column: 2 / -1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .eli5-speed-control span,
+  .eli5-speed-control button { min-width: 0; }
+
+  .eli5-slide-controls > button,
+  .eli5-slide-controls > a {
+    min-width: 0;
+    min-height: 42px;
+    padding: 0 4px;
+    font-size: 0.53rem;
+    letter-spacing: 0.07em;
+  }
+
+  .eli5-slide-controls > button:nth-of-type(1) { grid-column: 1; grid-row: 2; }
+  .eli5-slide-controls > button:nth-of-type(2) { grid-column: 2; grid-row: 2; }
+  .eli5-slide-controls > button:nth-of-type(3) { grid-column: 3; grid-row: 2; }
+  .eli5-slide-controls > button:nth-of-type(4) { grid-column: 4; grid-row: 2; }
+
+  .eli5-sixty-demo { margin-top: 12px; }
+  .eli5-scene { min-height: 0; }
+
+  .eli5-calendar-head,
+  .eli5-media-toolbar,
+  .eli5-notes-head,
+  .eli5-vow-proof-head {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 10px;
+  }
+
+  .eli5-calendar-head { flex-direction: column; }
+  .eli5-calendar-head > div:last-child { text-align: left; }
+  .eli5-calendar-controls { overflow-x: auto; }
+  .eli5-calendar-controls i { display: none; }
+  .eli5-calendar-week {
+    grid-template-columns: repeat(7, minmax(82px, 1fr));
+    overflow-x: auto;
+  }
+
+  .eli5-today-week {
+    grid-template-columns: repeat(5, minmax(76px, 1fr));
+    overflow-x: auto;
+  }
+  .eli5-route-layout { grid-template-columns: 1fr; }
+  .eli5-route-board { border-right: 0; border-bottom: 1px solid var(--e-ink); }
+  .eli5-route-map { min-height: 300px; height: 300px; }
+
+  .eli5-vow-gallery-scene { grid-template-columns: 1fr; }
+  .eli5-vow-picker {
+    display: grid;
+    grid-template-columns: 1fr;
+    border-right: 0;
+    border-bottom: 1px solid var(--e-ink);
+  }
+  .eli5-vow-picker-head { grid-column: auto; }
+  .eli5-vow-picker article:not(.is-selected) { display: none; }
+  .eli5-vow-picker article { min-height: 0; grid-template-columns: 96px 1fr; }
+  .eli5-vow-thumb { height: 78px; }
+  .eli5-vow-proof-images { min-height: 0; grid-template-columns: 1fr 28px 1fr; padding: 10px; }
+  .eli5-vow-proof-images figure { height: 210px; }
+  .eli5-vow-proof-facts { grid-template-columns: 1fr; }
+  .eli5-vow-proof-facts b { border-left: 0; border-top: 1px solid var(--e-ink); }
+  .eli5-vow-proof-facts b:first-child { border-top: 0; }
+
+  .eli5-marketing-proof-scene { grid-template-columns: 1fr; }
+  .eli5-marketing-source { border-right: 0; border-bottom: 1px solid var(--e-ink); }
+  .eli5-campaign-grid { height: auto; min-height: 0; }
+
+  .eli5-media-toolbar { padding: 12px; }
+  .eli5-media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .eli5-notes-head { min-height: 0; padding: 12px; }
+  .eli5-notes-layout { grid-template-columns: 1fr; min-height: 0; }
+  .eli5-note-stack { border-right: 0; border-bottom: 1px solid var(--e-ink); }
+  .eli5-note-facts { grid-template-columns: 1fr; }
+  .eli5-note-facts div { border-left: 0; border-top: 1px solid var(--e-ink); }
+  .eli5-note-facts div:first-child { border-top: 0; }
+
+  .eli5-data-scene-rich { overflow: visible; }
+  .eli5-data-stats-rich { grid-template-columns: repeat(2, 1fr); }
+  .eli5-data-rich-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+  .eli5-data-rich-grid section,
+  .eli5-data-volume,
+  .eli5-data-status,
+  .eli5-data-geo,
+  .eli5-data-mix,
+  .eli5-data-evidence,
+  .eli5-data-repeat { grid-column: 1; }
+
+  .eli5-done-scene {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 22px 18px;
+  }
+  .eli5-done-list > div { grid-template-columns: 86px 1fr 22px; }
+
+  .eli5-finish-actions {
+    width: calc(100% - 24px);
+    flex-direction: column;
+  }
+  .eli5-finish-actions > * { width: 100%; }
+
+  .eli5-contact {
+    width: calc(100% - 24px);
+    margin-top: 20px;
+    padding-top: 14px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    font-size: 0.68rem;
+  }
+}

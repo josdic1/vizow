@@ -91,6 +91,11 @@ export function DemoPage({ onTour }: { onTour: () => void }) {
         {stage === "compare" ? <DemoCompare key={activeIssueId} /> : null}
         {stage === "guided" ? <DemoGuided key={activeIssueId} /> : null}
       </div>
+
+      <footer className="demo-contact">
+        <span>Questions or feedback?</span>
+        <a href="mailto:emailjoshdicker@gmail.com">emailjoshdicker@gmail.com</a>
+      </footer>
     </main>
   );
 }

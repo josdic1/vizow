@@ -646,7 +646,10 @@ export function Eli5Page({ onGuidedWalkthrough }: { onGuidedWalkthrough: () => v
 
     try {
       await resetPrivateDemo();
-      window.location.replace("/app");
+      setHasPrivateDemo(true);
+      setResettingDemo(false);
+      replay();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       window.alert(
         error instanceof Error
@@ -785,6 +788,11 @@ export function Eli5Page({ onGuidedWalkthrough }: { onGuidedWalkthrough: () => v
       </section>
 
       {finished && <div className="eli5-finish-actions"><button type="button" onClick={replay}>REPLAY 60 SECONDS</button><button type="button" onClick={onGuidedWalkthrough}>GUIDED WALKTHROUGH →</button><button type="button" disabled={startingDemo || resettingDemo} onClick={() => void openPrivateDemo()}>{startingDemo ? "OPENING VIZOW…" : hasPrivateDemo ? "BACK TO VIZOW →" : "TRY VIZOW →"}</button></div>}
+
+      <footer className="eli5-contact">
+        <span>Questions or feedback?</span>
+        <a href="mailto:emailjoshdicker@gmail.com">emailjoshdicker@gmail.com</a>
+      </footer>
     </main>
   );
 }

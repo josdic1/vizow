@@ -1,0 +1,353 @@
+/*
+ * Mobile Site Mode
+ * The desktop product keeps the warm paper system. On phone-sized screens,
+ * every authenticated /app surface inherits the field-grade dark system so
+ * the responsive site feels intentional rather than like a compressed desktop.
+ */
+@media (max-width: 760px) {
+  .vizow-app-surface {
+    --color-paper: #071019;
+    --color-paper-soft: #111b24;
+    --color-ink: #f3f0e8;
+    --color-ink-soft: #9aa6b2;
+    --color-orange: #f3b500;
+    --color-steel: #7f8a95;
+    --color-line: #34404b;
+    --color-danger: #ff625d;
+    --color-success: #35d07f;
+    --color-muted: #87939e;
+    --color-text: #f3f0e8;
+    --border-heavy: 1px solid var(--color-line);
+    --border-normal: 1px solid var(--color-line);
+    --border-thin: 1px solid var(--color-line);
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+
+    min-height: 100dvh;
+    background:
+      linear-gradient(rgb(255 255 255 / 1.5%) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 1.5%) 1px, transparent 1px),
+      #071019;
+    background-size: 24px 24px;
+    color: var(--color-ink);
+  }
+
+  .vizow-app-surface > main,
+  .vizow-app-surface .page {
+    min-height: 100dvh;
+    background: transparent;
+    color: var(--color-ink);
+  }
+
+  .vizow-app-surface .page {
+    padding: 12px;
+  }
+
+  .vizow-app-surface .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 120;
+    padding: 8px 12px 9px;
+    border-bottom: 1px solid var(--color-line);
+    background: rgb(5 10 16 / 96%);
+    backdrop-filter: blur(16px);
+  }
+
+  .vizow-app-surface .app-header .site-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 0;
+  }
+
+  .vizow-app-surface .brand-lockup {
+    justify-content: flex-start;
+    gap: 7px;
+    color: var(--color-ink);
+  }
+
+  .vizow-app-surface .site-header .brand-mark {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+
+  .vizow-app-surface .brand-copy strong {
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+  }
+
+  .vizow-app-surface .site-nav {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 1px 1px 4px;
+    scrollbar-width: none;
+  }
+
+  .vizow-app-surface .site-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .vizow-app-surface .site-nav-link,
+  .vizow-app-surface .site-nav .media-nav-menu > summary,
+  .vizow-app-surface .site-nav .admin-menu > summary {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--color-line);
+    border-radius: 3px;
+    background: #0e171f;
+    box-shadow: none;
+    color: var(--color-ink-soft);
+    font-size: 0.62rem;
+    letter-spacing: 0.09em;
+    transform: none;
+  }
+
+  .vizow-app-surface .site-nav-link:hover,
+  .vizow-app-surface .site-nav-link-active {
+    border-color: var(--color-orange);
+    background: color-mix(in srgb, var(--color-orange) 10%, #0e171f);
+    box-shadow: none;
+    color: var(--color-orange);
+    transform: none;
+  }
+
+  .vizow-app-surface .site-nav-separator {
+    display: none;
+  }
+
+  .vizow-app-surface .section-rail {
+    display: none;
+  }
+
+  .vizow-app-surface main {
+    --section-rail-gutter: 0px;
+  }
+
+  .vizow-app-surface .panel,
+  .vizow-app-surface .panel-invert,
+  .vizow-app-surface .admin-page-header,
+  .vizow-app-surface .admin-toolbar,
+  .vizow-app-surface .admin-table-wrap,
+  .vizow-app-surface .workspace-scope-bar,
+  .vizow-app-surface .requests-create-panel,
+  .vizow-app-surface .card-drawer {
+    border-color: var(--color-line);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--color-paper-soft) 94%, transparent);
+    box-shadow: none;
+  }
+
+  .vizow-app-surface .admin-page-header::before,
+  .vizow-app-surface .requests-create-panel::before {
+    width: 4px;
+    background: var(--color-orange);
+  }
+
+  .vizow-app-surface .workspace-hero {
+    padding-top: 24px;
+    border-color: var(--color-line);
+  }
+
+  .vizow-app-surface .workspace-eyebrow,
+  .vizow-app-surface .eyebrow {
+    color: var(--color-orange);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: 0.14em;
+  }
+
+  .vizow-app-surface .workspace-hero h1,
+  .vizow-app-surface .admin-page-heading h1,
+  .vizow-app-surface .title {
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+
+  .vizow-app-surface .workspace-hero-description,
+  .vizow-app-surface .subtitle,
+  .vizow-app-surface .muted {
+    color: var(--color-ink-soft);
+  }
+
+  .vizow-app-surface .workspace-metrics {
+    border-color: var(--color-line);
+    background: #0e171f;
+  }
+
+  .vizow-app-surface .workspace-metrics > a,
+  .vizow-app-surface .workspace-metrics > div {
+    border-color: var(--color-line);
+    color: var(--color-ink);
+  }
+
+  .vizow-app-surface .workspace-metrics strong {
+    color: var(--color-orange);
+  }
+
+  .vizow-app-surface .input,
+  .vizow-app-surface .select,
+  .vizow-app-surface .textarea,
+  .vizow-app-surface input,
+  .vizow-app-surface select,
+  .vizow-app-surface textarea {
+    border-color: var(--color-line);
+    border-radius: 4px;
+    background: #0a131b;
+    color: var(--color-ink);
+  }
+
+  .vizow-app-surface .btn,
+  .vizow-app-surface a.btn,
+  .vizow-app-surface button.btn {
+    min-height: 44px;
+    border-color: var(--color-line);
+    border-radius: 4px;
+    background: #0e171f;
+    box-shadow: none;
+    color: var(--color-ink);
+    transform: none;
+  }
+
+  .vizow-app-surface .btn-primary,
+  .vizow-app-surface a.btn-primary,
+  .vizow-app-surface button.btn-primary {
+    border-color: var(--color-orange);
+    background: var(--color-orange);
+    color: #151109;
+  }
+
+  .vizow-app-surface .badge,
+  .vizow-app-surface .card-marker {
+    border-color: var(--color-line);
+    background: #0e171f;
+    color: var(--color-ink-soft);
+  }
+
+  .vizow-app-surface .card-marker-strong {
+    border-color: var(--color-orange);
+    color: var(--color-orange);
+  }
+
+  .vizow-app-surface .admin-table th {
+    background: #050a10;
+    color: var(--color-orange);
+  }
+
+  .vizow-app-surface .admin-table td {
+    border-color: var(--color-line);
+  }
+
+  .vizow-app-surface .today-page {
+    --today-paper: #071019;
+    --today-grid-minor: #0f1a23;
+    --today-grid-major: #15222d;
+    --today-panel: rgb(17 27 36 / 96%);
+
+    color: var(--color-ink);
+  }
+
+  .vizow-app-surface .today-shell {
+    width: min(100% - 22px, 1240px);
+    padding-top: 12px;
+  }
+
+  .vizow-app-surface .today-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    border-color: var(--color-line);
+    background: rgb(7 16 25 / 94%);
+  }
+
+  .vizow-app-surface .today-mark,
+  .vizow-app-surface .today-date strong,
+  .vizow-app-surface .today-dashboard-intro h1,
+  .vizow-app-surface .today-job-card,
+  .vizow-app-surface .today-job-card strong {
+    color: var(--color-ink);
+  }
+
+  .vizow-app-surface .today-date span,
+  .vizow-app-surface .today-eyebrow {
+    color: var(--color-orange);
+  }
+
+  .vizow-app-surface .today-dashboard-intro p,
+  .vizow-app-surface .today-job-card p,
+  .vizow-app-surface .today-job-card span {
+    color: var(--color-ink-soft);
+  }
+
+  .vizow-app-surface .today-nav {
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .vizow-app-surface .today-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .vizow-app-surface .today-nav > a,
+  .vizow-app-surface .today-nav > .admin-menu > summary {
+    flex: 0 0 auto;
+    border-color: var(--color-line);
+    background: var(--today-panel);
+    color: var(--color-ink-soft);
+  }
+
+  .vizow-app-surface .today-nav > a.today-nav-primary {
+    border-color: var(--color-orange);
+    background: var(--color-orange);
+    color: #151109;
+  }
+
+  .vizow-app-surface .today-dashboard,
+  .vizow-app-surface .today-schedule,
+  .vizow-app-surface .today-current-job,
+  .vizow-app-surface .today-state {
+    border-color: var(--color-line);
+  }
+
+  .vizow-app-surface .today-metrics > a {
+    border-color: var(--color-line);
+    background: var(--today-panel);
+    color: var(--color-ink);
+  }
+
+  .vizow-app-surface .today-metrics > a strong {
+    color: var(--color-orange);
+  }
+
+  .vizow-app-surface .today-week-strip,
+  .vizow-app-surface .today-route-map,
+  .vizow-app-surface .today-job-card,
+  .vizow-app-surface .today-current-card {
+    background: var(--today-panel);
+    border-color: var(--color-line);
+  }
+
+  .vizow-app-surface .today-route-map {
+    filter: saturate(0.72) contrast(1.02);
+  }
+
+  .vizow-app-surface .nailed-it {
+    --ni-bg: #050a10;
+    --ni-panel: #111a23;
+    --ni-panel-2: #17212b;
+    --ni-line: #2c3741;
+    --ni-line-strong: #45515c;
+    --ni-text: #f5f2ea;
+    --ni-dim: #8793a0;
+    --ni-yellow: #f3b500;
+  }
+}

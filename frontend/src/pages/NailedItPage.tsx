@@ -67,7 +67,7 @@ export function NailedItPage() {
             Field Mode
           </Link>
 
-          <strong>NAILED-IT</strong>
+          <strong>CALCULATORS</strong>
         </div>
 
         <span>Calc · Convert · Glossary</span>
@@ -148,7 +148,7 @@ export function NailedItPage() {
 
       <nav
         className="nailed-it-nav"
-        aria-label="Nailed-It"
+        aria-label="Calculators"
       >
         <button
           className={view === "calc" ? "active" : undefined}

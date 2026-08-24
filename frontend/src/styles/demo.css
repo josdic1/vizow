@@ -3299,3 +3299,96 @@ button.demo-field-tool {
   opacity: 0.55;
   cursor: wait;
 }
+
+/* Public contact stays understated but reachable in both demo modes. */
+.demo-contact {
+  position: fixed;
+  right: 18px;
+  bottom: 10px;
+  z-index: 30;
+  display: flex;
+  gap: 7px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, var(--color-ink) 28%, transparent);
+  background: color-mix(in srgb, var(--color-paper) 94%, transparent);
+  color: var(--color-ink-soft);
+  font-size: 0.64rem;
+  backdrop-filter: blur(10px);
+}
+.demo-contact a {
+  color: var(--color-ink);
+  font-weight: 850;
+  text-decoration-color: var(--color-orange);
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .demo-shell {
+    height: auto;
+    min-height: 100dvh;
+    display: block;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .demo-masthead {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px 12px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+    background: color-mix(in srgb, var(--color-paper) 96%, transparent);
+    backdrop-filter: blur(14px);
+  }
+
+  .demo-masthead .brand-lockup { grid-column: 1; }
+  .demo-masthead-label {
+    grid-column: 2;
+    justify-content: start;
+    text-align: left;
+  }
+  .demo-masthead-label strong { max-width: 20ch; white-space: normal; line-height: 1.1; }
+
+  .demo-masthead-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .demo-masthead-actions button { display: inline-flex; justify-content: center; }
+  .demo-masthead-actions .demo-enter-live { grid-column: 1 / -1; grid-row: 1; min-height: 46px; }
+
+  .demo-page {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 14px 12px 20px;
+    overflow: visible;
+  }
+
+  .demo-list,
+  .demo-compare,
+  .demo-guided { min-height: 0; }
+
+  .demo-guided-stage { height: auto; min-height: 0; overflow: visible; }
+  .demo-guided-body { overflow: visible; }
+
+  .demo-contact {
+    position: static;
+    width: calc(100% - 24px);
+    margin: 4px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 0 0;
+    border: 0;
+    border-top: 1px solid color-mix(in srgb, var(--color-ink) 28%, transparent);
+    background: transparent;
+    flex-direction: column;
+    gap: 2px;
+    backdrop-filter: none;
+  }
+}
