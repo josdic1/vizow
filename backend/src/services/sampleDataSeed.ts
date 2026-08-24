@@ -12,10 +12,7 @@ import {
 } from "../data/sampleProjects.js";
 import { env } from "../env.js";
 import { getOrganizationSlug } from "../organizationScope.js";
-import {
-  sampleMediaDeliveryUrl,
-  sampleMediaStorageKey,
-} from "./sampleMediaStorage.js";
+import { sampleMediaDeliveryUrl } from "./sampleMediaStorage.js";
 
 export type SampleRange = "day" | "week" | "month" | "demo";
 
@@ -166,8 +163,8 @@ type SnapshotMedia = {
   jobId: string;
   jobCycleId: string;
   url: string;
-  storageKey: string;
-  mimeType: "image/jpeg";
+  storageKey: string | null;
+  mimeType: "image/jpeg" | "image/png";
   stage: "before" | "during" | "after";
   caption: string;
   capturedAt: string;
@@ -483,7 +480,6 @@ async function seedMedia(
     const attachedAt = isIntakePhoto
       ? addHours(startedAt, 0.1)
       : capturedAt;
-    const storageKey = sampleMediaStorageKey(project.slug, photo.filename);
     const url = sampleMediaDeliveryUrl(project.slug, photo.filename);
 
     await client.query(
@@ -506,8 +502,8 @@ async function seedMedia(
           source_type
         )
         VALUES (
-          $1, $2, $3, $4, $5, $6, 'image/jpeg', $7, $8,
-          false, $9, $9, $10, 'bundled', 'seed'
+          $1, $2, $3, $4, $5, NULL, 'image/png', $6, $7,
+          false, $8, $8, $9, 'bundled', 'seed'
         )
       `,
       [
@@ -516,7 +512,6 @@ async function seedMedia(
         jobId,
         cycleId,
         url,
-        storageKey,
         photo.stage,
         photo.caption,
         capturedAt,
@@ -544,8 +539,8 @@ async function seedMedia(
       jobId,
       jobCycleId: cycleId,
       url,
-      storageKey,
-      mimeType: "image/jpeg",
+      storageKey: null,
+      mimeType: "image/png",
       stage: photo.stage,
       caption: photo.caption,
       capturedAt: capturedAt.toISOString(),

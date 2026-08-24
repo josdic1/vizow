@@ -1,18 +1,11 @@
 /**
- * Sample/demo media ships with the frontend as immutable application fixtures.
- * It deliberately does not use Cloudinary. User-created media is the only media
- * that crosses the Cloudinary persistence boundary.
+ * Built-in demo media is a static frontend asset.
+ * The database stores the exact root-relative delivery path and nothing else
+ * is required to locate the file.
  */
-export function sampleMediaStorageKey(
-  projectSlug: string,
-  filename: string,
-): string {
-  return `media/${projectSlug}/${filename}`;
-}
-
 export function sampleMediaDeliveryUrl(
   projectSlug: string,
   filename: string,
 ): string {
-  return `/${sampleMediaStorageKey(projectSlug, filename)}`;
+  return `/media/${projectSlug}/${filename}`;
 }
